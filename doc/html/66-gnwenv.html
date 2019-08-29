@@ -1,0 +1,51 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: 66-gnwenv</title>
+    <meta name="Description" content="Detailed documentation for the 66-gnwenv command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command 66-gnwenv service supervision execute script execline environment write" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">66</a><br />
+<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>66-gnwenv</h1>
+
+	<p>
+     66-gnwenv gets and writes the environment variables of a process name at a specific file location.
+    </p>
+
+
+<h2> Interface </h2>
+	<pre>
+	66-gnwenv [ -h ] [ -x ] [ -m <em>mode</em> ] <em>process</em> <em>dir</em> <em>file</em>
+	</pre>
+
+	<ul>
+		<li>
+			66-gnwenv executes into <tt><a href="66-getenv.html">66-getenv</a> -x process</tt> <tt><a href="66-writenv.html">66-writenv</a> -m mode dir file</tt>. It does nothing else: it is just a convenience program.  
+			<a href="66-getenv.html">66-getenv</a> read the environment variable of the <em>process</em>, and <a href="66-writenv.html">66-writenv</a> will write these variables into <em>dir/file</em> location.
+		</li>
+		
+		<li>Return 0 on success and 111 on fail.</li>
+    </ul>
+    
+<h2> Options </h2>
+
+	<ul>
+		<li> <tt>-h&nbsp;</tt>&nbsp;: prints this help. </li>
+		<li>
+			<tt>-x&nbsp;</tt>: match exactly with the process name. It can be a complete command line, in such case its must be double-quoted. 
+		</li>
+		<li>
+			<tt>-m&nbsp;<em>mode</em>&nbsp;</tt>&nbsp;: create <em>dir</em> with mode <em>mode</em> if it doesn't exist yet. Default is 0755.
+		</li>
+	</ul>
+</body>
+</html>

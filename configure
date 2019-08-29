@@ -24,7 +24,9 @@ Fine tuning of the installation directories:
   --libexecdir=DIR              package-scoped executables [EPREFIX/libexec]
   --libdir=DIR                  static library files [PREFIX/lib/$package]
   --includedir=DIR              C header files [PREFIX/include]
-  
+  --datarootdir=DATAROOTDIR     read-only architecture-independent data root [PREFIX/share]
+  --mandir=DIR                  man documentation [$datarootdir/man]
+ 
  If no --prefix option is given, by default libdir (but not dynlibdir) will be
  /usr/lib/$package, and includedir will be /usr/include.
 
@@ -143,6 +145,8 @@ bindir='$exec_prefix/bin'
 libdir='$prefix/lib/$package'
 includedir='$prefix/include'
 sysdeps='$prefix/lib/skalibs/sysdeps'
+datarootdir='$prefix/share'
+mandir='$datarootdir/man'
 manualsysdeps=false
 shared=false
 static=true
@@ -171,6 +175,8 @@ for arg ; do
     --bindir=*) bindir=${arg#*=} ;;
     --libdir=*) libdir=${arg#*=} ;;
     --includedir=*) includedir=${arg#*=} ;;
+    --datarootdir=*) datarootdir=${arg#*=} ;;
+    --mandir=*) mandir=${arg#*=} ;;
     --with-sysdeps=*) sysdeps=${arg#*=} manualsysdeps=true ;;
     --with-include=*) var=${arg#*=} ; stripdir var ; addincpath="$addincpath -I$var" ;;
     --with-lib=*) var=${arg#*=} ; stripdir var ; addlibspath="$addlibspath -L$var" ; vpaths="$vpaths $var" ;;
@@ -210,11 +216,23 @@ if test -z "$prefix" ; then
   if test "$sysdeps" = '$prefix/lib/skalibs/sysdeps' ; then
     sysdeps=/usr/lib/skalibs/sysdeps
   fi
+  if test "$datarootdir" = '$prefix/share'; then
+    datarootdir=/usr/share
+  fi
 fi
 
 # Expand installation directories
 stripdir prefix
-for i in exec_prefix dynlibdir libexecdir bindir libdir includedir sysdeps sproot ; do
+for i in exec_prefix dynlibdir libexecdir \
+         bindir libdir includedir sysdeps sproot \
+         datarootdir mandir ; do
+  eval tmp=\${$i}
+  eval $i=$tmp
+  stripdir $i
+done
+
+stripdir datarootdir
+for i in mandir; do
   eval tmp=\${$i}
   eval $i=$tmp
   stripdir $i
@@ -249,6 +267,8 @@ if $slashpackage ; then
   libdir=${home}/library
   libexecdir=$bindir
   includedir=${home}/include
+  datarootdir=${home}/data
+  mandir=${dataroodir}/doc/man
   while read dep condvar ; do
     if test -n "$condvar" ; then
       eval "cond=$condvar"
@@ -392,6 +412,8 @@ libexecdir := $libexecdir
 bindir := $bindir
 libdir := $libdir
 includedir := $includedir
+datarootdir := $datarootdir
+mandir := $mandir
 sysdeps := $sysdeps
 slashpackage := $slashpackage
 sproot := $sproot

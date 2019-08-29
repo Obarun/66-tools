@@ -1,0 +1,58 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: 66-getenv</title>
+    <meta name="Description" content="Detailed documentation for the 66-getenv command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command 66-getenv service supervision execute script execline environment write" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">66</a><br />
+<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>66-getenv</h1>
+
+	<p>
+     66-getenv gets and displays the environment variables of a process name.
+    </p>
+
+
+<h2> Interface </h2>
+	<pre>
+	66-getenv [ -h ] [ -x ] [ -d <em>delim</em> ] <em>process</em>
+	</pre>
+
+	<ul>
+		<li>
+			66-getenv find the corresponding pid of the <em>process</em> name applying a regex search.
+		</li>
+		<li>
+			It open and read <tt>/proc/&ltpid&gt/environ</tt> file and displays its contain.
+		</li>
+		<li>Return 0 on success and 111 on fail.</li>
+    </ul>
+    
+<h2> Options </h2>
+
+	<ul>
+		<li> <tt>-h&nbsp;</tt>&nbsp;: prints this help. </li>
+		<li>
+			<tt>-x&nbsp;</tt>: match exactly with the process name. It can be a complete command line, in such case its must be double-quoted. 
+		</li>
+		<li>
+			<tt>-d&nbsp;<em>delim</em>&nbsp;</tt>&nbsp;: specify output delimiter. The default is <tt>'\n'</tt> character.
+		</li>
+	</ul>
+<h2>Example of use</h2>
+<p>66-getenv -x jwm</p>
+<p>66-getenv "ck-launch-session jwm"</p>
+<h2>Notes</h2>
+<p> The file <tt>/proc/&ltpid&gt/environ</tt> contains the initial environment that was set when the currently executing program was started via <tt>execve(2)</tt>. If, after an <tt>execve(2)</tt>, the process modifies its environment 
+(e.g., by calling functions such as <tt>putenv(3)</tt> or modifying the <tt>environ(7)</tt> variable directly), this file will <strong>not</strong> reflect those changes&mdash;see <tt>proc(5)</tt> for futher informations.</p>
+</body>
+</html>

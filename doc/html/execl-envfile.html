@@ -1,0 +1,127 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: execl-envfile</title>
+    <meta name="Description" content="Detailed documentation for the execl-envfile command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command execl-envfile service supervision execute script execline environment importas" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+	<a href="index.html">66</a><br />
+	<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>execl-envfile</h1>
+
+	<p>
+		A mix of <a href="https://skarnet.org/software/s6/s6-envdir.html"><tt>s6-envdir</tt></a> and <a href="https://skarnet.org/software/execline/importas.html"><tt>importas</tt></a>. Reads files containing variable assignments in the given file/directory, adds the variables to the environment and then executes a program.
+	</p>
+
+<h2>Interface</h2>
+
+	<pre>
+	execl-envfile [ -h ] [ -f <em>file</em> ] [ -l ] <em>src</em> <em>prog</em>
+	</pre>
+
+	<p>
+		This tool expects to find a regular file or a directory in <em>src</em> containing one or multiple <tt>key=value</tt> pair(s). It will parse that file, import the <tt>key=value</tt> and then exec the given <em>prog</em> with the modified environment. In case of directory for each file found it apply the same process.
+	</p>
+
+	<ul>
+		<li>
+			It opens and reads a file.
+		</li>
+
+		<li>
+			It parses that file.
+		</li>
+
+		<li>
+			It imports the found <tt>key=value</tt> pair(s).
+		</li>
+
+		<li>
+			It substitutes each corresponding <tt>key</tt> with <tt>value</tt> from that file.
+		</li>
+
+		<li>
+			It unexports the variable(s) if requested.
+		</li>
+
+		<li>
+			It execs <em>prog</em> with the modified environment.
+		</li>
+	</ul>
+
+<h2>Options</h2>
+
+	<ul>
+		<li>
+			<tt><b>-h</b></tt> : print this help.
+		</li>
+
+		<li>
+			<tt><b>-f <em>file</em></b></tt> : only parse <em>file</em> found in <em>src</em>. <b>deprecated option</b>
+		</li>
+
+		<li>
+			<tt><b>-l</b></tt> : loose; do nothing and execute <em>prog</em> directly if <em>src</em> does not contain any regular file(s) or <em>src</em> does not exist.
+		</li>
+	</ul>
+
+<h2>File syntax</h2>
+
+	<p>
+		<em>src</em> is a text file or a directory containing lines of pairs with the syntax being:<br><tt>key = value</tt><br>Whitespace is permitted before and after <em>key</em>, and before or after <em>value</em>. Quoting is also possible.
+	</p>
+
+	<p>
+		Empty lines or lines containing only whitespace are ignored. Lines beginning with <tt>#</tt> (also after whitespace) are ignored and typically used for comments. Comments are <strong>not</strong> possible at the end of lines: '<tt>key = value # comment</tt>' is not a valid comment.
+	</p>
+
+	<p>
+		Empty <em>values</em> are <strong>not</strong> permitted.
+	</p>
+
+	<p>
+		If <tt>val</tt> begin by a <tt>'!'</tt> character: <tt>key=!value</tt> the <tt>key</tt> will be removed from the environment after the substitution.
+	</p>
+
+<h2>Example of use</h2>
+
+	<pre>
+	#!/usr/bin/execlineb -P
+	fdmove -c 2 1
+	execl-envfile /etc/66/conf/ntpd
+	foreground { mkdir -p  -m 0755 ${RUNDIR} } 
+	execl-cmdline -s { ntpd ${CMD_ARGS} }
+	</pre>
+
+	<p>The equivalent with s6-envdir and importas would be:</p>
+
+	<pre>
+	#!/usr/bin/execlineb -P
+	fdmove -c 2 1
+	s6-envdir %%service_admconf%%
+	importas -u RUNDIR RUNDIR
+	importas -u CMD_ARGS CMD_ARGS
+	foreground { mkdir -p  -m 0755 ${RUNDIR} } 
+	execl-cmdline -s { ntpd ${CMD_ARGS} }
+	</pre>
+
+	<p>
+		where <tt>%%service_admconf%%</tt> contains two named files <tt>RUNDIR</tt> and <tt>CMD_ARGS</tt> written with <tt>/run/openntpd</tt> and <tt>-d -s</tt> respectively.
+	</p>
+
+<h2>Limits</h2>
+
+	<p>
+		<em>src</em> can not exceed more than 100 files. Each file can not contain more than 4095 bytes or more than 50 <em>key=value</em> pairs.
+	</p>
+
+</body>
+</html>

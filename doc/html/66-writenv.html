@@ -1,0 +1,47 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: 66-writenv</title>
+    <meta name="Description" content="Detailed documentation for the 66-writenv command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command 66-writenv service supervision execute script execline environment write" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">66</a><br />
+<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>66-writenv</h1>
+
+	<p>
+     66-writenv stores its environment variables at a specific file location.
+    </p>
+
+
+<h2> Interface </h2>
+	<pre>
+	66-writenv [ -h ] [ -m <em>mode</em> ] <em>dir</em> <em>file</em>
+	</pre>
+
+	<ul>
+		<li>
+		This tool write its environment variables into <em>dir/file</em> under the classic format <tt>key=value</tt> pair and thoses one per line. <em>dir</em> must be an absolute path.
+		</li>
+		<li>Return 0 on success and 111 on fail.</li>
+	</ul>
+    
+
+<h2> Options </h2>
+
+	<ul>
+		<li> <tt>-h&nbsp;</tt>&nbsp;: prints this help. </li>
+		<li>
+			<tt>-m&nbsp;<em>mode</em>&nbsp;</tt>&nbsp;: create <em>dir</em> with mode <em>mode</em> if it doesn't exist yet. Default is 0755.
+		</li>
+	</ul>
+</body>
+</html>

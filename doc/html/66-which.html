@@ -1,0 +1,140 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: execl-envfile</title>
+    <meta name="Description" content="Detailed documentation for the execl-envfile command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command execl-envfile service supervision execute script execline environment importas" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+	<a href="index.html">66</a><br />
+	<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>66-which</h1>
+
+	<p>
+		66-which is a portable which command that checks if a command exists
+		and is executable in PATH or at specified path. It behaves slightly
+		different then the GNU which command.
+	</p>
+
+<h2>Interface</h2>
+
+	<pre>
+	66-which [ -h ] [ -q | -a ] <em>command(s)</em>
+	</pre>
+
+	<p>
+		This tool expect to find valid command name or path, it will check
+		if they exists and are executable by the current user.
+	</p>
+
+	<ul>
+		<li>
+			It parse PATH for valid entries, applying a substitution of each
+			entry with its realpath and emilinating duplicates.
+		</li>
+
+		<li>
+			It parses that command given checking if it is a path or a name.
+		</li>
+
+		<li>
+			It prints each command found with the first PATH entry, otherwise
+			it print an error. By passing the <tt>-a</tt> option, it
+			searches and print command with all the PATH entries, even if it
+			been already found.
+		</li>
+	</ul>
+<h2>Options</h2>
+
+	<ul>
+		<li>
+			<tt><b>-h</b></tt> : print this help.
+		</li>
+
+		<li>
+			<tt><b>-a</b></tt> : print all. Search and print the command using
+			all the PATH entries, even after the command has already been
+			found.
+		</li>
+
+		<li>
+			<tt><b>-q</b></tt> : quiet. Do not print anything on stdout.
+		</li>
+	</ul>
+
+<h2>Exit codes</h2>
+
+	<p>
+		<ul>
+			<li>
+				<tt><b>&nbsp;&nbsp;0</b></tt> : success; all the commands have
+				been found on the system
+			</li>
+
+			<li>
+				<tt><b>110</b></tt> : bad usage
+			</li>
+
+			<li>
+				<tt><b>111</b></tt> : system call failed or at least one
+				command hasn't been found.
+			</li>
+		</ul>
+	</p>
+
+<h2>Example of use</h2>
+
+	<p>
+		Search for a command by using its name:
+	</p>
+
+	<pre>
+	$ 66-which 66-echo
+	/usr/bin/66-echo
+	</pre>
+
+	<p>
+		Check for a command by using its path:
+	</p>
+
+	<pre>
+	$ 66-which /usr/bin/66-echo
+	/usr/bin/66-echo
+	</pre>
+
+	<p>
+		Usage of <em>66-which</em> in a script:
+	</p>
+
+	<pre>
+	#!/usr/bin/execlineb -P
+
+	if { 66-which -q vgchange }
+	vgchange -ay
+	</pre>
+
+<h2>Notes</h2>
+
+	<p>
+		66-which need at least one valid entry in PATH that exists on the
+		system. 66-which is often used on critical scripts, like the ones
+		booting the system, so it's important to check if PATH contains valid
+		entries for the current system.
+	</p>
+
+	<p>
+		66-which correctly handle the tilde <em>~</em> character for paths.
+		Beware that same shell, like bash, replaces this character with the
+		current user home path. To pass the correct string to 66-which,
+		containing the tilde character, use quoting like this: <tt>66-which
+		'~/.bin/gvr'</tt>.
+
+</body>
+</html>

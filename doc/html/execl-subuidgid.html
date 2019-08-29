@@ -1,0 +1,60 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66 Suite: execl-subuidgid</title>
+    <meta name="Description" content="Detailed documentation for the execl-cmdline command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command execl-subuidgid service supervision execute script execline uid gid substitute" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+	<a href="index.html">66</a><br />
+	<a href="//obarun.org/">www.obarun.org</a>
+</p>
+
+<h1>execl-subuidgid</h1>
+
+	<p>
+		Substitutes a literal GID UID with the UID GID of the current owner of the process.
+	</p>
+
+
+<h2>Interface</h2>
+
+	<pre>
+	execl-subuidgid [ -o owner ] <em>prog</em>
+	</pre>
+
+	<ul>
+		<li>
+			Substitutes the variable UID GID on <em>prog</em>. 
+		</li>
+	</ul>
+
+<h2>Options</h2>
+
+	<ul>
+		<li>
+			<tt><b>-o <em>owner</em></b></tt> : set UID GID of <em>owner</em> instead of the current one.
+		</li>
+	</ul>
+
+<h2>Usage examples</h2>
+
+	<pre>
+	execl-subuidgid
+	if { mkdir -p /run/user }
+	chown -R $UID:$GID /run/user 
+	</pre>
+
+	<pre>
+	execl-subuidgid -o root
+	if { mkdir /run }
+	chmow -R $UID:$GID /run/user 
+	</pre>
+
+</body>
+</html>

@@ -1,0 +1,137 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>66 - obarun tools build around s6 supervision suite</title>
+    <meta name="Description" content="66 - obarun tools build around s6 supervision suite" />
+    <meta name="Keywords" content="66 unix administration root pipe eric vidal obarun supervision frontend" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="//obarun.org/">obarun.org</a>
+</p>
+
+<h1><br> What is 66? </h1>
+
+	<p>
+		Sixty-six is a collection of system tools built around 
+		<a href="http://skarnet.org/software/s6">s6</a> and 
+		<a href="http://skarnet.org/software/s6-rc">s6-rc</a> created to 
+		make the implementation and manipulation of service files on your 
+		machine easier. It is meant to be a toolbox for the declaration, 
+		implementation and administration of services where seperate programs 
+		can be joined to achieve powerful functionality with small amounts of code.
+	</p>
+
+	<p>
+		Examples of what can be achieved by assembling different programs provided by 66:
+	</p>
+
+	<ul>
+		<li> Frontend service files declaration. </li>
+		<li> Backup a complete set of services.</li>
+		<li> Easy creation of a scandir. </li>
+		<li> Nested supervision tree. </li>
+		<li> Instance service file creation. </li>
+		<li> Multiple directories service file declaration(packager,sysadmin,user). </li>
+		<li> Easy change of service configuration. </li>
+		<li> Automatic logger creation. </li>
+		<li> ...</li>
+	</ul>
+
+	<p>
+		<strong>Note</strong>: This documentation tries to be complete 
+		and self-contained. However, if you have never heard of s6 or 
+		s6-rc you might be confused at first. Please refer to the 
+		<a href="https://skarnet.org/software/">skarnet</a> documentation 
+		if in doubt. 
+	</p>
+
+<h2> Installation </h2>
+
+	<h3> Requirements </h3>
+	<p>
+		Please refer to the <a href="https://framagit.org/Obarun/66">INSTALL</a> file for details.
+	</p>
+
+	<h3> Licensing </h3>
+
+	<p>
+		66 is free software. It is available under the
+		<a href="http://opensource.org/licenses/ISC">ISC license</a>.
+	</p>
+
+<hr />
+
+
+<h2> Commands </h2>
+
+	<h3> Admin tools </h3>
+
+	<ul>
+		<li><a href="66-boot.html"><tt>66-boot</tt></a></li>
+		<li><a href="66-scandir.html"><tt>66-scandir</tt></a></li>
+		<li><a href="66-scanctl.html"><tt>66-scanctl</tt></a></li>
+		<li><a href="66-init.html"><tt>66-init</tt></a></li>
+		<li><a href="66-svctl.html"><tt>66-svctl</tt></a></li>
+		<li><a href="66-dbctl.html"><tt>66-dbctl</tt></a></li>
+		<li><a href="66-hpr.html"><tt>66-hpr</tt></a></li>
+		<li><a href="66-shutdownd.html"><tt>66-shutdownd</tt></a></li>
+		<li><a href="66-parser.html"><tt>66-parser</tt></a></li>
+		<li><a href="66-umountall.html"><tt>66-umountall</tt></a></li>
+	</ul>
+
+	<h3> User tools </h3>
+
+	<ul>
+		<li><a href="frontend.html"><tt>frontend</a> <em>(service file)</em></tt></li>
+		<li><a href="66-all.html"><tt>66-all</tt></a></li>
+		<li><a href="66-tree.html"><tt>66-tree</tt></a></li>
+		<li><a href="66-enable.html"><tt>66-enable</tt></a></li>
+		<li><a href="66-disable.html"><tt>66-disable</tt></a></li>
+		<li><a href="66-start.html"><tt>66-start</tt></a></li>
+		<li><a href="66-stop.html"><tt>66-stop</tt></a></li>
+		<li><a href="66-info.html"><tt>66-info</tt></a></li>
+		<li><a href="66-env.html"><tt>66-env</tt></a></li>
+		<li><a href="66-shutdown.html"><tt>66-shutdown</tt></a></li>
+	</ul>
+	
+	<h3> Extra tools </h3>
+	
+	<ul>
+		<li><a href="execl-cmdline.html"><tt>execl-cmdline</tt></a></li>
+		<li><a href="execl-envfile.html"><tt>execl-envfile</tt></a></li>
+		<li><a href="execl-subuidgid.html"><tt>execl-subuidgid</tt></a></li>
+		<li><a href="66-envfile.html"><tt>66-envfile</tt></a> <strong>deprecated</strong></li>
+		<li><a href="66-getenv.html"><tt>66-getenv</tt></a></li>
+		<li><a href="66-gnwenv.html"><tt>66-gnwenv</tt></a></li>
+		<li><a href="66-writenv.html"><tt>66-writenv</tt></a></li>
+		<li><a href="66-echo.html"><tt>66-echo</tt></a></li>
+		<li><a href="66-which.html"><tt>66-which</tt></a></li>
+	</ul>
+
+<h2> Why is 66 necessary? </h2>
+
+	<p>
+		Implementation and handling of service files based on s6 and s6-rc can be complex and difficult to understand. This led to the creation of the 66 tools.
+	</p>
+
+	<h3> Why the name </h3>
+
+	<p>
+		66 is the result of the combination of the former s<strong>6</strong> and s<strong>6</strong>-rc.<br>
+		It is a lot faster and easier to write and remember when writing. 
+		Apart from that it is a nice command prefix to have. 
+		It identifies the origin of the software and it's short.
+	</p>
+
+	<p>
+		Expect more use of the <tt>66-</tt> prefix in future obarun.org 
+		software releases and please avoid using it for your own projects.
+	</p>
+
+</body>
+</html>

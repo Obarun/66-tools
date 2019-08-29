@@ -1,6 +1,7 @@
 .git/
 config.mak
 src/include/66-tools/config.h
+src/66-tools/*.o
 *.lo
 *.a.*
 66-envfile
