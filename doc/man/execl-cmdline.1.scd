@@ -53,7 +53,7 @@ This _command_:
 
 ```
 
-    execl-cmdline -S { /usr/bin/ntpd "-d -S" }
+    execl-cmdline -s { /usr/bin/ntpd "-d -S" }
 
 ```
 
