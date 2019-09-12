@@ -9,4 +9,4 @@ execl-envfile \
 execl-subuidgid
 
 LIBEXEC_TARGETS :=
-LIB_DEFS := 66-TOOLS=66-tools
+
