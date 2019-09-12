@@ -341,15 +341,16 @@ if [ "x$target" != "x$(cat $sysdeps/target)" ] ; then
   exit 1
 fi
 
-if $allpic ; then
-  tryflag CPPFLAGS_AUTO -fPIC
-fi
 spawn_lib=$(cat $sysdeps/spawn.lib)
 socket_lib=$(cat $sysdeps/socket.lib)
 sysclock_lib=$(cat $sysdeps/sysclock.lib)
 tainnow_lib=$(cat $sysdeps/tainnow.lib)
 timer_lib=$(cat $sysdeps/timer.lib)
 util_lib=$(cat $sysdeps/util.lib)
+
+if $allpic ; then
+  tryflag CPPFLAGS_AUTO -fPIC
+fi
 
 tryflag CFLAGS_AUTO -std=c99
 tryflag CFLAGS -fomit-frame-pointer
