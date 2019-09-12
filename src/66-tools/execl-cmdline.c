@@ -14,12 +14,10 @@
 
 #include <string.h>
 
-#include <oblibs/string.h>
-#include <oblibs/stralist.h>
 #include <oblibs/error2.h>
+#include <oblibs/sastr.h>
 
 #include <skalibs/stralloc.h>
-#include <skalibs/genalloc.h>
 #include <skalibs/env.h>
 #include <skalibs/djbunix.h>
 #include <skalibs/sgetopt.h>
@@ -43,74 +41,16 @@ static inline void info_help (void)
     strerr_diefu1sys(111, "write to stdout") ;
 }
 
-int clean_val_doublequoted(genalloc *ga,char const *line)
-{
-	size_t slen = strlen(line) ;
-	size_t tl ;
-	char s[slen+1] ;
-	memcpy(s,line,slen) ;
-	s[slen] = 0 ;
-	int f = 0, r = 0 , prev = 0 ;
-	r = get_len_until(s,'"') ;
-	if (r < 0)
-	{
-		if (!clean_val(ga,s)) return 0 ;
-		return 1 ;
-	}
-	for (int i = 0 ; i < slen ; i++)
-	{
-		if (s[i] == '"')
-		{
-			if (f)
-			{
-				char t[slen+1] ;
-				tl = i-1 ;
-				memcpy(t,s+prev,tl-prev+1) ;
-				t[tl-prev+1] = 0 ;
-				if (!stra_add(ga,t)) return 0 ;
-				f = 0 ; prev = i+1 ;
-			}
-			else
-			{
-				if (i > 0)
-				{
-					char t[slen+1] ;
-					tl = i ;
-					if (prev == tl){ f++ ; continue ; }
-					memcpy(t,s+prev,tl-prev) ;
-					t[tl-prev] = 0 ;
-					if (!clean_val(ga,t)) return 0 ;
-					f++ ; prev = i+1 ;
-				}
-				else f++ ; 
-			}
-		}
-		else
-		if (i+1 == slen)
-		{
-			char t[slen+1] ;
-			tl = i - 1 ;
-			memcpy(t,s+prev,slen-prev) ;
-			t[slen-prev] = 0 ;
-			if (!clean_val(ga,t)) return 0 ;
-			break ;
-		}
-	}
-	if (f) strerr_dief2x(111,"odd number of double quote in: ",line) ;
-
-	return 1 ;
-}
-
 int main(int argc, char const **argv, char const *const *envp)
 {
-
 	int r, argc1, split ;
-
-	PROG = "execl-cmdline" ;
+	size_t pos = 0 ;
 	
 	stralloc tmodifs = STRALLOC_ZERO ;
 	stralloc modifs = STRALLOC_ZERO ;
-	genalloc ga = GENALLOC_ZERO ;
+	stralloc tmp = STRALLOC_ZERO ;
+	
+	PROG = "execl-cmdline" ;
 	
 	r =  argc1 = split = 0 ;
 	
@@ -134,39 +74,27 @@ int main(int argc, char const **argv, char const *const *envp)
 	if (argc1 >= argc) strerr_dief1x(100, "unterminated block") ;
 	argv[argc1] = 0 ;
 	
-	char const **newargv = argv ;
-	for (int i = 0; i < argc1 ; i++, newargv++)
-	{	
-		if (!*newargv[0])
-			continue ;
+	if (!env_string(&tmodifs,argv,argc1)) strerr_diefu1x(111,"environment string") ;
 		
-		if (!stralloc_cats(&tmodifs,*newargv)) retstralloc(111,"tmodifs") ;
-		if (split)
-		{
-			if (!stralloc_cats(&tmodifs," ")) retstralloc(111,"tmodifs") ;
-		}
-		else if (!stralloc_0(&tmodifs)) retstralloc(111,"tmodifs_0") ;
-		r++;
-	}
-	
-	if (split)
+	for (;pos < tmodifs.len; pos += strlen(tmodifs.s + pos)+1)
 	{
-		if (!clean_val_doublequoted(&ga,tmodifs.s)) strerr_diefu2x(111,"clean val: ",tmodifs.s) ;
-		for (unsigned int i = 0 ; i < genalloc_len(stralist,&ga) ; i++)
-		{
-			stralloc_cats(&modifs,gaistr(&ga,i)) ;
-			stralloc_0(&modifs) ;
-		}
-		r = genalloc_len(stralist,&ga) ;
-		genalloc_deepfree(stralist,&ga,stra_free) ;
+		tmp.len = 0 ;
+		if (!stralloc_cats(&tmp,tmodifs.s+pos) ||
+		!stralloc_0(&tmp)) retstralloc(111,"main") ;
+		if (!sastr_clean_element(&tmp)) strerr_dief2x(111,"clean element of: ",tmp.s) ;
+		if (!sastr_rebuild_in_oneline(&tmp)) strerr_dief2x(111,"rebuild line: ",tmp.s) ;
+		if (!stralloc_0(&tmp)) retstralloc(111,"main") ;
+		if (!stralloc_catb(&modifs,tmp.s,strlen(tmp.s) + 1)) strerr_dief2x(111,"rebuild final line: ",tmp.s) ;
 	}
-	else if (!stralloc_copy(&modifs,&tmodifs)) retstralloc(111,"copy") ;
-	
+	stralloc_free(&tmp) ;
 	stralloc_free(&tmodifs) ;
+	if (split)
+		if (!sastr_split_element_in_nline(&modifs)) strerr_dief2x(111,"split element of: ",modifs.s) ;
 	
+	r = sastr_len(&modifs) ;
 	char const *newarg[r + 1] ;
     if (!env_make(newarg, r, modifs.s, modifs.len)) strerr_diefu1sys(111, "env_make") ;
     newarg[r] = 0 ;
-
+	
 	xpathexec_run(newarg[0],newarg,envp) ;
 }
