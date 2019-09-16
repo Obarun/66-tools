@@ -74,23 +74,17 @@ obtaining the behaviour you want.
  DESTDIR can be given on the "make install" command line in order to
 install to a staging directory.
 
+* Static binaries
+  ---------------
 
-* Shared libraries
-  ----------------
+ By default, binaries are linked against static versions of all the
+libraries they depend on, except for the libc. You can enforce
+linking against the static libc with --enable-static-libc.
 
- Software from obarun.org is small enough that shared libraries are
-generally not worth using. Static linking is simpler and incurs less
-runtime overhead and less points of failure: but since 66-tools only
-provides libraries, both versions are built by default.
- Nevertheless, you can:
-  * avoid building shared libraries: --disable-shared
-  * avoid building static libraries: --disable-static
-
- If you are using a GNU/Linux system, be aware that the GNU libc
+ (If you are using a GNU/Linux system, be aware that the GNU libc
 behaves badly with static linking and produces huge executables,
-so if you plan on making static executables, you should consider
-using another libc, which you also need to use when compiling
-66-tools. musl is recommended: http://musl-libc.org/
+which is why it is not the default. Other libcs are better suited
+to static linking, for instance musl: http://musl-libc.org/)
 
 * Cross-compilation
   -----------------
