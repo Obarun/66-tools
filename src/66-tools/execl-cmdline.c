@@ -79,9 +79,7 @@ int main(int argc, char const **argv, char const *const *envp)
 	for (;pos < tmodifs.len; pos += strlen(tmodifs.s + pos)+1)
 	{
 		tmp.len = 0 ;
-		if (!stralloc_cats(&tmp,tmodifs.s+pos) ||
-		!stralloc_0(&tmp)) retstralloc(111,"main") ;
-		if (!sastr_clean_element(&tmp)) strerr_dief2x(111,"clean element of: ",tmp.s) ;
+		if (!sastr_clean_string(&tmp,tmodifs.s+pos)) strerr_dief2x(111,"clean element of: ",tmp.s) ;
 		if (!sastr_rebuild_in_oneline(&tmp)) strerr_dief2x(111,"rebuild line: ",tmp.s) ;
 		if (!stralloc_0(&tmp)) retstralloc(111,"main") ;
 		if (!stralloc_catb(&modifs,tmp.s,strlen(tmp.s) + 1)) strerr_dief2x(111,"rebuild final line: ",tmp.s) ;
