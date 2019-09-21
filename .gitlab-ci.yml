@@ -22,5 +22,5 @@ build:
     max: 2
 
   only:
-    - tags
+    - master
     
