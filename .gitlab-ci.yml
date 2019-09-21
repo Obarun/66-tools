@@ -2,19 +2,22 @@ image: obarun/base:latest
 
 before_script:
   - pacman -Syu --noconfirm
-  - pacman -S autoconf automake binutils bison file flex gcc gettext groff libtool m4 make patch pkgconf texinfo which --noconfirm
+  - pacman -S autoconf automake binutils bison file flex gcc gettext grep groff libtool m4 make patch pkgconf texinfo which --noconfirm
   - pacman -S skalibs execline oblibs scdoc --noconfirm
   
 build:
   stage: build
   script:
   - ./configure --bindir=/usr/bin 
-  - make -j9
-  - make -j9 install-html DESTDIR=gitlab-ci
-  - make -j9 man
-  - make -j9 install DESTDIR=gitlab-ci
-  - make -j9 install-man DESTDIR=gitlab-ci
+  - make
+  - make install-html DESTDIR=gitlab-ci
+  - make man
+  - make install DESTDIR=gitlab-ci
+  - make install-man DESTDIR=gitlab-ci
   
+  retry:
+    max: 2
+
   only:
     - tags
     
