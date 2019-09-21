@@ -4,7 +4,10 @@ before_script:
   - pacman -Syu --noconfirm
   - pacman -S autoconf automake binutils bison file flex gcc gettext grep groff libtool m4 make patch pkgconf texinfo which --noconfirm
   - pacman -S skalibs execline oblibs scdoc --noconfirm
-  
+
+stages:
+  - build
+
 build:
   stage: build
   script:
