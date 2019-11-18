@@ -1,5 +1,4 @@
 BIN_TARGETS := \
-66-envfile \
 66-getenv \
 66-gnwenv \
 66-which \
