@@ -6,9 +6,9 @@ Build Instructions
 
   - A POSIX-compliant C development environment
   - GNU make version 3.81 or later
-  - skalibs version 2.8.1.0 or later
-  - execline version 2.5.1.0 or later 
-  - oblibs version 0.0.2.0 or later
+  - skalibs version 2.9.1.0 or later
+  - execline version 2.5.3.0 or later 
+  - oblibs version 0.0.3.1 or later
   - scdoc version 1.9.4 or later for man pages: https://git.sr.ht/~sircmpwn/scdoc
   - If cross-compiling: the sysdeps for your target architecture
     (see the "Cross-compilation" section below)
