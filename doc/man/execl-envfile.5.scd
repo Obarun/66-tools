@@ -22,7 +22,6 @@ comments. Comments are *not* possible at the end of lines:
 key = value # comment not valid
 ```
 
-Empty _value_ is *not* permitted.
 If _val_ begin by a *!* character:
 	key=*!*value
 the _key_ will be removed from the environment after the substitution.

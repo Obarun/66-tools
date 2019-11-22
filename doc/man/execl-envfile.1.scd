@@ -17,6 +17,7 @@ This tool expects to find a regular file or a directory in _src_ containing
 one or multiple _key=value_ pair(s). It will parse that file,
 import the _key=value_ and then exec the given _prog_ with the modified
 environment. In case of directory for each file found it apply the same process.
+_src_ can be an absolute or a relative path.
 
 - It opens and reads the file.
 - It parses the file.
@@ -29,9 +30,6 @@ environment. In case of directory for each file found it apply the same process.
 
 *-h*
 	Prints this help.
-
-*-f* _file_
-	Only parses the _file_ found in _src_. *deprecated option*
 
 *-l*
 	Loose. Do nothing and executes _prog_ directly if _src_ does not contain

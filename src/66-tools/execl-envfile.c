@@ -34,7 +34,7 @@
 
 #include <execline/execline.h>
 
-#define USAGE "execl-envfile [ -h help ] [ -l ] src prog"
+#define USAGE "execl-envfile [ -h ] [ -l ] src prog"
 
 static inline void info_help (void)
 {
@@ -43,7 +43,6 @@ static inline void info_help (void)
 "\n"
 "options :\n"
 "	-h: print this help\n" 
-"	-f: file to parse(deprecated)\n"
 "	-l: loose\n"
 ;
 
@@ -61,7 +60,7 @@ void clean_n_unexport(stralloc *modifs, stralloc *dst, stralloc *src)
 int main (int argc, char const *const *argv, char const *const *envp)
 {
 	int r = 0, unexport = 0, insist = 1, nfile = 0, nvar = 0 ;
-	size_t pos = 0, pathlen = 0 ;
+	size_t pos = 0 ;
 	char const *path = 0, *file = 0 ;
 	char tpath[MAXENV + 1], tfile[MAXENV+1] ;
 	stralloc src = STRALLOC_ZERO ;
@@ -79,12 +78,11 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
 		for (;;)
 		{
-			int opt = subgetopt_r(argc,argv, "hlf:", &l) ;
+			int opt = subgetopt_r(argc,argv, "hl", &l) ;
 			if (opt == -1) break ;
 			switch (opt)
 			{
 				case 'h' : 	info_help(); return 0 ;
-				case 'f' :  file = l.arg ;  break ;
 				case 'l' : 	insist = 0 ; break ;
 				default : exitusage(USAGE) ; 
 			}
@@ -97,44 +95,22 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	argv++;
 	argc--;
 	
-	/** Mark -f as deprecated */	
-	if (file)
+	r = scan_mode(path,S_IFREG) ;
+	if (r > 0)
 	{
-		strerr_warnw1x("-f options is deprecated") ;
-		if (path[0] != '/') strerr_dief3x(111,"path of: ",path,": must be absolute") ;
+		if (!basename(tfile,path)) strerr_diefu2x(111,"get file name of: ",path) ;
+		file = tfile ;
+		if (!dirname(tpath,path)) strerr_diefu2x(111,"get parent path of: ",path) ;
+		path = tpath ;
 	}
-	else
+		
+	if (path[0] == '.')
 	{
-		r = scan_mode(path,S_IFREG) ;
-		if (!r && insist) strerr_diefu2sys(111,"find: ",path) ;
-		if (r < 0)
-		{
-			r = scan_mode(path,S_IFDIR) ;
-			if (!r && insist) strerr_diefu2sys(111,"find: ",path) ;
-			if (r < 0) strerr_dief2x(111,"invalid format of: ", path) ;
-			if (path[0] == '.')
-			{
-				if (!dir_beabsolute(tpath,path)) 
-					strerr_diefu2sys(111,"find absolute path of: ",path) ;
-			}
-			else if (path[0] != '/') strerr_dief3x(111,"path of: ",path,": must be absolute") ;
-			else
-			{
-				pathlen = strlen(path) ;
-				memcpy(tpath,path,pathlen);
-				tpath[pathlen] = 0 ;
-			}
-			path = tpath ;
-		}
-		else
-		{
-			if (!basename(tfile,path)) strerr_diefu2x(111,"get file name of: ",path) ;
-			file = tfile ;
-			if (!dirname(tpath,path)) strerr_diefu2x(111,"get parent path of: ",path) ;
-			path = tpath ;
-		}
+		if (!dir_beabsolute(tpath,path) && insist) 
+			strerr_diefu2sys(111,"find absolute path of: ",path) ;
+		path = tpath ;
 	}
-	
+		
 	r = sastr_dir_get(&toparse,path,"",S_IFREG) ;
 	if (!r && insist) strerr_diefu2sys(111,"get file from: ",path) ;
 	else if ((!r && !insist) || !toparse.len)
@@ -146,14 +122,17 @@ int main (int argc, char const *const *argv, char const *const *envp)
 		ssize_t	r = sastr_cmp(&toparse,file) ;
 		if (r < 0) 
 		{
-			if (insist) strerr_diefu2x(111,"find: ",file) ;
+			if (insist) strerr_diefu3x(111,"find: ",path,file) ;
 			else
 			{
 				xpathexec_run(argv[0],argv,envp) ;
 			}
 		}
-		if (!file_readputsa(&src,path,file)) strerr_diefu4sys(111,"read file: ",path,"/",file) ;
+		if (!file_readputsa(&src,path,file)) strerr_diefu3sys(111,"read file: ",path,file) ;
 		clean_n_unexport(&modifs,&dst,&src) ;
+		nvar = environ_get_num_of_line(&src) ;
+		if (nvar == -1) strerr_diefu3sys(111,"get number of line of:",path,toparse.s+pos) ;
+		if (nvar > MAXVAR) strerr_dief3x(111,"to many variables in file: ",path,toparse.s+pos) ;
 	}
 	else
 	{
@@ -162,11 +141,11 @@ int main (int argc, char const *const *argv, char const *const *envp)
 			nfile++;
 			src.len = 0 ;
 			if (nfile > MAXFILE) strerr_dief2x(111,"to many file to parse in: ",path) ;
-			if (!file_readputsa(&src,path,toparse.s+pos)) strerr_diefu4sys(111,"read file: ",path,"/",toparse.s+pos) ;
+			if (!file_readputsa(&src,path,toparse.s+pos)) strerr_diefu3sys(111,"read file: ",path,toparse.s+pos) ;
 			clean_n_unexport(&modifs,&dst,&src) ;
 			nvar = environ_get_num_of_line(&src) ;
-			if (nvar == -1) strerr_diefu4sys(111,"get number of line of:",path,"/",toparse.s+pos) ;
-			if (nvar > MAXVAR) strerr_dief4x(111,"to many variables in file: ",path,"/",toparse.s+pos) ;
+			if (nvar == -1) strerr_diefu3sys(111,"get number of line of:",path,toparse.s+pos) ;
+			if (nvar > MAXVAR) strerr_dief3x(111,"to many variables in file: ",path,toparse.s+pos) ;
 		}
 	}
 	stralloc_free(&src) ;
@@ -183,6 +162,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	
 	if (!sastr_split_string_in_nline(&dst)) strerr_diefu1x(111,"split line") ;
 	pos = 0 ;
+	
 	while (pos < dst.len)
 	{		
 		unexport = 0 ;
@@ -193,7 +173,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 		if (!environ_get_key_nclean(&key,&pos)) strerr_diefu2x(111,"get key from line: ",key.s) ;
 		pos-- ;// retrieve the '=' character
 		if (!environ_get_val(&val,&pos)) strerr_diefu2x(111,"get value from line: ",val.s) ;
-
+		
 		char *uval = val.s ;
 		if (val.s[0] == VAR_UNEXPORT)
 		{

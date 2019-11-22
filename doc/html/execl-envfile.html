@@ -25,11 +25,14 @@
 <h2>Interface</h2>
 
 	<pre>
-	execl-envfile [ -h ] [ -f <em>file</em> ] [ -l ] <em>src</em> <em>prog</em>
+	execl-envfile [ -h ] [ -l ] <em>src</em> <em>prog</em>
 	</pre>
 
 	<p>
-		This tool expects to find a regular file or a directory in <em>src</em> containing one or multiple <tt>key=value</tt> pair(s). It will parse that file, import the <tt>key=value</tt> and then exec the given <em>prog</em> with the modified environment. In case of directory for each file found it apply the same process.
+		This tool expects to find a regular file or a directory in <em>src</em> containing one or multiple <tt>key=value</tt> pair(s). 
+		It will parse that file, import the <tt>key=value</tt> and then exec the given <em>prog</em> with the modified environment. 
+		In case of directory for each file found it apply the same process.
+		<em>src</em> can be an absolute or a relative path.
 	</p>
 
 	<ul>
@@ -66,10 +69,6 @@
 		</li>
 
 		<li>
-			<tt><b>-f <em>file</em></b></tt> : only parse <em>file</em> found in <em>src</em>. <b>deprecated option</b>
-		</li>
-
-		<li>
 			<tt><b>-l</b></tt> : loose; do nothing and execute <em>prog</em> directly if <em>src</em> does not contain any regular file(s) or <em>src</em> does not exist.
 		</li>
 	</ul>
@@ -82,10 +81,6 @@
 
 	<p>
 		Empty lines or lines containing only whitespace are ignored. Lines beginning with <tt>#</tt> (also after whitespace) are ignored and typically used for comments. Comments are <strong>not</strong> possible at the end of lines: '<tt>key = value # comment</tt>' is not a valid comment.
-	</p>
-
-	<p>
-		Empty <em>values</em> are <strong>not</strong> permitted.
 	</p>
 
 	<p>
