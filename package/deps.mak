@@ -4,6 +4,7 @@
 
 src/66-tools/66-getenv.o src/66-tools/66-getenv.lo: src/66-tools/66-getenv.c
 src/66-tools/66-gnwenv.o src/66-tools/66-gnwenv.lo: src/66-tools/66-gnwenv.c
+src/66-tools/66-olexec.o src/66-tools/66-olexec.lo: src/66-tools/66-olexec.c
 src/66-tools/66-which.o src/66-tools/66-which.lo: src/66-tools/66-which.c
 src/66-tools/66-writenv.o src/66-tools/66-writenv.lo: src/66-tools/66-writenv.c
 src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-cmdline.c
@@ -14,6 +15,8 @@ src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/exe
 66-getenv: src/66-tools/66-getenv.o -loblibs -lskarnet 
 66-gnwenv: EXTRA_LIBS :=
 66-gnwenv: src/66-tools/66-gnwenv.o -loblibs -lskarnet 
+66-olexec: EXTRA_LIBS :=
+66-olexec: src/66-tools/66-olexec.o -loblibs -lskarnet 
 66-which: EXTRA_LIBS :=
 66-which: src/66-tools/66-which.o -lskarnet -loblibs
 66-writenv: EXTRA_LIBS :=
