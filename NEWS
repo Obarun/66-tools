@@ -1,5 +1,13 @@
 Changelog for 66-tools
 
+In 0.0.3.0
+----------
+	
+	- Adapt to oblibs v0.0.4.0
+	- Supports relative path at execl-envfile
+	- New 66-olexec tools: 
+		- opens, locks a tty and execs a program
+	
 In 0.0.2.0
 ----------
 
