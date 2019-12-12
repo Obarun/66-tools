@@ -18,13 +18,12 @@
 #include <errno.h>
 #include <pwd.h>
 
-#include <oblibs/error2.h>
+#include <oblibs/log.h>
 #include <oblibs/environ.h>
 
 #include <skalibs/types.h>
 #include <skalibs/buffer.h>
 #include <skalibs/stralloc.h>
-#include <skalibs/strerr2.h>
 #include <skalibs/env.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/djbunix.h>
@@ -44,7 +43,7 @@ static inline void info_help (void)
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
-    strerr_diefu1sys(111, "write to stdout") ;
+    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 /** Implement again this function coming from
@@ -102,38 +101,38 @@ int main (int argc, char const **argv, char const *const *envp)
 		  if (opt == -1) break ;
 		  switch (opt)
 		  {
-			case 'h' : info_help(); return 0 ;
-			case 'o' : owner = l.arg ; break ;
-			default : exitusage(USAGE) ;
+			case 'h' :	info_help(); return 0 ;
+			case 'o' :	owner = l.arg ; break ;
+			default : 	log_usage(USAGE) ;
 		  }
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
 	if (owner)
 	{
-		if (!youruid(&uid,owner)) strerr_diefu2sys(111,"get uid of: ",owner) ;
+		if (!youruid(&uid,owner)) log_dieusys(LOG_EXIT_SYS,"get uid of: ",owner) ;
 	}
 	else uid = getuid() ;
 		
-	if (!yourgid(&gid,uid)) strerr_diefu1sys(111,"get gid") ;
+	if (!yourgid(&gid,uid)) log_dieusys(LOG_EXIT_SYS,"get gid") ;
 	cuid[uid_fmt(cuid,uid)] = 0 ;
 	cgid[gid_fmt(cgid,gid)] = 0 ;
 	
-	if (!environ_add_key_val("UID",cuid,&info)) strerr_diefu1sys(111,"set UID") ;
-	if (!environ_add_key_val("GID",cgid,&info)) strerr_diefu1sys(111,"set GID") ;
+	if (!environ_add_key_val("UID",cuid,&info)) log_dieusys(LOG_EXIT_SYS,"set UID") ;
+	if (!environ_add_key_val("GID",cgid,&info)) log_dieusys(LOG_EXIT_SYS,"set GID") ;
 	
-	if (!env_string(&sa,argv,(unsigned int) argc)) strerr_diefu1sys(111,"environment string") ;
+	if (!env_string(&sa,argv,(unsigned int) argc)) log_dieusys(LOG_EXIT_SYS,"environment string") ;
 	
 	r = el_substitute (&dst, sa.s, sa.len, info.vars.s, info.values.s,
 		genalloc_s (elsubst_t const, &info.data),genalloc_len (elsubst_t const, &info.data)) ;
-	if (r < 0) strerr_diefu1sys(111,"el_substitute") ;
+	if (r < 0) log_dieusys(LOG_EXIT_SYS,"el_substitute") ;
 	else if (!r) _exit(0) ;
 	
 	stralloc_free(&sa) ;
 	
 	{
         char const *v[r + 1];
-        if (!env_make (v, r, dst.s, dst.len)) strerr_diefu1sys (111, "env_make") ;
+        if (!env_make (v, r, dst.s, dst.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;
         v[r] = 0 ;
         pathexec_r (v, envp, env_len (envp), info.modifs.s, info.modifs.len) ;
     }

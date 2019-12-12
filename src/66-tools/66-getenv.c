@@ -21,11 +21,11 @@
 #include <regex.h>
 
 #include <oblibs/sastr.h>
+#include <oblibs/log.h>
 
 #include <skalibs/sgetopt.h>
 #include <skalibs/stralloc.h>
 #include <skalibs/buffer.h>
-#include <skalibs/strerr2.h>
 #include <skalibs/types.h>
 
 #define MAXBUF 1024*64*2
@@ -35,7 +35,6 @@ static char const *pattern = 0 ;
 static unsigned int EXACT = 0 ;
 
 #define USAGE "66-getenv [ -h ] [ -x ] [ -d delim ] process"
-#define dieusage() strerr_dieusage(100, USAGE)
 
 static inline void info_help (void)
 {
@@ -49,7 +48,7 @@ static inline void info_help (void)
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
-    strerr_diefu1sys(111, "write to stdout") ;
+    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 static int read_line(stralloc *dst, char const *line) 
@@ -94,7 +93,7 @@ static int read_line(stralloc *dst, char const *line)
 	b[n] = '\0';
 	
 	if (!stralloc_cats(dst,b) ||
-		!stralloc_0(dst)) strerr_diefu1sys(111,"append stralloc") ;
+		!stralloc_0(dst)) log_die_nomem("stralloc") ;
  	return n ;
 }
 
@@ -107,7 +106,7 @@ static regex_t *regex_cmp (void)
 	int r ;
 	
 	preg = malloc (sizeof (regex_t)) ;
-	if (!preg) strerr_diefu1sys(111,"allocate preg") ;
+	if (!preg) log_dieusys(LOG_EXIT_SYS,"allocate preg") ;
 	if (EXACT)
 	{
 		memcpy(re,"^(",2) ;
@@ -125,7 +124,7 @@ static regex_t *regex_cmp (void)
 	if (r)
 	{
 		regerror (r, preg, errbuf, sizeof(errbuf)) ;
-		strerr_diefu1x(111,errbuf) ;
+		log_dieu(LOG_EXIT_SYS,errbuf) ;
 	}
 	
 	return preg ;
@@ -144,7 +143,7 @@ void get_procs ()
 	stralloc satmp = STRALLOC_ZERO ;
 	stralloc saproc = STRALLOC_ZERO ;
 		
-	if (!sastr_dir_get(&satmp,proc,"",S_IFDIR)) strerr_diefu1sys(111,"get content of /proc") ;
+	if (!sastr_dir_get(&satmp,proc,"",S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
 	
 	i = 0, len = satmp.len ;
 	for (;i < len; i += strlen(satmp.s + i) + 1)
@@ -153,7 +152,7 @@ void get_procs ()
 		char c = name[0] ;
 		// keep only pid directories
 		if ( c >= '0' && c <= '9' ) 
-			if (!stralloc_catb(&saproc,name,strlen(name) + 1)) strerr_diefu1sys(111,"append stralloc") ;
+			if (!stralloc_catb(&saproc,name,strlen(name) + 1)) log_dieusys(LOG_EXIT_SYS,"append stralloc") ;
 	}
 	
 	i = 0, len = saproc.len ;
@@ -188,9 +187,9 @@ void get_procs ()
 				char ch[2] = { satmp.s[j], 0 } ;
 				if (satmp.s[j] == ' ' || satmp.s[j] == '\0')
 				{
-					if (buffer_putsflush(buffer_1, delim) < 0) strerr_diefu1sys(111, "write to stdout") ;
+					if (buffer_putsflush(buffer_1, delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 				}
-				else if (buffer_puts(buffer_1, ch) < 0) strerr_diefu1sys(111, "write to stdout") ;
+				else if (buffer_puts(buffer_1, ch) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 			}
 			break ;
 		}
@@ -211,15 +210,15 @@ int main (int argc, char const *const *argv, char const *const *envp)
 			if (opt == -1) break ;
 			switch (opt)
 			{
-				case 'h' : info_help() ; return 0 ;
-				case 'x' : EXACT = 1 ; break ;
-				case 'd' : delim = l.arg ; break ;
-				default : dieusage() ;
+				case 'h' : 	info_help() ; return 0 ;
+				case 'x' : 	EXACT = 1 ; break ;
+				case 'd' : 	delim = l.arg ; break ;
+				default :	log_usage(USAGE) ;
 			}
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
-	if (argc < 1) dieusage() ;
+	if (argc < 1) log_usage(USAGE) ;
 	pattern = *argv ;
 
  	get_procs() ;

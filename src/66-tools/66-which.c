@@ -27,9 +27,9 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/buffer.h>
 #include <skalibs/bytestr.h>
-#include <skalibs/strerr2.h>
 #include <skalibs/config.h>
-#include <oblibs/error2.h>
+
+#include <oblibs/log.h>
 #include <oblibs/string.h>
 
 #define USAGE "66-which [ -h ] [ -a | -q ] commands..."
@@ -45,7 +45,7 @@ static inline void info_help (void)
 "	-q: quiet, do not print anything to stdout\n"
 ;
 	if (buffer_putsflush(buffer_1, help) < 0)
-		strerr_diefu1sys(111, "write to stdout") ;
+		log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 int check_executable(char const* filepath) {
@@ -62,7 +62,7 @@ int parse_path(genalloc* folders, char* path) {
 		s = str_chr(path, ':') ;
 		if (!stralloc_copyb(&filepath, path, s)
 			|| !stralloc_0(&filepath))
-			strerr_diefu1sys(111, "append stralloc with PATH") ;
+			log_dieusys(LOG_EXIT_SYS, "append stralloc with PATH") ;
 		rp = realpath(filepath.s, NULL);
 		if (rp != NULL) {
 			char const** ss = genalloc_s(char const*, folders);
@@ -76,7 +76,7 @@ int parse_path(genalloc* folders, char* path) {
 			}
 			if (!found) {
 				if (!genalloc_append(char const*, folders, &rp))
-					strerr_diefu1sys(111, "append genalloc") ;
+					log_dieusys(LOG_EXIT_SYS, "append genalloc") ;
 			} else {
 				free(rp);
 			}
@@ -100,21 +100,19 @@ int handle_string(char const* name, char const* env_path, genalloc_ref paths,
 		if (!stralloc_copys(&filepath, ss[i])
 			|| !stralloc_cats(&filepath, "/")
 			|| !stralloc_cats(&filepath, name)
-			|| !stralloc_0(&filepath))
-				retstralloc(111, "filepath");
+			|| !stralloc_0(&filepath)) log_die_nomem("stralloc");
 
 		if (check_executable(filepath.s)) {
 			if (!quiet && (buffer_puts(buffer_1small, filepath.s) < 0
 				|| buffer_put(buffer_1small, "\n", 1) < 0
-				|| !buffer_flush(buffer_1small)))
-				strerr_diefu1sys(111, "write to stdout") ;
+				|| !buffer_flush(buffer_1small))) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 			found = 1;
 			if (!printall) break ;
 		}
 	}
 
 	if (found == 0 && !quiet)
-		strerr_warnw5x("no ",name," in (",env_path,")") ;
+		log_warn("no ",name," in (",env_path,")") ;
 
 	stralloc_free(&filepath);
 	return found == 1 ? 0 : 111;
@@ -125,8 +123,7 @@ int handle_path(char const* path, int quiet) {
 	if (rp != NULL && check_executable(rp)) {
 		if (!quiet && (buffer_puts(buffer_1small, rp) < 0
 			|| buffer_put(buffer_1small, "\n", 1) < 0
-			|| !buffer_flush(buffer_1small)))
-			strerr_diefu1sys(111, "write to stdout") ;
+			|| !buffer_flush(buffer_1small))) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 		return 0 ;
 	}
 
@@ -134,11 +131,11 @@ int handle_path(char const* path, int quiet) {
 	char base[len+1] ;
 	char dir[len+1] ;
 	if (!basename(base, path))
-		strerr_diefu1sys(111, "get basename") ;
+		log_dieusys(LOG_EXIT_SYS, "get basename") ;
 	if (!dirname(dir, path))
-		strerr_diefu1sys(111, "get dirname") ;
+		log_dieusys(LOG_EXIT_SYS, "get dirname") ;
 
-	if (!quiet) strerr_warnw5x("no ",base," in (",dir,")") ;
+	if (!quiet) log_warn("no ",base," in (",dir,")") ;
 
 	return 111 ;
 }
@@ -162,20 +159,20 @@ int main (int argc, char const *const *argv)
 				case 'h': info_help() ; return 0 ;
 				case 'a': printall = 1 ; break ;
 				case 'q': quiet = 1 ; break ;
-				default : strerr_dieusage(110, USAGE) ;
+				default : log_usage(USAGE) ;
 			}
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
 
-	if (printall && quiet) strerr_dieusage(110, USAGE) ;
+	if (printall && quiet) log_usage(USAGE) ;
 
 	path = getenv("PATH") ;
 	if (!path) path = SKALIBS_DEFAULTPATH ;
 
-	if (argc < 0) strerr_dieusage(110, USAGE) ;
+	if (argc < 0) log_usage(USAGE) ;
 	if (!parse_path(&paths, path))
-		strerr_diefu1sys(111, "PATH is empty or contains non valid values") ;
+		log_dieusys(LOG_EXIT_SYS, "PATH is empty or contains non valid values") ;
 
 	for ( ; *argv ; argv++) {
 		if ((*argv)[0] == '/'

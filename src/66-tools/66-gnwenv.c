@@ -20,11 +20,11 @@
 #include <sys/wait.h>
 
 #include <oblibs/string.h>
+#include <oblibs/log.h>
 
 #include <skalibs/types.h>
 #include <skalibs/buffer.h>
 #include <skalibs/sgetopt.h>
-#include <skalibs/strerr2.h>
 #include <skalibs/env.h>
 #include <skalibs/djbunix.h>
 
@@ -33,7 +33,6 @@ static char const *pattern = 0 ;
 static unsigned int EXACT = 0 ;
 
 #define USAGE "66-gnwenv [ -h ] [ -x ] [ -m mode ] process dir file"
-#define dieusage() strerr_dieusage(100, USAGE)
 
 static inline void info_help (void)
 {
@@ -47,7 +46,7 @@ static inline void info_help (void)
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
-    strerr_diefu1sys(111, "write to stdout") ;
+    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 static void string_env(char *tmp,char const *s,size_t len)
@@ -87,18 +86,18 @@ int main (int argc, char const *const *argv, char const *const *envp)
 			if (opt == -1) break ;
 			switch (opt)
 			{
-				case 'h' : info_help() ; return 0 ;
-				case 'x' : EXACT = 1 ; break ;
-				case 'm' : if (!uint0_oscan(l.arg, &mode)) dieusage() ; did = 1 ; break ;
-				default : dieusage() ;
+				case 'h' : 	info_help() ; return 0 ;
+				case 'x' : 	EXACT = 1 ; break ;
+				case 'm' : 	if (!uint0_oscan(l.arg, &mode)) log_usage(USAGE) ; did = 1 ; break ;
+				default : 	log_usage(USAGE) ;
 			}
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
-	if (argc < 3) dieusage() ;
+	if (argc < 3) log_usage(USAGE) ;
 	pattern = argv[0] ;
 	dir = argv[1] ;
-	if (dir[0] != '/') strerr_dief2x(111,dir," must be an absolute path") ;
+	if (dir[0] != '/') log_die(LOG_EXIT_USER,dir," must be an absolute path") ;
 	file = argv[2] ;
 	
 	newread[rm++] = "66-getenv" ;
@@ -109,9 +108,9 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	newread[rm++] = file ;
 	newread[rm++] = 0 ;
 	
-	if (pipe(fd) < 0) strerr_diefu1sys(111,"pipe") ;
+	if (pipe(fd) < 0) log_dieusys(LOG_EXIT_SYS,"pipe") ;
 	pf = fork() ;
-	if (pf < 0) strerr_diefu1sys(111,"fork") ;
+	if (pf < 0) log_dieusys(LOG_EXIT_SYS,"fork") ;
 	if (!pf)
 	{
 		dup2(fd[1],1) ;
@@ -141,7 +140,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	newargv[m++] = 0 ;
 		
 	char const *v[r + 1] ;
-	if (!env_make (v, r ,tmp, slen)) strerr_diefu1sys(111,"make environment") ;
+	if (!env_make (v, r ,tmp, slen)) log_dieusys(LOG_EXIT_SYS,"make environment") ;
 	v[r] = 0 ;
 	
 	xpathexec_fromenv (newargv, v, r) ;

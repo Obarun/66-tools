@@ -14,7 +14,7 @@
 
 #include <string.h>
 
-#include <oblibs/error2.h>
+#include <oblibs/log.h>
 #include <oblibs/sastr.h>
 
 #include <skalibs/stralloc.h>
@@ -38,7 +38,7 @@ static inline void info_help (void)
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
-    strerr_diefu1sys(111, "write to stdout") ;
+    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 int main(int argc, char const **argv, char const *const *envp)
@@ -62,36 +62,36 @@ int main(int argc, char const **argv, char const *const *envp)
 		  if (opt == -1) break ;
 		  switch (opt)
 		  {
-			case 'h' : info_help() ; return 0 ;
-			case 's' : split = 1 ; break ;
-			default : exitusage(USAGE) ;
+			case 'h' : 	info_help() ; return 0 ;
+			case 's' : 	split = 1 ; break ;
+			default : 	log_usage(USAGE) ;
 		  }
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
-	if (!argc) exitusage(USAGE) ;
+	if (!argc) log_usage(USAGE) ;
 	argc1 = el_semicolon(argv) ;
-	if (argc1 >= argc) strerr_dief1x(100, "unterminated block") ;
+	if (argc1 >= argc) log_die(100, "unterminated block") ;
 	argv[argc1] = 0 ;
 	
-	if (!env_string(&tmodifs,argv,argc1)) strerr_diefu1x(111,"environment string") ;
+	if (!env_string(&tmodifs,argv,argc1)) log_dieu(LOG_EXIT_SYS,"environment string") ;
 		
 	for (;pos < tmodifs.len; pos += strlen(tmodifs.s + pos)+1)
 	{
 		tmp.len = 0 ;
-		if (!sastr_clean_string(&tmp,tmodifs.s+pos)) strerr_dief2x(111,"clean element of: ",tmp.s) ;
-		if (!sastr_rebuild_in_oneline(&tmp)) strerr_dief2x(111,"rebuild line: ",tmp.s) ;
-		if (!stralloc_0(&tmp)) retstralloc(111,"main") ;
-		if (!stralloc_catb(&modifs,tmp.s,strlen(tmp.s) + 1)) strerr_dief2x(111,"rebuild final line: ",tmp.s) ;
+		if (!sastr_clean_string(&tmp,tmodifs.s+pos)) log_die(LOG_EXIT_SYS,"clean element of: ",tmp.s) ;
+		if (!sastr_rebuild_in_oneline(&tmp)) log_die(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
+		if (!stralloc_0(&tmp)) log_die_nomem("stralloc") ;
+		if (!stralloc_catb(&modifs,tmp.s,strlen(tmp.s) + 1)) log_die(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
 	}
 	stralloc_free(&tmp) ;
 	stralloc_free(&tmodifs) ;
 	if (split)
-		if (!sastr_split_element_in_nline(&modifs)) strerr_dief2x(111,"split element of: ",modifs.s) ;
+		if (!sastr_split_element_in_nline(&modifs)) log_die(LOG_EXIT_SYS,"split element of: ",modifs.s) ;
 	
 	r = sastr_len(&modifs) ;
 	char const *newarg[r + 1] ;
-    if (!env_make(newarg, r, modifs.s, modifs.len)) strerr_diefu1sys(111, "env_make") ;
+    if (!env_make(newarg, r, modifs.s, modifs.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;
     newarg[r] = 0 ;
 	
 	xpathexec_run(newarg[0],newarg,envp) ;

@@ -23,18 +23,18 @@
 
 #include <oblibs/string.h>
 #include <oblibs/files.h>
+#include <oblibs/log.h>
 
 #include <skalibs/sgetopt.h>
 #include <skalibs/buffer.h>
 #include <skalibs/djbunix.h>
-#include <skalibs/strerr2.h>
 #include <skalibs/types.h>
 #include <skalibs/bytestr.h>
 
 #define TTY_LEN 256 
-#define PREFIX  "/sys/class/tty/"
+#define PREFIX "/sys/class/tty/"
 #define PREFIX_LEN sizeof(PREFIX) - 1
-#define NAME    "/active"
+#define NAME "/active"
 #define NAME_LEN sizeof(NAME) - 1
 
 static char current_tty[TTY_LEN] ;
@@ -51,7 +51,7 @@ static inline void info_help (void)
 "	-d: absolute path of tty to use\n"
 ;
 	if (buffer_putsflush(buffer_1, help) < 0)
-		strerr_diefu1sys(111, "write to stdout") ;
+		log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
 /** this function is largely inspired by jjk-jacky at 
@@ -71,7 +71,7 @@ void get_current_tty(void)
 	
 	r = openreadnclose (current_tty, name, max) ;
     if (r <= 0)
-        strerr_diefu2sys(111, "read: ", current_tty) ;
+        log_dieusys(LOG_EXIT_SYS, "read: ", current_tty) ;
    
     skip = byte_rchr (name, r, ' ') + 1 ;
     
@@ -98,7 +98,7 @@ void get_current_tty(void)
                 return ;
             }
             else
-                strerr_diefu2sys (111, "read: ", current_tty);
+                log_dieusys(LOG_EXIT_SYS, "read: ", current_tty);
         }
         skip = 0;
     }
@@ -122,15 +122,15 @@ int main(int argc, char const *const *argv,char const *const *envp)
 			{
 				case 'h': info_help() ; return 0 ;
 				case 'd': dev = l.arg ; break ;
-				default : strerr_dieusage(100, USAGE) ;
+				default : log_usage(USAGE) ;
 			}
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
 	
-	if (!argc) strerr_dieusage(100, USAGE) ;
+	if (!argc) log_usage(USAGE) ;
 	
-	if (getuid() != 0) strerr_dief1x(111,"only superuser can run this program") ;
+	if (getuid() != 0) log_die(LOG_EXIT_SYS,"only superuser can run this program") ;
 	
 	if (!dev)
 	{
@@ -141,17 +141,17 @@ int main(int argc, char const *const *argv,char const *const *envp)
 	close(0) ;
 	close(1) ;
 	fd = open(dev, O_RDWR,0666) ;
-	if (fd < 0) strerr_diefu2sys(111,"open: ",dev) ;
+	if (fd < 0) log_dieusys(LOG_EXIT_SYS,"open: ",dev) ;
 	dup(fd) ;
 	close(2) ;
 	dup(fd) ;
 
 	/** we lock the fd anyway, maybe is useless to use it */
-	if (ioctl(fd,TIOCEXCL) == -1) strerr_diefu2sys(111,"get exclusivity of: ",dev) ;
-	if (!isatty(fd)) strerr_dief1x(111,"not a tty device") ;
+	if (ioctl(fd,TIOCEXCL) == -1) log_dieusys(LOG_EXIT_SYS,"get exclusivity of: ",dev) ;
+	if (!isatty(fd)) log_die(LOG_EXIT_SYS,"not a tty device") ;
 	r = flock(fd, LOCK_EX | LOCK_NB);
     if ((r == -1) && (errno == EWOULDBLOCK))
-		strerr_diefu3x(111,"lock: ",dev," -- it locked by another process");
+		log_dieu(LOG_EXIT_SYS,"lock: ",dev," -- it locked by another process");
 	
 	char const *cmd[argc+1] ;
 	
@@ -162,12 +162,12 @@ int main(int argc, char const *const *argv,char const *const *envp)
 
 	pid = child_spawn0(cmd[0],cmd,envp) ;
 	if (waitpid_nointr(pid,&wstat, 0) < 0)
-		strerr_diefu2sys(111,"wait for: ", cmd[0]) ;
+		log_dieusys(LOG_EXIT_SYS,"wait for: ", cmd[0]) ;
 	
 	if (wstat)
 	{
 		efmt[uint_fmt(efmt, WIFSIGNALED(wstat) ? WTERMSIG(wstat) : WEXITSTATUS(wstat))] = 0 ;
-		strerr_dief4x(111,cmd[0],WIFSIGNALED(wstat) ? " failed " : " crashed ", "with exitcode: ",efmt) ;
+		log_die(LOG_EXIT_SYS,cmd[0],WIFSIGNALED(wstat) ? " failed " : " crashed ", "with exitcode: ",efmt) ;
 	}
 	
 	flock(fd,LOCK_UN) ;
