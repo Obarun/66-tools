@@ -3,19 +3,25 @@ image: obarun/base:latest
 before_script:
   - pacman -Syu --noconfirm
   - pacman -S autoconf automake binutils bison file flex gcc gettext git grep groff libtool m4 make patch pkgconf texinfo which --noconfirm
-  - pacman -S skalibs execline oblibs scdoc --noconfirm
-
-stages:
-  - build
+  - pacman -S scdoc --noconfirm
+  - ./build_toolchain.sh
+  
+test:
+  stage: test
+  script:
+  - ./configure --bindir=/usr/bin
+  - make
+  - make install-html DESTDIR=gitlab-ci
+  - make man
+  - make install DESTDIR=gitlab-ci
+  - make install-man DESTDIR=gitlab-ci
+   
+  only:
+  - merge_requests
 
 build:
   stage: build
   script:
-  - git clone https://framagit.org/obarun/oblibs
-  - cd oblibs
-  - ./configure
-  - make install
-  - cd ..
   - ./configure --bindir=/usr/bin 
   - make
   - make install-html DESTDIR=gitlab-ci
