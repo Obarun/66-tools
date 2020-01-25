@@ -1,5 +1,11 @@
 Changelog for 66-tools
 
+In 0.0.3.1
+----------
+
+	- Adapt to oblibs v0.0.5.0
+	- Fix parse of double-quote at execl-cmdline
+	
 In 0.0.3.0
 ----------
 	

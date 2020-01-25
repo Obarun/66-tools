@@ -11,19 +11,19 @@ src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-c
 src/66-tools/execl-envfile.o src/66-tools/execl-envfile.lo: src/66-tools/execl-envfile.c
 src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/execl-subuidgid.c
 
-66-getenv: EXTRA_LIBS :=
-66-getenv: src/66-tools/66-getenv.o -loblibs -lskarnet 
-66-gnwenv: EXTRA_LIBS :=
-66-gnwenv: src/66-tools/66-gnwenv.o -loblibs -lskarnet 
-66-olexec: EXTRA_LIBS :=
-66-olexec: src/66-tools/66-olexec.o -loblibs -lskarnet 
-66-which: EXTRA_LIBS :=
-66-which: src/66-tools/66-which.o -loblibs -lskarnet
-66-writenv: EXTRA_LIBS :=
-66-writenv: src/66-tools/66-writenv.o -loblibs -lskarnet
-execl-cmdline: EXTRA_LIBS :=
-execl-cmdline: src/66-tools/execl-cmdline.o -loblibs -lexecline -lskarnet
-execl-envfile: EXTRA_LIBS :=
-execl-envfile: src/66-tools/execl-envfile.o ${LIBEXECLINE} -loblibs -lexecline -lskarnet 
-execl-subuidgid: EXTRA_LIBS :=
-execl-subuidgid: src/66-tools/execl-subuidgid.o -loblibs -lexecline -lskarnet ${LIBEXECLINE}
+66-getenv: EXTRA_LIBS := -loblibs -lskarnet
+66-getenv: src/66-tools/66-getenv.o 
+66-gnwenv: EXTRA_LIBS := -loblibs -lskarnet
+66-gnwenv: src/66-tools/66-gnwenv.o 
+66-olexec: EXTRA_LIBS := -loblibs -lskarnet
+66-olexec: src/66-tools/66-olexec.o 
+66-which: EXTRA_LIBS := -loblibs -lskarnet
+66-which: src/66-tools/66-which.o
+66-writenv: EXTRA_LIBS := -loblibs -lskarnet
+66-writenv: src/66-tools/66-writenv.o
+execl-cmdline: EXTRA_LIBS := -loblibs -lexecline -lskarnet
+execl-cmdline: src/66-tools/execl-cmdline.o
+execl-envfile: EXTRA_LIBS := -loblibs -lexecline -lskarnet
+execl-envfile: src/66-tools/execl-envfile.o ${LIBEXECLINE} 
+execl-subuidgid: EXTRA_LIBS := -loblibs -lexecline -lskarnet
+execl-subuidgid: src/66-tools/execl-subuidgid.o ${LIBEXECLINE}
