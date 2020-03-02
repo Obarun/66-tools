@@ -170,9 +170,9 @@ int main (int argc, char const *const *argv, char const *const *envp)
 		if (!stralloc_copy(&key,&dst) ||
 		!stralloc_copy(&val,&dst)) log_die_nomem("stralloc") ;
 		
-		if (!environ_get_key_nclean(&key,&pos)) log_dieusys(LOG_EXIT_SYS,"get key from line: ",key.s) ;
+		if (!environ_get_key_nclean(&key,&pos)) log_dieusys(LOG_EXIT_SYS,"get key from line: ",key.s + pos) ;
 		pos-- ;// retrieve the '=' character
-		if (!environ_get_val(&val,&pos)) log_dieusys(LOG_EXIT_SYS,"get value from line: ",val.s) ;
+		if (!environ_get_val(&val,&pos)) log_dieusys(LOG_EXIT_SYS,"get value from line: ",val.s + pos) ;
 		
 		char *uval = val.s ;
 		if (val.s[0] == VAR_UNEXPORT)
