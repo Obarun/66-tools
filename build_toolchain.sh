@@ -4,7 +4,7 @@ skalibs_tag="v2.9.1.0"
 execline_tag="v2.5.3.0"
 s6_tag="v2.9.0.1"
 s6_rc_tag="v0.5.1.1"
-oblibs_tag="v0.0.5.0"
+oblibs_tag="v0.0.5.1"
 
 ## skalibs
 build_skalibs() {
