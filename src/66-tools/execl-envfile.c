@@ -98,9 +98,9 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	r = scan_mode(path,S_IFREG) ;
 	if (r > 0)
 	{
-		if (!basename(tfile,path)) log_dieu(LOG_EXIT_SYS,"get file name of: ",path) ;
+		if (!ob_basename(tfile,path)) log_dieu(LOG_EXIT_SYS,"get file name of: ",path) ;
 		file = tfile ;
-		if (!dirname(tpath,path)) log_dieu(LOG_EXIT_SYS,"get parent path of: ",path) ;
+		if (!ob_dirname(tpath,path)) log_dieu(LOG_EXIT_SYS,"get parent path of: ",path) ;
 		path = tpath ;
 	}
 		

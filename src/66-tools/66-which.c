@@ -130,9 +130,9 @@ int handle_path(char const* path, int quiet) {
 	size_t len = strlen(path) ;
 	char base[len+1] ;
 	char dir[len+1] ;
-	if (!basename(base, path))
+	if (!ob_basename(base, path))
 		log_dieusys(LOG_EXIT_SYS, "get basename") ;
-	if (!dirname(dir, path))
+	if (!ob_dirname(dir, path))
 		log_dieusys(LOG_EXIT_SYS, "get dirname") ;
 
 	if (!quiet) log_warn("no ",base," in (",dir,")") ;

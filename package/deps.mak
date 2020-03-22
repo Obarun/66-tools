@@ -18,7 +18,7 @@ src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/exe
 66-olexec: EXTRA_LIBS :=
 66-olexec: src/66-tools/66-olexec.o -loblibs -lskarnet 
 66-which: EXTRA_LIBS :=
-66-which: src/66-tools/66-which.o -loblibs -lskarnet
+66-which: src/66-tools/66-which.o -loblibs -lskarnet 
 66-writenv: EXTRA_LIBS :=
 66-writenv: src/66-tools/66-writenv.o -loblibs -lskarnet
 execl-cmdline: EXTRA_LIBS :=
