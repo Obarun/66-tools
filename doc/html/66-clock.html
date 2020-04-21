@@ -1,0 +1,45 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66-tools Suite: 66-clock</title>
+    <meta name="Description" content="Detailed documentation for the 66-olexec command which is part of the 66 software suite" />
+    <meta name="Keywords" content="66 command 66-clock service supervision execute script clock timestamp tai iso" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">66-tools</a><br/>
+<a href="//web.obarun.org/software">Software</a><br/>
+<a href="//obarun.org/">obarun.org</a>
+</p>
+
+<h1>66-clock</h1>
+
+	<p>
+     66-clock gets the system clock and writes it with a specific format.
+    </p>
+
+
+<h2> Interface </h2>
+	<pre>
+	66-clock [ -h ] [ -n ] <em>tai|iso</em>
+	</pre>
+	<p>
+	66-clock writes the current system time as a TAIN64 or ISO timestamp depending of the argument past to stdout.
+	</p>
+	
+	<p>It exits 0 on success and 111 on fail.</p>
+
+<h2> Options </h2>
+
+	<ul>
+		<li> <tt>-h&nbsp;</tt>&nbsp;: prints this help. </li>
+		<li>
+			<tt>-n&nbsp;</tt>&nbsp;: output a trailing newline.
+		</li>
+	</ul>
+</body>
+</html>

@@ -35,7 +35,7 @@ static inline void info_help (void)
 "\n"
 "options :\n"
 "	-h: print this help\n"
-"	-n: prints a trailing newline\n"
+"	-n: output a trailing newline\n"
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
