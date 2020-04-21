@@ -1,4 +1,5 @@
 BIN_TARGETS := \
+66-clock \
 66-getenv \
 66-gnwenv \
 66-olexec \
