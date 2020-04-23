@@ -25,7 +25,7 @@
 
 <h2> Interface </h2>
 	<pre>
-	66-clock [ -h ] [ -n ] <em>tai|iso</em>
+	66-clock [ -h ] [ -m <tt>message</tt> ] [ -n ] <em>tai|iso</em>
 	</pre>
 	<p>
 	66-clock writes the current system time as a TAIN64 or ISO timestamp depending of the argument past to stdout.
@@ -37,6 +37,9 @@
 
 	<ul>
 		<li> <tt>-h&nbsp;</tt>&nbsp;: prints this help. </li>
+		<li>
+			<tt>-m&nbsp;</tt><tt>message</tt>&nbsp;: prints <tt>message</tt> after the system time.
+		</li>
 		<li>
 			<tt>-n&nbsp;</tt>&nbsp;: output a trailing newline.
 		</li>

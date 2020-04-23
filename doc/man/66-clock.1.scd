@@ -6,7 +6,7 @@
 
 # SYNOPSIS
 
-66-clock [ *-h* ] [ *-n* ] _tai|iso_
+66-clock [ *-h* ] [ *-m* _message_ ][ *-n* ] _tai|iso_
 
 # DESCRIPTION
 
@@ -17,6 +17,9 @@ depending of the argument past to stdout.
 
 *-h*
 	Prints this help.
+
+*-m*
+	Prints _message_ after the system time.
 
 *-n*
 	output a trailing new line.
