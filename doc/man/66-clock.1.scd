@@ -2,7 +2,7 @@
 
 # NAME
 
-66-clock - Gets the system clock and writes it with a specific format.
+66-clock - Gets the system time and writes it with a specific format.
 
 # SYNOPSIS
 
