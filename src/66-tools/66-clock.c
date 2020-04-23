@@ -26,7 +26,7 @@
 #include <skalibs/djbtime.h>
 #include <skalibs/sgetopt.h>
 
-#define USAGE "66-clock [ -n ] tai|iso"
+#define USAGE "66-clock [ -n ] [ -m message ] tai|iso"
 
 static inline void info_help (void)
 {
@@ -34,7 +34,8 @@ static inline void info_help (void)
 "66-clock <options> tai|iso\n"
 "\n"
 "options :\n"
-"	-h: print this help\n"
+"	-h: prints this help\n"
+"	-m: prints message after the time system\n"
 "	-n: output a trailing newline\n"
 ;
 
@@ -42,19 +43,25 @@ static inline void info_help (void)
     log_dieusys(111,"write to stdout") ;
 }
  
-void display_clock(unsigned int flags,uint8_t nl)
+void display_clock(unsigned int flags,uint8_t nl,char const *msg)
 {
-	size_t hlen = 0 ;
-	char hstamp[32] ;
-	char tstamp[TIMESTAMP+1] ;
-	char *pstr ;
+	size_t hlen = 0 , slen = !msg ? 0 : strlen(msg)  ;
+	char hstamp[32 + slen + 1] ;
+	char tstamp[TIMESTAMP + slen + 1] ;
+	char *pstr = 0 ;
 	tain_t now ;
 	tain_wallclock_read(&now) ;
+	
 	if (flags & 1)
 	{
 		timestamp_fmt(tstamp, &now) ;
-		if (nl) tstamp[TIMESTAMP] = '\n' ;
-		else tstamp[TIMESTAMP] = ' ' ;
+		if (msg) {
+			tstamp[TIMESTAMP] = ' ' ;
+			memcpy(tstamp + TIMESTAMP + 1,msg,slen++) ;
+		}
+		if (nl) tstamp[TIMESTAMP + slen] = '\n' ;
+		else tstamp[TIMESTAMP + slen] = ' ' ;
+		tstamp[TIMESTAMP + slen + 1] = 0 ;
 		pstr = &tstamp[0] ;
 	}
 	if (flags & 2)
@@ -62,8 +69,13 @@ void display_clock(unsigned int flags,uint8_t nl)
 		localtmn_t l ;
 		localtmn_from_tain(&l, &now, 1) ;
 		hlen = localtmn_fmt(hstamp, &l) ;
-		if (nl) hstamp[hlen++] = '\n' ;
-		else hstamp[hlen++] = ' ' ;
+		if (msg) {
+			hstamp[hlen] = ' ' ;
+			memcpy(hstamp + hlen + 1,msg,slen++) ;
+		}
+		if (nl) hstamp[hlen + slen] = '\n' ;
+		else hstamp[hlen + slen] = ' ' ;
+		hstamp[hlen + slen + 1] = 0 ;
 		pstr = &hstamp[0] ;
 	}
 	if (buffer_putsflush(buffer_1, pstr) < 0) 
@@ -74,17 +86,19 @@ int main (int argc, char const *const *argv)
 {
 	unsigned int flag = 0 ;
 	uint8_t nl = 0 ;
+	char const *msg = 0 ;
 	
 	PROG = "66-clock" ;
 	{
 		subgetopt_t l = SUBGETOPT_ZERO ;
 		for (;;)
 		{
-			int opt = subgetopt_r(argc, argv, "hn", &l) ;
+			int opt = subgetopt_r(argc, argv, "hnm:", &l) ;
 			if (opt == -1) break ;
 			switch (opt)
 			{
 				case 'h': info_help() ; return 0 ;
+				case 'm': msg = l.arg ; break ;
 				case 'n': nl = 1 ; break ;
 				default : log_usage(USAGE) ;
 			}
@@ -105,7 +119,7 @@ int main (int argc, char const *const *argv)
 		log_die(LOG_EXIT_SYS,"invalid format -- must be tai or iso") ;
 	}
 	
-	display_clock(flag,nl) ;
+	display_clock(flag,nl,msg) ;
 
 	return 0 ;
 }
