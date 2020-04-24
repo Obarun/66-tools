@@ -7,7 +7,8 @@ BIN_TARGETS := \
 66-writenv \
 execl-cmdline \
 execl-envfile \
-execl-subuidgid
+execl-subuidgid \
+execl-toc
 
 LIBEXEC_TARGETS :=
 
