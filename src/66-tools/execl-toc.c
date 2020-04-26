@@ -35,17 +35,18 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/djbunix.h>
 
-#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -D ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E file ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
+#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
 
 static inline void info_help (void)
 {
   static char const *help =
-"execl-toc <main_options> <test_options> <create_options> prog\n"
+"execl-toc <main_options> <test_options> element <create_options> prog\n"
 "\n"
 "main_options :\n"
 "	-h: print this help\n" 
 "	-v: increase/decrease verbosity\n"
 "	-D: only test and disable creation\n"
+"	-X: do not execute prog\n"
 "\n"
 "test_options :\n"
 "\n"
@@ -57,7 +58,7 @@ static inline void info_help (void)
 "	-L: true if file is a symlink\n"
 "\n"
 "   test only\n\n"
-"	-e: true if file is a exist\n"
+"	-e: true if file exist\n"
 "	-b: true if file is a block\n"
 "	-c: true if file is a character\n"
 "	-k: true if sticky bit is set for file\n"
@@ -81,13 +82,13 @@ static inline void info_help (void)
 "	-o: mount options(same as mount -o)\n" 
 "	-t: type mount options(same as mount -t), target for symlink\n"
 "	-d: device mount options(same as mount -t type device /directory)\n"
-"	-g: changes directory/fifo's owner to (numeric) uid after the creation\n"
-"	-u: changes directory/fifo's owner to (numeric) gid after the creation\n"
-"	-m: creates file permissions with mode, same as -a from s6-ipcserver-socketbinder.\n"
-"	-s: type of socket will be SOCK_DGRAM instead of SOCK_STREAM\n"
-"	-D: disallow instant rebinding at socket to the same path\n"
-"	-B: the socket will be blocking.\n"
-"	-b: set a maximum of backlog backlog connections on the socket.\n"
+"	-u: changes element's owner to (numeric) uid after the creation\n"
+"	-g: changes element's owner to (numeric) gid after the creation\n"
+"	-m: creates element with mode as permissions.\n"
+"	-s: type of element will be SOCK_DGRAM instead of SOCK_STREAM\n"
+"	-D: disallow instant rebinding at element to the same path\n"
+"	-B: the element will be blocking.\n"
+"	-b: set a maximum of backlog connections on the element.\n"
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
@@ -130,6 +131,7 @@ struct opts_common_s
 	char const *func_name ; // name of the function
 	char const *test_on ; // argument to test
 	uint8_t not_create ; // 0 create, 1 simply test
+	uint8_t noprog ; // 0 execute prog, 1 do not execute prog
 	int argc ;
 	char **argv ;
 	char const *const *envp ;
@@ -149,6 +151,7 @@ struct opts_common_s
 
 #define OPTS_COMMON_ZERO \
 { \
+	0 , \
 	0 , \
 	0 , \
 	0 , \
@@ -219,49 +222,31 @@ void parse(opts_common_t *arguments,char **nargv)
 
 }
 
-int execl_directory(opts_common_t *arguments,char **nargv)
+static int auto_dir(opts_common_t *arguments)
 {
 	int r ;
-	parse(arguments,nargv) ;
+	char const *dest = arguments->test_on ;
+	size_t len = strlen(dest) ;
+	char dir[len + 1] ;
+	if (!ob_dirname(dir,dest)) log_dieu(LOG_EXIT_SYS,"get dirname of: ",dest) ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
-	
-	r = scan_mode(arguments->test_on,S_IFDIR) ;
-	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a directory") ;
-	if (!r && !arguments->not_create) {
-		if (!dir_create_parent(arguments->test_on,mode))
-			log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
-		
-		 if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
-			log_dieusys(LOG_EXIT_SYS,"chown: ",arguments->test_on) ;
-		return 1 ;
-	}
-	if (!r) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a directory") ;
-	
-	return 1 ;
-}
 
-int execl_fifo(opts_common_t *arguments,char **nargv)
-{
-	int r ;
-	parse(arguments,nargv) ;
-	
-	mode_t mode = !arguments->minus_m ? S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH : arguments->minus_m ;
-	
-	umask(S_IXUSR|S_IXGRP|S_IXOTH) ;
-	
-	r = scan_mode(arguments->test_on,S_IFIFO) ;
-	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a fifo") ;
-	if (!r && !arguments->not_create) {
-		if (mkfifo(arguments->test_on,mode) < 0)
-			log_dieusys(LOG_EXIT_SYS,"create fifo: ",arguments->test_on) ;
-		
-		if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
-			log_dieusys(LOG_EXIT_SYS,"chown: ",arguments->test_on) ;
+	r = scan_mode(dir,S_IFDIR) ;
+	if (r == -1) return 0 ;
+	if (!r) {
+		if (!dir_create_parent(dir,mode))
+			log_dieusys(LOG_EXIT_SYS,"create dir: ",dir) ;
+
+		/** dir_create_parent do not warn if the parent directory
+		 * can not be created, so check it */
+		r = scan_mode(dir,S_IFDIR) ;
+		if (!r) return 0 ;
+
+		if (chown(dir, arguments->minus_u,arguments->minus_g) == -1)
+			log_dieusys(LOG_EXIT_SYS,"chown: ",dir) ;
 		return 1 ;
 	}
-	if (!r) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a fifo") ;
-	
 	return 1 ;
 }
 
@@ -287,14 +272,74 @@ static int is_mnt(char const *str)
 	return is_not_mnt ? 0 : 1 ;
 }
 
+int execl_directory(opts_common_t *arguments,char **nargv)
+{
+	int r ;
+	parse(arguments,nargv) ;
+
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+
+	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
+
+	r = scan_mode(arguments->test_on,S_IFDIR) ;
+	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a directory") ;
+	if (!r && !arguments->not_create) {
+		if (!dir_create_parent(arguments->test_on,mode))
+			log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
+
+		 if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
+			log_dieusys(LOG_EXIT_SYS,"chown: ",arguments->test_on) ;
+		return 1 ;
+	}
+	if (!r) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a directory") ;
+
+	return 1 ;
+}
+
+int execl_fifo(opts_common_t *arguments,char **nargv)
+{
+	int r ;
+
+	parse(arguments,nargv) ;
+
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+
+	mode_t mode = !arguments->minus_m ? S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH : arguments->minus_m ;
+
+	r = scan_mode(arguments->test_on,S_IFIFO) ;
+	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a fifo") ;
+	if (!r && !arguments->not_create) {
+		if (!auto_dir(arguments)) { 
+			errno = EEXIST ;
+			log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
+		}
+
+		umask(S_IXUSR|S_IXGRP|S_IXOTH) ;
+
+		if (mkfifo(arguments->test_on,mode) < 0)
+			log_dieusys(LOG_EXIT_SYS,"create fifo: ",arguments->test_on) ;
+
+		if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
+			log_dieusys(LOG_EXIT_SYS,"chown: ",arguments->test_on) ;
+		return 1 ;
+	}
+	if (!r) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a fifo") ;
+
+	return 1 ;
+}
+
 int execl_mountpoint(opts_common_t *arguments,char **nargv)
 {
 	pid_t pid ;
 	int r, wstat ;
 	char const *newargv[8] ;
 	unsigned int m = 0 ;
-	
+
 	parse(arguments,nargv) ;
+
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+
+	if (!arguments->minus_t || arguments->minus_d) log_usage(USAGE) ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
 	
@@ -334,26 +379,44 @@ int execl_mountpoint(opts_common_t *arguments,char **nargv)
 	
 int execl_socket(opts_common_t *arguments,char **nargv)
 {
+	int r ;
+	struct stat st ;
 	parse(arguments,nargv) ;
+
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+
 	close(0) ;
 	int flagdgram = arguments->minus_s ? 1 : 0 ;
 	int flagblocking = arguments->minus_B ? 1 : 0 ;
 	int flagreuse = arguments->minus_D ? 0 : 1 ;
 	unsigned int backlog = arguments->minus_b > 0 ? arguments->minus_b : SOMAXCONN ;
 	mode_t mode = !arguments->minus_m ? 0777 : arguments->minus_m ;
-	
-	if (flagdgram ? ipc_datagram_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB) : ipc_stream_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB))
-		log_dieusys(LOG_EXIT_SYS, "create socket") ;
 
+	r = stat(arguments->test_on, &st) ;
+    if (!r && !S_ISSOCK(st.st_mode)) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a socket") ;
+	if (r == -1 && !arguments->not_create) 
 	{
-		mode_t m = umask(~mode & 0777) ;
-		if ((flagreuse ? ipc_bind_reuse(0, arguments->test_on) : ipc_bind(0, arguments->test_on)) < 0)
-			log_dieusys(LOG_EXIT_SYS,"bind to: ", arguments->test_on) ;
-		umask(m) ;
+		if (!auto_dir(arguments)) { 
+			errno = EEXIST ;
+			log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
+		}
+
+		if (flagdgram ? ipc_datagram_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB) : ipc_stream_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB))
+			log_dieusys(LOG_EXIT_SYS, "create socket") ;
+
+		{
+			mode_t m = umask(~mode & 0777) ;
+			if ((flagreuse ? ipc_bind_reuse(0, arguments->test_on) : ipc_bind(0, arguments->test_on)) < 0)
+				log_dieusys(LOG_EXIT_SYS,"bind to: ", arguments->test_on) ;
+			umask(m) ;
+		}
+		if (backlog && ipc_listen(0, backlog) < 0)
+			log_dieusys(LOG_EXIT_SYS, "listen to: ", arguments->test_on) ;
+
+		return 1 ;
 	}
-	if (backlog && ipc_listen(0, backlog) < 0)
-		log_dieusys(LOG_EXIT_SYS, "listen to: ", arguments->test_on) ;
-	
+	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a socket") ;
+
 	return 1 ;
 }
 
@@ -361,18 +424,25 @@ int execl_symlink(opts_common_t *arguments,char **nargv)
 {
 	int r ;
 	parse(arguments,nargv) ;
-	 
+
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+
+	if (!arguments->minus_t) log_usage(USAGE) ;
 	struct stat st ;
     r = lstat(arguments->test_on, &st) ; 
     if (r == -1 && !arguments->not_create) {
+		if (!auto_dir(arguments)) { 
+			errno = EEXIST ;
+			log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
+		}
 		if (symlink(arguments->minus_t,arguments->test_on) < 0)
 			log_dieusys(LOG_EXIT_SYS,"create symlink: ",arguments->test_on) ;
 		
 		return 1 ;
 	}
-	
+
 	if (!S_ISLNK(st.st_mode)) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a symlink") ;
-    	
+
 	return 1 ;
 }
 
@@ -383,7 +453,7 @@ int execl_common(opts_common_t *arguments, char **nargv)
 	char const *test = arguments->test_on ;
 	int argc = arguments->argc ;
 	char **argv = arguments->argv ;
-	
+
 	switch (arguments->test)
 	{
 		case T_EXIST :
@@ -521,7 +591,7 @@ int execl_common(opts_common_t *arguments, char **nargv)
 		case T_EMPTY :
 						{
 							stralloc satree = STRALLOC_ZERO ;
-							if (!sastr_dir_get(&satree,test,"",S_IFMT|S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK))
+							if (!sastr_dir_get(&satree,test,"",S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK))
 								log_dieusys(LOG_EXIT_ZERO,"get contain of directory: ",test) ;
 							if (satree.len) log_warn_return(LOG_EXIT_ZERO,"directory: ",test," is not empty") ;
 							break ;
@@ -533,11 +603,13 @@ int execl_common(opts_common_t *arguments, char **nargv)
 	argc -= 1 ; argv += 1 ;
 	for (; i < argc ; i++)
 		nargv[n++] = (char *)argv[i] ;
-	
+
 	nargv[n] = 0 ;
 	arguments->argc = n ;
 	arguments->argv = nargv ;
 
+	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
+	
 	return 1 ;
 }
 
@@ -546,19 +618,19 @@ int main(int argc,char const *const *argv, char const *const *envp)
 	int r, f = 0 ;
 	int n = 0 ;
 	char *nargv[argc + 2] ;
-	
+
 	execl_func_t_ref func = 0 ;
 	opts_common_t arguments = OPTS_COMMON_ZERO ;
-	
+
 	// do not output nothing by default except system error
 	VERBOSITY = 0 ;
-	
+
 	PROG = "execl-toc" ;
 	{
 		subgetopt_t l = SUBGETOPT_ZERO ;
 		for (;;)
 		{
-		  int opt = subgetopt_r(argc, argv, "hv:D", &l) ;
+		  int opt = subgetopt_r(argc, argv, "hv:DX", &l) ;
 		  if (opt == -1) break ;
 		  switch (opt)
 		  {
@@ -568,6 +640,7 @@ int main(int argc,char const *const *argv, char const *const *envp)
 						f++ ;
 						break ;
 			case 'D' :	arguments.not_create = 1 ; break ;
+			case 'X' :	arguments.noprog = 1 ; break ;
 			default : 	break ;
 		  }
 		}
@@ -577,9 +650,9 @@ int main(int argc,char const *const *argv, char const *const *envp)
 	nargv[n++] = "fake_opts" ;
 	for (int i = 0 ; i < argc ; i++)
 		nargv[n++] = (char *)argv[i] ;
-	
+
 	nargv[n] = 0 ;
-	
+
 	{
 		subgetopt_t l = SUBGETOPT_ZERO ;
 		int f = 0 ;
@@ -718,15 +791,15 @@ int main(int argc,char const *const *argv, char const *const *envp)
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
-	if (argc <= 0) log_usage(USAGE) ;
+	if (argc <= 0 && !prog) log_usage(USAGE) ;
 	n = 0 ;
 	argc++ ; argv-- ;
 	nargv[n++] = (char *)arguments.func_name ;
 	for (int i = 0 ; i < argc ; i++)
 		nargv[n++] = (char *)argv[i] ;
-	
+
 	nargv[n] = 0 ;
-	
+
 	arguments.argc = n ;
 	arguments.argv = nargv ;
 	arguments.envp = envp ;
@@ -734,10 +807,8 @@ int main(int argc,char const *const *argv, char const *const *envp)
 	if (!arguments.func_name) log_die(LOG_EXIT_SYS, "operation not implemented") ;
 
 	r = (*func)(&arguments,nargv) ;
-
 	if (!r) return LOG_EXIT_SYS ;
+	if (arguments.noprog) return LOG_EXIT_ZERO ;
 	
 	xpathexec_run(arguments.argv[0],(char const *const *)arguments.argv,arguments.envp) ;
-	
-	return 0 ;
 }
