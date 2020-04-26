@@ -19,7 +19,7 @@
 <h1>execl-toc</h1>
 
 	<p>
-		Tests an element and creates it if it not exist yet with default or specified options, then executes a program by default.
+		Tests an element and creates it if it does not exist yet with the default or specified options, then executes a program by default.
 	</p>
 
 
@@ -31,16 +31,16 @@
 
 	<ul>
 		<li>
-			Execl-toc (test or create) tests an element and creates it if 
-			it not exist yet where element can be a <tt>directory</tt>,
-			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> or a <tt>symlink</tt> for 
-			test and creation and additionally a <tt>file</tt> and a <tt>string</tt> 
-			for a test only. Then it execs into prog..., i.e. the rest of its command line. <br>
-			The options are separated in three parts: <tt>main_options</tt>, 
-			<tt>test_options</tt> and <tt>create_options</tt> and <b>must</b>
-			ordered at the command line in that way.<br>
-			The creation of a <em>element</em> can be controlled with 
-			the helps of <tt>create_options</tt> options. Some of these 
+			Execl-toc (Test Or Create) tests an element and creates it if 
+			it does not exist yet, where an <em>element</em> can be a <tt>directory</tt>,
+			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> or a <tt>symlink</tt>, for 
+			testing and creation, and additionally a <tt>file</tt> and a <tt>string</tt> 
+			for testing only. Then it execs into the rest of its command line. <br>
+			The options are separated in three parts: 1) <tt>main_options</tt>, 
+			2) <tt>test_options</tt> and 3) <tt>create_options</tt>, and <b>must</b>
+			ordered at the command line in that sequence.<br>
+			The creation of an <em>element</em> can be controlled with 
+			the help of <tt>create_options</tt> options. Some of these 
 			<tt>create_options</tt> are specific for a particular <em>element</em>
 			where others are general.
 		</li>
@@ -53,10 +53,16 @@
 			<tt>-h&nbsp;</tt>&nbsp;: prints this help.
 		</li>
 		<li>
-			<tt>-v&nbsp;<em>verbosity</em>&nbsp;</tt>&nbsp;: increase/decrease verbosity. Default is 0 meaning nothing is printed except for fatal errors.
+			<tt>-v&nbsp;<em>verbosity</em>&nbsp;</tt>&nbsp;: increases/decreases 
+        the verbosity of the command. 
+        <tt>0(Default)</tt>: Only print error messages. 
+        <tt>1</tt>: Also print information messages. 
+        <tt>2</tt>: Also print warning messages. 
+        <tt>3</tt>: Also print tracing messages.
+        <tt>4</tt>: Also print debugging messages.
 		</li>
 		<li>
-			<tt>-D&nbsp;</tt>&nbsp;: performs the test without creating the <em>element</em> if it not exist yet.
+			<tt>-D&nbsp;</tt>&nbsp;: performs the test without creating the <em>element</em> if it does not exist yet.
 		</li>
 		<li>
 			<tt>-X&nbsp;</tt>&nbsp;: do not execute <em>prog</em>.
@@ -65,8 +71,8 @@
 
 <h2>Test options</h2>
 <p><tt>Test_options</tt> are mandatory and <b>must</b> precede the <tt>create_options</tt>.
-Parent directories of <em>element</em> will also created at creation process
-if it doesn't exist with 0755 as permissions if <tt>-m</tt> is not specified.</p>
+Parent directories of an <em>element</em> will also be created at creation process,
+if it doesn't exist with 0755 as permissions, if <tt>-m</tt> is not specified.</p>
 	<ul>
 		<p>Test and create: </p>
 		<ul>
@@ -113,7 +119,7 @@ if it doesn't exist with 0755 as permissions if <tt>-m</tt> is not specified.</p
 				<tt>-s&nbsp;</tt>&nbsp;: true if the size of <em>element</em> is greater than zero.
 			</li>
 			<li>
-				<tt>-t&nbsp;</tt>&nbsp;: true if <em>element</em> is open and refer to a terminal.
+				<tt>-t&nbsp;</tt>&nbsp;: true if <em>element</em> is open and refers to a terminal.
 			</li>
 			<li>
 				<tt>-u&nbsp;</tt>&nbsp;: true if set-user-id bit is set for <em>element</em>.
@@ -140,34 +146,34 @@ if it doesn't exist with 0755 as permissions if <tt>-m</tt> is not specified.</p
 				<tt>-N&nbsp;</tt>&nbsp;: true if <em>element</em> has been modified since it was last read.
 			</li>
 			<li>
-				<tt>-V&nbsp;</tt>&nbsp;: true if <em>element</em> exit on the environment.
+				<tt>-V&nbsp;</tt>&nbsp;: true if <em>element</em> exist on the environment.
 			</li>
 			<li>
 				<tt>-E&nbsp;</tt>&nbsp;: true if <em>element</em> is an empty directory. 
-				The test performs check of an existing block, character, 
-				fifo, regular file, directory, symlink inside <em>element</em>.
+				The test performs a check of an existing block, character, 
+				fifo, regular file, directory or symlink, inside an <em>element</em>.
 			</li>
 		</ul>
 	</ul>
 <h2>Create options</h2>
-<p>Depending of the <em>element</em> to create, <tt>create_options</tt> may or may not mandatory.
-The following explanation specify the mandatory ones.</p>
+<p>Depending on the <em>element</em> to create, <tt>create_options</tt> may or may not be mandatory.
+The following explanation specifies the mandatory ones.</p>
 	<ul>
 		<li>
 			<tt>-o&nbsp;<em>opts</em>&nbsp;</tt>&nbsp;: mount options (correspond to mount -o). 
-			<b>Mandatory</b> is case of mountpoint creation. This option has
-			no effect in other case.
+			<b>Mandatory</b> is the case of mountpoint creation. This option has
+			no effect in other cases.
 		</li>
 		<li>
 			<tt>-t&nbsp;<em>type</em>&nbsp;</tt>&nbsp;: type mount options (correspond to mount -t).
-			This also used in case of symlink creation as target option. 
-			<b>Mandatory</b> is case of mountpoint or symlink creation. 
-			This option has no effect in other case.
+			This also is used in case of symlink creation as a target option. 
+			<b>Mandatory</b> is the case of mountpoint or symlink creation. 
+			This option has no effect in other cases.
 		</li>
 		<li>
 			<tt>-d&nbsp;<em>device</em>&nbsp;</tt>&nbsp;: device mount options (correspond to mount -t type device /directory). 
-			<b>Mandatory</b> is case of mountpoint creation. This option has
-			no effect in other case.
+			<b>Mandatory</b> is the case of mountpoint creation. This option has
+			no effect in other cases.
 		</li>
 		<li>
 			<tt>-u&nbsp;<em>uid</em>&nbsp;</tt>&nbsp;: changes <em>element's</em> owner to (numeric) uid after the creation.
@@ -191,21 +197,21 @@ The following explanation specify the mandatory ones.</p>
 			This options is used for socket creation and its has no effects in other cases.
 		</li>
 		<li>
-			<tt>-D&nbsp;</tt>&nbsp;: disallow instant rebinding at <em>element</em> to the same path
-			where <em>element</em> is a socket.
-			Default allow.
-			This options is used for socket creation and its has no effects in other cases.
+			<tt>-D&nbsp;</tt>&nbsp;: disallow instant rebinding of <em>element</em> to the same path
+			where an <em>element</em> is a socket.
+			Default is allow.
+			This options is used for socket creation and it has no effects in other cases.
 		</li>
 		<li>
 			<tt>-B&nbsp;</tt>&nbsp;: the <em>element</em> will be blocking where <em>element</em> is a socket.
-			Default unlocked.
-			This options is used for socket creation and its has no effects in other cases.
+			Default is unlocked.
+			This options is used for socket creation and it has no effects in other cases.
 		</li>
 		<li>
 			<tt>-b&nbsp;<em>backlog</em>&nbsp;</tt>&nbsp;:  set the maximum of <em>backlog</em> connection
-			on the <em>element</em> where <em>element</em> is a socket.
+			on the <em>element</em> where an <em>element</em> is a socket.
 			Default <em>SOMAXCONN</em>.
-			This options is used for socket creation and its has no effects in other cases.
+			This options is used for socket creation and it has no effects in other cases.
 		</li>
 		
 	</ul>
@@ -226,25 +232,25 @@ The following explanation specify the mandatory ones.</p>
 		</ul>
 	</p>
 <h2>Usage examples</h2>
-<p>Test and create a directory if it doesn't exist yet:</p>
+<p>Test and create a directory if it does not exist yet:</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		execl-toc -d /run/user/1000 -m 0700
 		66-echo -- "/run/user was created"
 	</pre>
-<p>Test a directory but do not create it if it doesn't exist:</p>
+<p>Test a directory but do not create it if it does not exist:</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		execl-toc -D -d /run/user/1000
 		66-echo -- "/run/user already exist"
 	</pre>
-<p>Test a directory, do not create if it doesn't exit and do not execute prog</p>
+<p>Test a directory, do not create if it does not exit, and do not execute prog</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		if -n { execl-toc -X -D -d /run/user/1001 }
 		66-echo -- "/run/user/1001 doesn't exist"
 	</pre>
-<p>Test a mountpoint and create it if it doesn't exist</p>
+<p>Test a mountpoint and create it if it does not exist</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		execl-toc -m /dev/hugepage -o noatime,nodev,noexec,nosuid -t hugetlbfs -d hugepages
@@ -262,7 +268,7 @@ The following explanation specify the mandatory ones.</p>
 		execl-toc -V PATH
 		66-echo -- "PATH variable is set"
 	</pre>
-<p>Test if a file exit</p>
+<p>Test if a file exists</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		execl-toc -e /home/obarun/.xinitrc
