@@ -32,10 +32,10 @@ different then the GNU which command.
 # OPTIONS
 
 *-h*
-	Print this help.
+	Prints this help.
 
 *-a*
-	Print all. Search and print the command using all the PATH entries, even
+	Prints all. Search and print the command using all the PATH entries, even
 	after the command has already been found.
 
 *-q*
