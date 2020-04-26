@@ -339,7 +339,7 @@ int execl_mountpoint(opts_common_t *arguments,char **nargv)
 
 	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
 
-	if (!arguments->minus_t || arguments->minus_d) log_usage(USAGE) ;
+	if (!arguments->minus_t || !arguments->minus_d) log_usage(USAGE) ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
 	
