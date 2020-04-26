@@ -33,7 +33,7 @@
 		<li>
 			Execl-toc (test or create) tests an element and creates it if 
 			it not exist yet where element can be a <tt>directory</tt>,
-			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> or a <tt>symlink</tt>for 
+			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> or a <tt>symlink</tt> for 
 			test and creation and additionally a <tt>file</tt> and a <tt>string</tt> 
 			for a test only. Then it execs into prog..., i.e. the rest of its command line. <br>
 			The options are separated in three parts: <tt>main_options</tt>, 
@@ -250,7 +250,7 @@ The following explanation specify the mandatory ones.</p>
 		execl-toc -m /dev/hugepage -o noatime,nodev,noexec,nosuid -t hugetlbfs -d hugepages
 		66-echo -- "/dev/hugepage created and mounted successfully"
 	</pre>
-<p>Test a socket create it if it doesn't exist</p>
+<p>Test a socket and create it if it doesn't exist</p>
 	<pre>
 		#!/usr/bin/execlineb -P
 		execl-toc -S /run/user/dbus
