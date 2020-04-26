@@ -1,0 +1,284 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>The 66-tools Suite: execl-toc</title>
+    <meta name="Description" content="Detailed documentation for the execl-toc command which is part of the 66-tools software suite" />
+    <meta name="Keywords" content="66 command execl-toc service supervision execute script execline test create directory socket symlink" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+	<a href="index.html">66-tools</a><br />
+	<a href="//web.obarun.org/software">Software</a><br/>
+	<a href="//obarun.org/">obarun.org</a>
+</p>
+
+<h1>execl-toc</h1>
+
+	<p>
+		Tests an element and creates it if it not exist yet with default or specified options, then executes a program by default.
+	</p>
+
+
+<h2>Interface</h2>
+
+	<pre>
+	execl-toc [ -h ] [ -v <em>verbosity</em> ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E <em>element</em> ] [ -o <em>opts</em> ] [ -t <em>type</em> ] [ -d <em>device</em> ] [ -g <em>gid</em> ] [ -u <em>uid</em> ] [ -m <em>mode</em> ] [ -s|D|B|b ] [ -b <em>backlog</em> ] <em>prog</em>
+	</pre>
+
+	<ul>
+		<li>
+			Execl-toc (test or create) tests an element and creates it if 
+			it not exist yet where element can be a <tt>directory</tt>,
+			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> for 
+			test and creation and a <tt>file</tt> and a <tt>string</tt> 
+			for a test only. Then it execs into prog..., i.e. the rest of its command line. <br>
+			The options are separated in three parts: <tt>main_options</tt>, 
+			<tt>test_options</tt> and <tt>create_options</tt> and <b>must</b>
+			ordered at the command line in that way.<br>
+			The creation of a <em>element</em> can be controlled with 
+			the helps of <tt>create_options</tt> options. Some of these 
+			<tt>create_options</tt> are specific for a particular <em>element</em>
+			where others are general.
+		</li>
+	</ul>
+
+<h2>Main options</h2>
+<p><tt>Main_options</tt> are not mandatory.</p>
+	<ul>
+		<li>
+			<tt>-h&nbsp;</tt>&nbsp;: prints this help.
+		</li>
+		<li>
+			<tt>-v&nbsp;<em>verbosity</em>&nbsp;</tt>&nbsp;: increase/decrease verbosity. Default is 0 meaning nothing is printed except for fatal errors.
+		</li>
+		<li>
+			<tt>-D&nbsp;</tt>&nbsp;: performs the test without creating the <em>element</em> if it not exist yet.
+		</li>
+		<li>
+			<tt>-X&nbsp;</tt>&nbsp;: do not execute <em>prog</em>.
+		</li>
+	</ul>
+
+<h2>Test options</h2>
+<p><tt>Test_options</tt> are mandatory and <b>must</b> precede the <tt>create_options</tt>.
+Parent directories of <em>element</em> will also created at creation process
+if it doesn't exist with 0755 as permissions if <tt>-m</tt> is not specified.</p>
+	<ul>
+		<p>Test and create: </p>
+		<ul>
+			<li>
+				<tt>-d&nbsp;</tt>&nbsp;: true if <em>element</em> is a directory.
+			</li>
+			<li>
+				<tt>-p&nbsp;</tt>&nbsp;: true if <em>element</em> is a fifo.
+			</li>
+			<li>
+				<tt>-S&nbsp;</tt>&nbsp;: true if <em>element</em> is a socket.
+			</li>
+			<li>
+				<tt>-m&nbsp;</tt>&nbsp;: true if <em>element</em> is a mountpoint.
+			</li>
+			<li>
+				<tt>-L&nbsp;</tt>&nbsp;: true if <em>element</em> is a symlink.
+			</li>
+		</ul>
+		<p>Test only</p>
+		<ul>
+			<li>
+				<tt>-e&nbsp;</tt>&nbsp;: true if <em>element</em> exist.
+			</li>
+			<li>
+				<tt>-b&nbsp;</tt>&nbsp;: true if <em>element</em> is a block.
+			</li>
+			<li>
+				<tt>-c&nbsp;</tt>&nbsp;: true if <em>element</em> is a character.
+			</li>
+			<li>
+				<tt>-k&nbsp;</tt>&nbsp;: true if sticky bit is set for <em>element</em>.
+			</li>
+			<li>
+				<tt>-n&nbsp;</tt>&nbsp;: true if the length of <em>element</em> is non-zero.
+			</li>
+			<li>
+				<tt>-g&nbsp;</tt>&nbsp;: true if <em>element</em> is set-group-id.
+			</li>
+			<li>
+				<tt>-r&nbsp;</tt>&nbsp;: true if <em>element</em> is readable.
+			</li>
+			<li>
+				<tt>-s&nbsp;</tt>&nbsp;: true if the size of <em>element</em> is greater than zero.
+			</li>
+			<li>
+				<tt>-t&nbsp;</tt>&nbsp;: true if <em>element</em> is open and refer to a terminal.
+			</li>
+			<li>
+				<tt>-u&nbsp;</tt>&nbsp;: true if set-user-id bit is set for <em>element</em>.
+			</li>
+			<li>
+				<tt>-w&nbsp;</tt>&nbsp;: true if <em>element</em> is writable.
+			</li>
+			<li>
+				<tt>-x&nbsp;</tt>&nbsp;: true if <em>element</em> is executable.
+			</li>
+			<li>
+				<tt>-f&nbsp;</tt>&nbsp;: true if <em>element</em> is a regular file.
+			</li>
+			<li>
+				<tt>-z&nbsp;</tt>&nbsp;: true if the length of <em>element</em> is zero.
+			</li>
+			<li>
+				<tt>-O&nbsp;</tt>&nbsp;: true if <em>element</em> is owned by the effective user id.
+			</li>
+			<li>
+				<tt>-U&nbsp;</tt>&nbsp;: true if <em>element</em> is owned by the effective group id.
+			</li>
+			<li>
+				<tt>-N&nbsp;</tt>&nbsp;: true if <em>element</em> has been modified since it was last read.
+			</li>
+			<li>
+				<tt>-V&nbsp;</tt>&nbsp;: true if <em>element</em> exit on the environment.
+			</li>
+			<li>
+				<tt>-E&nbsp;</tt>&nbsp;: true if <em>element</em> is an empty directory. 
+				The test performs check of an existing block, character, 
+				fifo, regular file, directory, symlink inside <em>element</em>.
+			</li>
+		</ul>
+	</ul>
+<h2>Create options</h2>
+<p>Depending of the <em>element</em> to create, <tt>create_options</tt> may or may not mandatory.
+The following explanation specify the mandatory ones.</p>
+	<ul>
+		<li>
+			<tt>-o&nbsp;<em>opts</em>&nbsp;</tt>&nbsp;: mount options (correspond to mount -o). 
+			<b>Mandatory</b> is case of mountpoint creation. This option has
+			no effect in other case.
+		</li>
+		<li>
+			<tt>-t&nbsp;<em>type</em>&nbsp;</tt>&nbsp;: type mount options (correspond to mount -t).
+			This also used in case of symlink creation as target option. 
+			<b>Mandatory</b> is case of mountpoint or symlink creation. 
+			This option has no effect in other case.
+		</li>
+		<li>
+			<tt>-d&nbsp;<em>device</em>&nbsp;</tt>&nbsp;: device mount options (correspond to mount -t type device /directory). 
+			<b>Mandatory</b> is case of mountpoint creation. This option has
+			no effect in other case.
+		</li>
+		<li>
+			<tt>-u&nbsp;<em>uid</em>&nbsp;</tt>&nbsp;: changes <em>element's</em> owner to (numeric) uid after the creation.
+			Default is the uid of the owner of the process.
+			This options is used for directory and fifos creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-g&nbsp;<em>gid</em>&nbsp;</tt>&nbsp;: changes <em>element's</em> owner to (numeric) gid after the creation.
+			Default is the gid of the owner of the process.
+			This options is used for directory and fifos creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-m&nbsp;<em>mode</em>&nbsp;</tt>&nbsp;: create <em>element</em> owner to (numeric) gid after the creation.
+			Default is <tt>0755</tt>, <tt>0666</tt> and <tt>0777</tt> for a directory, fifo and socket
+			creation respectively.
+			This options is used for directory, fifos and sockets creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-s&nbsp;</tt>&nbsp;: <em>element</em> will be SOCK_DGRAM where <em>element</em> is a socket.
+			Default SOCK_STREAM.
+			This options is used for socket creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-D&nbsp;</tt>&nbsp;: disallow instant rebinding at <em>element</em> to the same path
+			where <em>element</em> is a socket.
+			Default allow.
+			This options is used for socket creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-B&nbsp;</tt>&nbsp;: the <em>element</em> will be blocking where <em>element</em> is a socket.
+			Default unlocked.
+			This options is used for socket creation and its has no effects in other cases.
+		</li>
+		<li>
+			<tt>-b&nbsp;<em>backlog</em>&nbsp;</tt>&nbsp;:  set the maximum of <em>backlog</em> connection
+			on the <em>element</em> where <em>element</em> is a socket.
+			Default <em>SOMAXCONN</em>.
+			This options is used for socket creation and its has no effects in other cases.
+		</li>
+		
+	</ul>
+<h2>Exit codes</h2>
+	<p>
+		<ul>
+			<li>
+				<tt>0&nbsp;</tt>&nbsp; : success. 
+			</li>
+
+			<li>
+				<tt>110&nbsp;</tt>&nbsp;: bad usage.
+			</li>
+
+			<li>
+				<tt>111&nbsp;</tt>&nbsp;: system error.
+			</li>
+		</ul>
+	</p>
+<h2>Usage examples</h2>
+<p>Test and create a directory if it doesn't exist yet:</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -d /run/user/1000 -m 0700
+		66-echo -- "/run/user was created"
+	</pre>
+<p>Test a directory but do not create it if it doesn't exist:</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -D -d /run/user/1000
+		66-echo -- "/run/user already exist"
+	</pre>
+<p>Test a directory, do not create if it doesn't exit and do not execute prog</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		if -n { execl-toc -X -D -d /run/user/1001 }
+		66-echo -- "/run/user/1001 doesn't exist"
+	</pre>
+<p>Test a mountpoint and create it if it doesn't exist</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -m /dev/hugepage -o noatime,nodev,noexec,nosuid -t hugetlbfs -d hugepages
+		66-echo -- "/dev/hugepage created and mounted successfully"
+	</pre>
+<p>Test a socket create it if it doesn't exist</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -S /run/user/dbus
+		66-echo -- "you can now use the socket"
+	</pre>
+<p>Test if a variable is set on the environment</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -V PATH
+		66-echo -- "PATH variable is set"
+	</pre>
+<p>Test if a file exit</p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -e /home/obarun/.xinitrc
+		66-echo -- ".xinitrc is a regular file"
+	</pre>
+<p>Test if a file is executable </p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -x /home/obarun/.xinitrc
+		66-echo -- ".xinitrc is a regular file"
+	</pre>
+<p>Test if a directory is empty </p>
+	<pre>
+		#!/usr/bin/execlineb -P
+		execl-toc -x /mnt
+		66-echo -- "/mnt is emtpy"
+	</pre>
+</body>
+</html>
