@@ -26,14 +26,14 @@
 <h2>Interface</h2>
 
 	<pre>
-	execl-toc [ -h ] [ -v <em>verbosity</em> ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E <em>element</em> ] [ -o <em>opts</em> ] [ -t <em>type</em> ] [ -d <em>device</em> ] [ -g <em>gid</em> ] [ -u <em>uid</em> ] [ -m <em>mode</em> ] [ -s|D|B|b ] [ -b <em>backlog</em> ] <em>prog</em>
+	execl-toc [ -h ] [ -v <em>verbosity</em> ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E <em>element</em> ] [ -o <em>opts</em> ] [ -t <em>type</em> ] [ -d <em>device</em> ] [ -g <em>gid</em> ] [ -u <em>uid</em> ] [ -m <em>mode</em> ] [ -s|D|B ] [ -b <em>backlog</em> ] <em>prog...</em>
 	</pre>
 
 	<ul>
 		<li>
 			Execl-toc (Test Or Create) tests an element and creates it if 
 			it does not exist yet, where an <em>element</em> can be a <tt>directory</tt>,
-			a <tt>fifo</tt>,a <tt>socket</tt>,a <tt>mountpoint</tt> or a <tt>symlink</tt>, for 
+			a <tt>fifo</tt>, a <tt>socket</tt>, a <tt>mountpoint</tt> or a <tt>symlink</tt>, for 
 			testing and creation, and additionally a <tt>file</tt> and a <tt>string</tt> 
 			for testing only. Then it execs into the rest of its command line. <br>
 			The options are separated in three parts: 1) <tt>main_options</tt>, 
@@ -178,23 +178,23 @@ The following explanation specifies the mandatory ones.</p>
 		<li>
 			<tt>-u&nbsp;<em>uid</em>&nbsp;</tt>&nbsp;: changes <em>element's</em> owner to (numeric) uid after the creation.
 			Default is the uid of the owner of the process.
-			This options is used for directory and fifos creation and its has no effects in other cases.
+			This options is used for directory and fifos creation and it has no effects in other cases.
 		</li>
 		<li>
 			<tt>-g&nbsp;<em>gid</em>&nbsp;</tt>&nbsp;: changes <em>element's</em> owner to (numeric) gid after the creation.
 			Default is the gid of the owner of the process.
-			This options is used for directory and fifos creation and its has no effects in other cases.
+			This options is used for directory and fifos creation and it has no effects in other cases.
 		</li>
 		<li>
-			<tt>-m&nbsp;<em>mode</em>&nbsp;</tt>&nbsp;: create <em>element</em> owner to (numeric) gid after the creation.
+			<tt>-m&nbsp;<em>mode</em>&nbsp;</tt>&nbsp;: create <em>element's</em> permissions to (numeric) mode after the creation.
 			Default is <tt>0755</tt>, <tt>0666</tt> and <tt>0777</tt> for a directory, fifo and socket
 			creation respectively.
-			This options is used for directory, fifos and sockets creation and its has no effects in other cases.
+			This options is used for directory, fifos and sockets creation and it has no effects in other cases.
 		</li>
 		<li>
 			<tt>-s&nbsp;</tt>&nbsp;: <em>element</em> will be SOCK_DGRAM where <em>element</em> is a socket.
 			Default SOCK_STREAM.
-			This options is used for socket creation and its has no effects in other cases.
+			This options is used for socket creation and it has no effects in other cases.
 		</li>
 		<li>
 			<tt>-D&nbsp;</tt>&nbsp;: disallow instant rebinding of <em>element</em> to the same path
@@ -259,7 +259,7 @@ The following explanation specifies the mandatory ones.</p>
 <p>Test a socket and create it if it doesn't exist</p>
 	<pre>
 		#!/usr/bin/execlineb -P
-		execl-toc -S /run/user/dbus
+		execl-toc -S /run/user/bus
 		66-echo -- "you can now use the socket"
 	</pre>
 <p>Test if a variable is set on the environment</p>

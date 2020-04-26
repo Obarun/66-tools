@@ -6,7 +6,7 @@
 
 # SYNOPSIS
 
-66-clock [ *-h* ] [ *-m* _message_ ][ *-n* ] _tai|iso_
+66-clock [ *-h* ] [ *-m* _message_ ] [ *-n* ] _tai|iso_
 
 # DESCRIPTION
 
