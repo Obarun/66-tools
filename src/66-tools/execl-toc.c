@@ -791,7 +791,7 @@ int main(int argc,char const *const *argv, char const *const *envp)
 		}
 		argc -= l.ind ; argv += l.ind ;
 	}
-	if (argc <= 0 && !prog) log_usage(USAGE) ;
+	if (argc <= 0 && !arguments.noprog) log_usage(USAGE) ;
 	n = 0 ;
 	argc++ ; argv-- ;
 	nargv[n++] = (char *)arguments.func_name ;
