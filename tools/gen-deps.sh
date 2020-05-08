@@ -52,7 +52,7 @@ for dir in src/* ; do
     }
   done
 done
-echo
+
 
 for dir in $(ls -1 src | grep -v ^include) ; do
   for file in $(ls -1 src/$dir/deps-lib) ; do
