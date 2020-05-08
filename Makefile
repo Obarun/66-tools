@@ -56,15 +56,16 @@ INSTALL := ./tools/install.sh
 ALL_BINS := $(LIBEXEC_TARGETS) $(BIN_TARGETS)
 ALL_LIBS := $(SHARED_LIBS) $(STATIC_LIBS) $(INTERNAL_LIBS)
 ALL_INCLUDES := $(wildcard src/include/$(package)/*.h)
-ALL_MAN := $(wildcard doc/man/*.[1-8].scd)
-INSTALL_MAN := $(wildcard doc/man/*.[1-8])
+GENERATE_HTML := $(shell doc/make-html.sh)
+GENERATE_MAN := $(shell doc/make-man.sh)
 INSTALL_HTML := $(wildcard doc/html/*.html)
+INSTALL_MAN := $(wildcard doc/man/*/*)
 
 all: $(ALL_LIBS) $(ALL_BINS) $(ALL_INCLUDES)
 
 clean:
 	@exec rm -f $(ALL_LIBS) $(ALL_BINS) $(wildcard src/*/*.o src/*/*.lo) $(EXTRA_TARGETS) \
-	$(INSTALL_MAN)
+	$(INSTALL_HTML) $(INSTALL_MAN)
 	
 distclean: clean
 	@exec rm -f config.mak src/include/$(package)/config.h
@@ -93,6 +94,8 @@ install-lib: $(STATIC_LIBS:lib%.a.xyzzy=$(DESTDIR)$(libdir)/lib%.a)
 install-include: $(ALL_INCLUDES:src/include/$(package)/%.h=$(DESTDIR)$(includedir)/$(package)/%.h)
 install-data: $(ALL_DATA:src/etc/%=$(DESTDIR)$(datadir)/%)
 install-html: $(INSTALL_HTML:doc/html/%.html=$(DESTDIR)$(datarootdir)/doc/$(package)/%.html)
+install-man: install-man1
+install-man1: $(INSTALL_MAN:doc/man/man1/%.1=$(DESTDIR)$(mandir)/man1/%.1)
 
 ifneq ($(exthome),)
 
@@ -116,7 +119,11 @@ endif
 $(DESTDIR)$(datarootdir)/doc/$(package)/%.html: doc/html/%.html
 	$(INSTALL) -D -m 644 $< $@ && \
 	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
-		
+
+$(DESTDIR)$(mandir)/man1/%.1: doc/man/man1/%.1
+	$(INSTALL) -D -m 644 $< $@ && \
+	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
+	
 $(DESTDIR)$(datadir)/%: src/etc/%
 	exec $(INSTALL) -D -m 644 $< $@
 
@@ -153,17 +160,6 @@ lib%.a.xyzzy:
 lib%.so.xyzzy:
 	exec $(CC) -o $@ $(CFLAGS_ALL) $(CFLAGS_SHARED) $(LDFLAGS_ALL) $(LDFLAGS_SHARED) -Wl,-soname,$(patsubst lib%.so.xyzzy,lib%.so.$(version_M),$@) $^ $(EXTRA_LIBS) $(LDLIBS)
 
-man: $(ALL_MAN:%.scd=%)
-
-%: %.scd
-	scdoc < $< > $@
-	
-install-man:
-	for i in 1 5 ; do \
-		install -m755 -d $(DESTDIR)$(mandir)/man$$i; \
-		install -m644 doc/man/*.$$i $(DESTDIR)$(mandir)/man$$i/ ; \
-	done
-
-.PHONY: it all clean distclean tgz strip install install-dynlib install-bin install-lib install-include install-data man install-man install-html
+.PHONY: it all clean distclean tgz strip install install-dynlib install-bin install-lib install-include install-data install-man install-html
 
 .DELETE_ON_ERROR:

@@ -6,3 +6,5 @@ src/66-tools/*.o
 *.a.*
 /66-*
 /execl-*
+/doc/html
+/doc/man
