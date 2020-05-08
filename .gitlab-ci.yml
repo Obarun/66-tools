@@ -11,9 +11,8 @@ test:
   script:
   - ./configure --bindir=/usr/bin
   - make
-  - make install-html DESTDIR=gitlab-ci
-  - make man
   - make install DESTDIR=gitlab-ci
+  - make install-html DESTDIR=gitlab-ci
   - make install-man DESTDIR=gitlab-ci
    
   only:
@@ -22,11 +21,10 @@ test:
 build:
   stage: build
   script:
-  - ./configure --bindir=/usr/bin 
+  - ./configure --bindir=/usr/bin
   - make
-  - make install-html DESTDIR=gitlab-ci
-  - make man
   - make install DESTDIR=gitlab-ci
+  - make install-html DESTDIR=gitlab-ci
   - make install-man DESTDIR=gitlab-ci
   
   retry:
