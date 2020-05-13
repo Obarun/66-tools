@@ -8,11 +8,11 @@ src/66-tools/66-gnwenv.o src/66-tools/66-gnwenv.lo: src/66-tools/66-gnwenv.c
 src/66-tools/66-olexec.o src/66-tools/66-olexec.lo: src/66-tools/66-olexec.c
 src/66-tools/66-which.o src/66-tools/66-which.lo: src/66-tools/66-which.c
 src/66-tools/66-writenv.o src/66-tools/66-writenv.lo: src/66-tools/66-writenv.c
+src/66-tools/66-yeller.o src/66-tools/66-yeller.lo: src/66-tools/66-yeller.c
 src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-cmdline.c
 src/66-tools/execl-envfile.o src/66-tools/execl-envfile.lo: src/66-tools/execl-envfile.c
 src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/execl-subuidgid.c
 src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
-
 66-clock: EXTRA_LIBS :=
 66-clock: src/66-tools/66-clock.o -loblibs -lskarnet 
 66-getenv: EXTRA_LIBS :=
@@ -25,6 +25,8 @@ src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
 66-which: src/66-tools/66-which.o -loblibs -lskarnet 
 66-writenv: EXTRA_LIBS :=
 66-writenv: src/66-tools/66-writenv.o -loblibs -lskarnet
+66-yeller: EXTRA_LIBS :=
+66-yeller: src/66-tools/66-yeller.o -loblibs -lskarnet 
 execl-cmdline: EXTRA_LIBS :=
 execl-cmdline: src/66-tools/execl-cmdline.o -loblibs -lexecline -lskarnet
 execl-envfile: EXTRA_LIBS :=
