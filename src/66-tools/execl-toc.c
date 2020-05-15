@@ -35,7 +35,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/djbunix.h>
 
-#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
+#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
 
 static inline void info_help (void)
 {
@@ -45,6 +45,8 @@ static inline void info_help (void)
 "main_options :\n"
 "	-h: print this help\n" 
 "	-v: increase/decrease verbosity\n"
+"	-n: negate the test"
+"	-t: exit 0 if the test fail"
 "	-D: only test and disable creation\n"
 "	-X: do not execute prog\n"
 "\n"
@@ -132,6 +134,7 @@ struct opts_common_s
 	char const *test_on ; // argument to test
 	uint8_t not_create ; // 0 create, 1 simply test
 	uint8_t noprog ; // 0 execute prog, 1 do not execute prog
+	uint8_t negat ; // 0 do not negate the test, 1 negate the test
 	int argc ;
 	char **argv ;
 	char const *const *envp ;
@@ -151,6 +154,7 @@ struct opts_common_s
 
 #define OPTS_COMMON_ZERO \
 { \
+	0 , \
 	0 , \
 	0 , \
 	0 , \
@@ -615,8 +619,8 @@ int execl_common(opts_common_t *arguments, char **nargv)
 
 int main(int argc,char const *const *argv, char const *const *envp)
 {
-	int r, f = 0 ;
-	int n = 0 ;
+	int r, f = 0, n = 0 ;
+	uint8_t negat = 0, treat_zero = 0 ;
 	char *nargv[argc + 2] ;
 
 	execl_func_t_ref func = 0 ;
@@ -630,15 +634,16 @@ int main(int argc,char const *const *argv, char const *const *envp)
 		subgetopt_t l = SUBGETOPT_ZERO ;
 		for (;;)
 		{
-		  int opt = subgetopt_r(argc, argv, "hv:DX", &l) ;
+		  int opt = subgetopt_r(argc, argv, "hv:ntDX", &l) ;
 		  if (opt == -1) break ;
 		  switch (opt)
 		  {
 			case 'h' :	info_help(); return 0 ;
 			case 'v' :	if (!uint0_scan(l.arg, &VERBOSITY)) 
 							log_usage(USAGE) ;
-						f++ ;
 						break ;
+			case 'n' :	negat = 1 ; break ;
+			case 't' :	treat_zero = 1 ; break ;
 			case 'D' :	arguments.not_create = 1 ; break ;
 			case 'X' :	arguments.noprog = 1 ; break ;
 			default : 	break ;
@@ -655,7 +660,6 @@ int main(int argc,char const *const *argv, char const *const *envp)
 
 	{
 		subgetopt_t l = SUBGETOPT_ZERO ;
-		int f = 0 ;
 		for (;;)
 		{
 			int opt = subgetopt_r(3,(char const *const *)nargv, "d:p:S:m:L:b:c:k:n:g:r:s:t:u:w:x:e:f:z:O:U:N:V:E:", &l) ;
@@ -807,7 +811,7 @@ int main(int argc,char const *const *argv, char const *const *envp)
 	if (!arguments.func_name) log_die(LOG_EXIT_SYS, "operation not implemented") ;
 
 	r = (*func)(&arguments,nargv) ;
-	if (!r) return LOG_EXIT_SYS ;
+	if (negat == !!r) return treat_zero ? LOG_EXIT_ZERO : LOG_EXIT_SYS ;
 	if (arguments.noprog) return LOG_EXIT_ZERO ;
 	
 	xpathexec_run(arguments.argv[0],(char const *const *)arguments.argv,arguments.envp) ;

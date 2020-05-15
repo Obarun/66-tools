@@ -14,7 +14,7 @@ Tests an element and creates it if it does not exist yet with the default or spe
 ## Interface
 
 ```
-	execl-toc [ -h ] [ -v verbosity ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B ] [ -b backlog ] prog...
+	execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B ] [ -b backlog ] prog...
 ```
 
 *Execl-toc* (Test Or Create) tests an *element* and creates it if it does not exist yet, where an *element* can be a directory, a fifo, a socket, a mountpoint or a symlink, for testing and creation, and additionally a file and a string for testing only. Then it execs into the rest of its command line.
@@ -48,6 +48,10 @@ The creation of an *element* can be controlled with the help of `create_options`
     * *3* : also print tracing messages.
     * *4* : also print debugging messages.
 
+- **-n** : negate the test. Treat fail as true and vise versa.
+
+- **-t** : exit 0 if the test fail.
+ 
 - **-D** : performs the test without creating the *element* if it does not exist yet.
 
 - **-X** : do not execute *prog*.
