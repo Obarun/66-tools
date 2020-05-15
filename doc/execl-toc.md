@@ -97,7 +97,7 @@ The creation of an *element* can be controlled with the help of `create_options`
 Depending on the *element* to create, `create_options` may or may not be mandatory. The following explanation specifies the mandatory ones.
 
 
-- **-o** *opts* : mount options (correspond to mount -o). **Mandatory** is the case of mountpoint creation. This option has no effect in other cases.
+- **-o** *opts* : mount options (correspond to mount -o). This option has no effect in other cases.
 
 - **-t** *type* : type mount options (correspond to mount -t). This also is used in case of symlink creation as a target option. **Mandatory** is the case of mountpoint or symlink creation. This option has no effect in other cases.
 

@@ -134,7 +134,6 @@ struct opts_common_s
 	char const *test_on ; // argument to test
 	uint8_t not_create ; // 0 create, 1 simply test
 	uint8_t noprog ; // 0 execute prog, 1 do not execute prog
-	uint8_t negat ; // 0 do not negate the test, 1 negate the test
 	int argc ;
 	char **argv ;
 	char const *const *envp ;
@@ -154,7 +153,6 @@ struct opts_common_s
 
 #define OPTS_COMMON_ZERO \
 { \
-	0 , \
 	0 , \
 	0 , \
 	0 , \
@@ -273,7 +271,7 @@ static int is_mnt(char const *str)
 		if (!stat(p,&st))
 			is_not_mnt = (st_dev == st.st_dev) && (st_ino != st.st_ino) ;
 	}else return 0 ;
-	return is_not_mnt ? 0 : 1 ;
+	return is_not_mnt ? 1 : 0 ;
 }
 
 int execl_directory(opts_common_t *arguments,char **nargv)
@@ -343,27 +341,32 @@ int execl_mountpoint(opts_common_t *arguments,char **nargv)
 
 	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
 
-	if (!arguments->minus_t || !arguments->minus_d) log_usage(USAGE) ;
+	if ((!arguments->minus_t || !arguments->minus_d) && !arguments->not_create) log_usage(USAGE) ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
 	
 	r = is_mnt(arguments->test_on) ;
-	if (r < 0 && !arguments->not_create) 
+	if (r == -1 || r == 1)
 	{
-		if (!dir_create_parent(arguments->test_on,mode))
-			log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
-		goto mount ;
+		if (!arguments->not_create) {
+			if (!dir_create_parent(arguments->test_on,mode))
+				log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
+			goto mount ;
+		}
+		log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a mountpoint") ;
 	}
-	else if (!r) {
+	if (!r) {
 		// mounted, nothing to do
 		return 1 ;
 	}
-	if (r > 0 && arguments->not_create) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a mountpoint") ;
+	if (r == 1 && arguments->not_create) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," is not a mountpoint") ;
 	
 	mount:
 	newargv[m++] = "mount" ;
-	newargv[m++] = "-o" ;
-	newargv[m++] = arguments->minus_o ;
+	if (arguments->minus_o) {
+		newargv[m++] = "-o" ;
+		newargv[m++] = arguments->minus_o ;
+	}
 	newargv[m++] = "-t" ;
 	newargv[m++] = arguments->minus_t ;
 	newargv[m++] = arguments->minus_d ;
@@ -433,8 +436,8 @@ int execl_symlink(opts_common_t *arguments,char **nargv)
 
 	if (!arguments->minus_t) log_usage(USAGE) ;
 	struct stat st ;
-    r = lstat(arguments->test_on, &st) ; 
-    if (r == -1 && !arguments->not_create) {
+	r = lstat(arguments->test_on, &st) ; 
+	if (r == -1 && !arguments->not_create) {
 		if (!auto_dir(arguments)) { 
 			errno = EEXIST ;
 			log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
