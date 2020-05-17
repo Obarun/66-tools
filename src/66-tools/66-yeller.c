@@ -28,7 +28,6 @@
 #include <skalibs/env.h>//env_get2
 #include <skalibs/types.h>
 #include <skalibs/djbunix.h>
-#include <skalibs/bufalloc.h>
 
 #define MAXBUF 4096
 
@@ -120,28 +119,6 @@ static int read_line(stralloc *dst, char const *line)
  	return n ;
 }
 
-static void redir_fd(int fd,char const *file,unsigned int flags)
-{
-	int fdmodif ;
-	fdmodif = open3(file, flags, 0666) ;
-	if ((fdmodif == -1) && (errno == ENXIO))
-	{
-		int fdr = open_read(file) ;
-		if (fdr == -1) log_dieusys(LOG_EXIT_SYS, "open_read: ", file) ;
-		fdmodif = open3(file, flags, 0666) ;
-		fd_close(fdr) ;
-	}
-	if (fdmodif == -1) log_dieusys(LOG_EXIT_SYS, "open: ", file) ;
-	if (fd_move(fd, fdmodif) == -1)
-	{
-		char fmt[UINT_FMT] ;
-		fmt[uint_fmt(fmt, fdmodif)] = 0 ;
-		char fdmt[UINT_FMT] ;
-		fdmt[uint_fmt(fdmt, fd)] = 0 ;
-		log_dieusys(LOG_EXIT_SYS, "move fd ", fmt, " to fd: ",fdmt) ;
-	}
-}
-
 static void build_msg(stralloc *list, int argc,char const *const *argv)
 {
 	int el = 0, first = 0 ;
@@ -199,21 +176,20 @@ static void display_list(stralloc *list, uint8_t level)
 
 int main(int argc, char const *const *argv, char const *const *envp)
 {
-	uint8_t level = 0, newline = 1, dble = 0, read_stdin = 0, clock = 1 ;
+	uint8_t level = 0, newline = 1, read_stdin = 0 ;
 	int iverbo = -1 ;
-	unsigned int flags = 0 ; 
-	char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0 ;
+	unsigned int iclock = 1, idble = 0, itimestamp ;
+	char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0, *clock = 0, *dble = 0, *timestamp = 0 ;
 	char proc[4096] ;
 	
 	stralloc list = STRALLOC_ZERO ;
 	stralloc saproc = STRALLOC_ZERO ;
 	
 	log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
-		
-	set_default_stream(1) ;
 	
-	flags |= O_CREAT|O_APPEND|O_WRONLY ; 
-	flags &= ~(O_TRUNC|O_EXCL) ;
+	/** by default log_out() write on stderr
+	 * switch it to sdtout */
+	set_switch_stream(1) ;
 	
 	auto_strings(proc,"/proc/") ;
 	
@@ -227,11 +203,11 @@ int main(int argc, char const *const *argv, char const *const *envp)
 			switch (opt)
 			{
 				case 'h' : 	info_help() ; return 0 ;
-				case 'v' : 	if (!uint0_scan(l.arg, (uint32_t *)&iverbo)) 
+				case 'v' : 	if (!uint0_scan(l.arg,(uint32_t *)&iverbo)) 
 								log_usage(USAGE) ;	
 							break ;
-				case 'd' : 	dble = 1 ; break ;
-				case 's' : 	set_default_stream(0) ; break ;
+				case 'd' : 	idble = 1 ; break ;
+				case 's' : 	set_switch_stream(0) ; break ;
 				case 'S' : 	read_stdin = 1 ; break ;
 				case '1' :	redir1 = l.arg ; break ;
 				case '2' :	redir2 = l.arg ; break ;
@@ -239,7 +215,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 				case 'n' : 	newline = 0 ; set_trailing_newline(0) ;	break ;
 				case 'i' : 	set_default_msg(0) ; break ;
 				case 'p' : 	prog = l.arg ;	break ;
-				case 'c' : 	clock = 0 ; break ;
+				case 'c' : 	iclock = 0 ; break ;
 				case 'w' : 	if (level) log_usage(USAGE) ; level = 2 ; break ;
 				case 'W' : 	if (level) log_usage(USAGE) ; level = 3 ; break ;
 				case 't' : 	if (level) log_usage(USAGE) ; level = 4 ; break ;
@@ -253,10 +229,30 @@ int main(int argc, char const *const *argv, char const *const *envp)
 	}
 	if (!argc && !read_stdin) log_usage(USAGE) ;
 	
-	if (dble) set_double_output(1) ; 
+	if (!idble)
+	{
+		dble = env_get2(envp,"DOUBLE_OUTPUT") ;
+		if (dble)
+			if (!uint0_scan(dble,&idble)) 
+				log_die(LOG_EXIT_SYS,"invalid format of DOUBLE_OUTPUT environment variable") ;
+	}
+	set_double_output(idble) ;
 	
-	if (!clock) set_clock_enable(0) ;
-	else set_clock_enable(1) ;
+	if (iclock)
+	{
+		clock = env_get2(envp,"CLOCK_ENABLED") ;
+		if (clock)
+			if (!uint0_scan(clock,&iclock))
+				log_die(LOG_EXIT_SYS,"invalid format of CLOCK_ENABLED environment variable") ;
+	}
+	set_clock_enable(iclock) ;
+
+	timestamp = env_get2(envp,"CLOCK_TIMESTAMP") ;
+	if (timestamp) {
+		if (!uint0_scan(timestamp,&itimestamp))
+				log_die(LOG_EXIT_SYS,"invalid format of CLOCK_TIMESTAMP environment variable") ;
+		set_clock_timestamp(itimestamp) ;
+	}
 	
 	if (!level) level = 1 ;
 	
@@ -269,7 +265,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 	
 	if (!prog){
 		PROG = env_get2(envp,"PROG") ;
-		if (!PROG) PROG =  saproc.s ;
+		if (!PROG) PROG = saproc.s ;
 	}
 	else PROG = prog ;
 	
@@ -277,15 +273,25 @@ int main(int argc, char const *const *argv, char const *const *envp)
 	{
 		verbo = env_get2(envp,"VERBOSITY") ;
 		if (verbo){
-			uint0_scan(verbo, &VERBOSITY) ;
-			if (VERBOSITY > 3) VERBOSITY = 3 ;
+			if (!uint0_scan(verbo, &VERBOSITY))
+				log_die(LOG_EXIT_SYS,"invalid format of VERBOSITY environment variable") ;
+			if (VERBOSITY >= 3) VERBOSITY = 3 ;
 		}
 	}
 	else VERBOSITY=iverbo ;
 	
-	if (redir1) redir_fd(1,redir1,flags) ;
-	if (redir2) redir_fd(2,redir2,flags) ;
-	
+	if (!redir1) {
+		redir1 = env_get2(envp,"REDIRFD_1") ;
+		if (redir1) set_redirfd_1(redir1) ;
+	}
+	else set_redirfd_1(redir1) ;
+
+	if (!redir2) {
+		redir2 = env_get2(envp,"REDIRFD_2") ;
+		if (redir2) set_redirfd_2(redir2) ;
+	}
+	else set_redirfd_2(redir2) ;
+
 	if (read_stdin)
 	{
 		stralloc tmp = STRALLOC_ZERO ;

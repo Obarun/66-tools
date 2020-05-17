@@ -1,6 +1,6 @@
 #!/bin/sh
 
-man1='66-clock 66-getenv 66-gnwenv 66-olexec 66-which 66-writenv execl-cmdline execl-envfile execl-subuidgid execl-toc'
+man1='66-clock 66-getenv 66-gnwenv 66-olexec 66-which 66-writenv 66-yeller execl-cmdline execl-envfile execl-subuidgid execl-toc'
 
 for i in 1 ;do
     if [ ! -d doc/man/man"${i}" ]; then
