@@ -52,8 +52,8 @@ static inline void info_help (void)
 
 void clean_n_unexport(stralloc *modifs, stralloc *dst, stralloc *src)
 {
-	if (!environ_clean_envfile(modifs,src)) log_dieusys(LOG_EXIT_SYS,"prepare modified environment of: ",src->s) ;		
-	if (!sastr_split_string_in_nline(modifs)) log_dieusys(LOG_EXIT_SYS,"build environment line of: ",src->s) ;
+	if (!environ_clean_envfile(modifs,src)) log_dieu(LOG_EXIT_SYS,"prepare modified environment of: ",src->s) ;
+	if (!sastr_split_string_in_nline(modifs)) log_dieu(LOG_EXIT_SYS,"build environment line of: ",src->s) ;
 	if (!stralloc_cats(dst,src->s)) log_die_nomem("stralloc") ;
 }
 
