@@ -17,7 +17,7 @@ author: Eric Vidal <eric@obarun.org>
 	66-yeller [ -h ] [ -d ] [ -s|S ] [ -1 file ] [ -2 file ] [ -z ] [ -n ] [ -c ] [ -p prog ] [ -v verbosity ] [ -i|w|W|t|T|f|F ] msg...
 ```
 
-*66-yeller* writes the current system time, the name of the program, a colorized informative message (*msg*), depending on the options passed to one or two streams. By default, *stream_1* points to **stdout** and *stream_2* points to **stderr**.
+*66-yeller* writes the current system time, the name of the program, a colorized informative message (*msg*), depending on the options passed to one or two streams. By default, *stream_1* points to **stdout** and *stream_2* points to **stderr**. The *\a*, *\b*, *\t*, *\n*, *\v*, *\f*, and *\r* sequences are recognized in quoted strings, and are converted to the ASCII numbers 7, 8, 9, 10, 11, 12 and 13 respectively.
 
 ## Exit codes
 
@@ -73,7 +73,7 @@ author: Eric Vidal <eric@obarun.org>
 - **%g** : set color to green
 - **%y** : set color to yellow
 - **%r** : set color to red
-- **%bl** : enable blinking
+- **%l** : enable blinking
 - **%n** : reset color to normal
 
 ## Default informative message format
@@ -200,6 +200,21 @@ Colorize the output where `what` will be displayed in red color and `time` in ye
 	what time is it?
 ```
 
+Alos, it can be:
+
+```
+	% 66-yeller -ic %rwhat%y time%n is it\?
+	what time is it?
+```
+
+Append a trailing newline and a tabulation:
+
+```
+	% 66-yeller -ic what "time\nis\tit?"
+	what time
+	is	it?
+```
+
 Use the double-output and redirects *stream_2* to `myfile` file:
 
 ```
@@ -244,13 +259,13 @@ Use *66-yeller* in a `sh` script called `script.sh` with a pre-defined behavior 
 	if ! [ -e /etc/66/init.conf ]; then
 		66-yeller -f "file /etc/66/init.conf doesn't exist"
 	else
-		cat /etc/66/init.conf | 66-yeller -Sic %y "->" %n
+		cat /etc/66/init.conf | 66-yeller -Sic "%y->%n "
 	fi
 	
 	if ! [ -e /etc/66/toto.conf ]; then
 		66-yeller -f "file /etc/66/toto.conf doesn't exist"
 	else
-		cat /etc/66/toto.conf | 66-yeller -Sic %y "->" %n
+		cat /etc/66/toto.conf | 66-yeller -Sic "%y->%n "
 	fi
 	66-yeller you will never see this message
 ```

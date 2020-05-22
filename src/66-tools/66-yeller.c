@@ -66,7 +66,7 @@ static inline void info_help (void)
 "	%g: set color to green\n"
 "	%y: set color to yellow\n"
 "	%r: set color to red\n"
-"	%bl: enable blinking\n"
+"	%l: enable blinking\n"
 "	%n: reset color to normal\n"
 "\n"
 ;
