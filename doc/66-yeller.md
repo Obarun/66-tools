@@ -9,7 +9,7 @@ author: Eric Vidal <eric@obarun.org>
 
 # 66-yeller
 
-*66-yeller* is a powerful, specialised echo tool.
+*66-yeller* is a powerful, specialized echo tool.
 
 ## Interface
 
@@ -17,7 +17,7 @@ author: Eric Vidal <eric@obarun.org>
 	66-yeller [ -h ] [ -d ] [ -s|S ] [ -1 file ] [ -2 file ] [ -z ] [ -n ] [ -c ] [ -p prog ] [ -v verbosity ] [ -i|w|W|t|T|f|F ] msg...
 ```
 
-*66-yeller* writes the current system time, the name of the program, a colorized informative message and the *msg*(where *msg* can be colorized) depending of the options past to one or two stream. By default, *stream_1* point to **stdout** and *stream_2* point to **stderr**.
+*66-yeller* writes the current system time, the name of the program, a colorized informative message (*msg*), depending on the options passed to one or two streams. By default, *stream_1* points to **stdout** and *stream_2* points to **stderr**.
 
 ## Exit codes
 
@@ -31,7 +31,7 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-d** : double-output. It writes on *stream_1* and *stream_2*.
 
-- **-s** : switches streams. *Stream_1* become *stream_2* and *stream_2* become *stream_1*.
+- **-s** : switches streams. *Stream_1* becomes *stream_2* and *stream_2* becomes *stream_1*.
 
 - **-S** : reads *msg* from stdin.
 
@@ -39,30 +39,30 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-2** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist. 
 
-- **-z** : disable color. By default *66-yeller* tries to use color. If the *stream_1* do not point to a terminal, the color is automatically disabled. This option tells to *66-yeller* to not use color at all.
+- **-z** : disable color. By default *66-yeller* tries to use color. If the *stream_1* does not point to a terminal, the color is automatically disabled. This option tells to *66-yeller* to not use color at all.
 
-- **-n** : do not output a trailing newline.
+- **-n** : does not output a trailing newline.
 
-- **-c** : do not writes the current sytem time. By default the current system time as an *ISO* timestamp. It can be set to a *TAIN64*(see [Environment variable](66-yeller.html#Environment variables)).
+- **-c** : does not write the current sytem time. By default the current system time as an *ISO* timestamp. It can be set to a *TAIN64*(see [Environment variable](66-yeller.html#Environment variables)).
 
-- **-p** *prog* : use *prog* as program name to display. By default *66-yeller* tries to find the name of the calling process by reading and parsing the `/proc/<pid>/comm` file. This option tells to *66-yeller* to use *prog* as default program name to display.
+- **-p** *prog* : use *prog* as the program name to display. By default *66-yeller* tries to find the name of the calling process by reading and parsing the `/proc/<pid>/comm` file. This option tells to *66-yeller* to use *prog* as the default program name to display.
 
 - **-v** *verbosity* : increases/decreases the verbosity of the command.
     * *1* : prints error and information messages. This is the default.
-    * *2* : also print warning messages.
-    * *3* : also print tracing messages.
+    * *2* : also prints warning messages.
+    * *3* : also prints tracing messages.
 
-- **-i** : do not writes the informative message.
+- **-i** : does not write the informative message.
 
 - **-w** : prints a warning message.
 
-- **-W** : prints a warning message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `1` will not write a warning message. This option force *66-yeller* to write a warning message even if the *verbosity* is less than `2`.
+- **-W** : prints a warning message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `1` will not write a warning message. This option forces *66-yeller* to write a warning message even if the *verbosity* is less than `2`.
 
 - **-t** : prints a tracing message.
 
-- **-T** : prints a tracing message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `2` will not write a tracing message. This option force *66-yeller* to write a tracing message even if the *verbosity* is less than `3`.
+- **-T** : prints a tracing message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `2` will not write a tracing message. This option forces *66-yeller* to write a tracing message even if the *verbosity* is less than `3`.
 
-- **-f** : prints a fatal message and die with `111` as exit code.
+- **-f** : prints a fatal message and dies with an `111` as exit code.
 
 - **-F** : prints a fatal message without dying.
 
@@ -125,23 +125,23 @@ The following environment variable can be set to configure the default *66-yelle
 
 - ### DOUBLE_OUTPUT
 
-	Corresponds to the **-d** option. Tells to *66-yeller* to use double-output. A value of `1` switch on the double-output where `0` switch off the double-output.
+	Corresponds to the **-d** option. Tells to *66-yeller* to use double-output. A value of `1` switches on the double-output, where `0` switches off the double-output.
 
 - ### CLOCK_ENABLED
 
-	Corresponds to the **-c** option. Tells to *66-yeller* to output the current system time. A value of `1` output the system time where `0` do not.
+	Corresponds to the **-c** option. Tells to *66-yeller* to output the current system time. A value of `1` outputs the system time where `0` does not.
 
 - ### CLOCK_TIMESTAMP
 
-	Specifies the timestamp to use for the system time display. A value of `1` output the system time as *ISO* timestamp where `0` output the system time as *TAIN64* timestamp.
+	Specifies the timestamp to use for the system time display. A value of `1` output the system time as *ISO* timestamp where `0` outputs the system time as *TAIN64* timestamp.
 
 - ### REDIRFD_1
 
-	Corresponds to the **-1** option. Redirects the *stream_1* to its value(e.g. REDIRFD_1=/dev/console). A value of `0` reset the `stream_1` to its default value.
+	Corresponds to the **-1** option. Redirects the *stream_1* to its value(e.g. REDIRFD_1=/dev/console). A value of `0` resets the `stream_1` to its default value.
 
 - ### REDIRFD_2
 
-	Corresponds to the **-2** option. Redirects the *stream_2* to its value(e.g. REDIRFD_2=/dev/null). A value of `0` reset the `stream_2` to its default value.
+	Corresponds to the **-2** option. Redirects the *stream_2* to its value(e.g. REDIRFD_2=/dev/null). A value of `0` resets the `stream_2` to its default value.
 
 ## Usage examples
 
@@ -219,7 +219,7 @@ Reads *msg* from stdin:
 
 ```
 
-Reads message from stdin. Do not display informative message and the system time. Use double output and redirects *stream_2* to `myfile`
+Reads message from stdin. Does not display informative message and the system time. Uses double output and redirects *stream_2* to `myfile`
 
 ```
 	% ls -la /tmp | 66-yeller -cdi2 /tmp/myfile -S /tmp contents "->"  
