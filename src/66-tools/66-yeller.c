@@ -181,8 +181,7 @@ static void rebuild_without_escape(stralloc *list)
 			{
 				if (!stralloc_cats(&t,log_color->off)) log_die_nomem("stralloc") ;
 			}
-			if (((pos + 2) >= list->len) || ((pos + 1) >= list->len) ) break ;
-			if (list->s[pos+2] == ' ') pos += 2 ;
+			if ((pos + 1) >= list->len) break ;
 			else pos++ ;
 		}
 		else {
