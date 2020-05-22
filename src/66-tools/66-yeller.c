@@ -28,6 +28,7 @@
 #include <skalibs/env.h>//env_get2
 #include <skalibs/types.h>
 #include <skalibs/djbunix.h>
+#include <skalibs/bytestr.h>//byte_chr
 
 #define MAXBUF 4096
 
@@ -124,43 +125,76 @@ static void build_msg(stralloc *list, int argc,char const *const *argv)
 	int el = 0, first = 0 ;
 	for ( ; el < argc ; el++)
 	{
-		if (!strcmp(argv[el],"%w")) {
-			if (!stralloc_cats(list,log_color->info))
+		if (!first)	{
+			if (!auto_stra(list,argv[el]))
 				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%b")) {
-			if (!stralloc_cats(list,log_color->blue))
+		}
+		else {
+			if (!auto_stra(list," ",argv[el]))
 				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%g")) {
-			if (!stralloc_cats(list,log_color->valid))
-				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%y")) {
-			if (!stralloc_cats(list,log_color->warning))
-				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%r")) {
-			if (!stralloc_cats(list,log_color->error))
-				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%bl")) {
-			if (!stralloc_cats(list,log_color->ablink))
-				log_die_nomem("stralloc") ;
-		}else if (!strcmp(argv[el],"%n")) {
-			if (!stralloc_cats(list,log_color->off))
-				log_die_nomem("stralloc") ;
-		}else
-		{
-			if (!first)	{
-				if (!stralloc_cats(list,argv[el]))
-					log_die_nomem("stralloc") ;
-			}
-			else
+		}
+		first++ ;
+	}
+}
+
+static void rebuild_without_escape(stralloc *list)
+{
+	size_t pos = 0 ;
+	stralloc t = STRALLOC_ZERO ;
+
+	for (;pos < list->len;pos++)
+	{
+		char c = 0 ;
+		if (list->s[pos] == '\\') {
+			c = 7 + byte_chr("abtnvfr", 7, list->s[pos+1]) ;
+			if (!stralloc_catb(&t,&c,1)) log_die_nomem("stralloc") ;
+			if (((pos + 2) >= list->len) || ((pos + 1) >= list->len) ) break ;
+			if (list->s[pos+2] == ' ') pos += 2 ;
+			else pos++ ;
+		}
+		else if (list->s[pos] == '%') {
+			if (list->s[pos+1] == 'w')
 			{
-				if (!stralloc_cats(list," "))
-					log_die_nomem("stralloc") ;			
-				if (!stralloc_cats(list,argv[el]))
-					log_die_nomem("stralloc") ;
+				if (!stralloc_cats(&t,log_color->info)) log_die_nomem("stralloc") ;
 			}
-			first++ ;
+			else if (list->s[pos+1] == 'b')
+			{
+				if (!stralloc_cats(&t,log_color->blue)) log_die_nomem("stralloc") ;
+			}
+			else if (list->s[pos+1] == 'g')
+			{
+				if (!stralloc_cats(&t,log_color->valid)) log_die_nomem("stralloc") ;
+			}
+			else if (list->s[pos+1] == 'y')
+			{
+				if (!stralloc_cats(&t,log_color->warning)) log_die_nomem("stralloc") ;
+			}
+			else if (list->s[pos+1] == 'r')
+			{
+				if (!stralloc_cats(&t,log_color->error)) log_die_nomem("stralloc") ;
+			}
+			else if (list->s[pos+1] == 'l')
+			{
+				if (!stralloc_cats(&t,log_color->ablink)) log_die_nomem("stralloc") ;
+			}
+			else if (list->s[pos+1] == 'n')
+			{
+				if (!stralloc_cats(&t,log_color->off)) log_die_nomem("stralloc") ;
+			}
+			if (((pos + 2) >= list->len) || ((pos + 1) >= list->len) ) break ;
+			if (list->s[pos+2] == ' ') pos += 2 ;
+			else pos++ ;
+		}
+		else {
+			c = list->s[pos] ;
+			if (!stralloc_catb(&t,&c,1)) log_die_nomem("stralloc") ;
 		}
 	}
+	if (!stralloc_0(&t)) log_die_nomem("stralloc") ;
+	t.len-- ;
+	if (!stralloc_copy(list,&t)) log_die_nomem("stralloc") ;
+
+	stralloc_free(&t) ;
 }
 
 static void display_list(stralloc *list, uint8_t level)
@@ -298,6 +332,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 		if (argc) {
 			build_msg(&tmp,argc,argv) ;
 			if (!auto_stra(&tmp," ")) log_die_nomem("stralloc") ;
+			rebuild_without_escape(&tmp) ;
 		}
 		
 		char buf[2] ;
@@ -336,7 +371,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 			if (!stralloc_cats(&list," ")) log_die_nomem("stralloc") ;
 		
 		if (!stralloc_0(&list)) log_die_nomem("stralloc") ;
-		
+		rebuild_without_escape(&list) ;
 		display_list(&list,level) ;
 	}
 	
