@@ -9,7 +9,7 @@ author: Eric Vidal <eric@obarun.org>
 
 # execl-toc
 
-Tests an element and creates it if it does not exist yet with the default or specified options, then executes a program by default. 
+Tests an element and creates it, if it does not exist yet, with the default or specified options, then executes a program by default. 
 
 ## Interface
 
@@ -17,7 +17,7 @@ Tests an element and creates it if it does not exist yet with the default or spe
 	execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B ] [ -b backlog ] prog...
 ```
 
-*Execl-toc* (Test Or Create) tests an *element* and creates it if it does not exist yet, where an *element* can be a directory, a fifo, a socket, a mountpoint or a symlink, for testing and creation, and additionally a file and a string for testing only. Then it execs into the rest of its command line.
+*Execl-toc* (Test Or Create) tests an *element* and creates it, if it does not exist yet, where an *element* can be a directory, a fifo, a socket, a mountpoint or a symlink, for testing and creation, and additionally a file and a string for testing only. Then it execs into the rest of its command line.
 The options are separated in three parts: 
 
 - (1) main_options
@@ -26,9 +26,9 @@ The options are separated in three parts:
 
 - (3) create_options
 
-and must ordered at the command line in that sequence.
+and must be ordered at the command line in that sequence.
 
-The creation of an *element* can be controlled with the help of `create_options` options. Some of these `create_options` are specific for a particular *element* where others are general. 
+The creation of an *element* can be controlled with the help of `create_options` options. Some of these `create_options` are specific for a particular *element*, where others are general. 
 
 ## Exit codes
 
@@ -89,7 +89,7 @@ The creation of an *element* can be controlled with the help of `create_options`
   * **-O** : true if *element* is owned by the effective user id.
   * **-U** : true if *element* is owned by the effective group id.
   * **-N** : true if *element* has been modified since it was last read.
-  * **-V** : true if *element* exist on the environment.
+  * **-V** : true if *element* exists on the environment.
   * **-E** : true if *element* is an empty directory. The test performs a check of an existing block, character, fifo, regular file, directory or symlink, inside an *element*.
 
 ## Create options
@@ -103,20 +103,20 @@ Depending on the *element* to create, `create_options` may or may not be mandato
 
 - **-d** *device* : device mount options (correspond to mount -t type device /directory). **Mandatory** is the case of mountpoint creation. This option has no effect in other cases.
 
-- **-u** *uid* : changes *element*'s owner to (numeric) uid after the creation. Default is the uid of the owner of the process. This options is used for directory and fifos creation and it has no effects in other cases.
+- **-u** *uid* : changes *element*'s owner to (numeric) uid after the creation. Default is the uid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases.
 
-- **-g** *gid* : changes *element*'s owner to (numeric) gid after the creation. Default is the gid of the owner of the process. This options is used for directory and fifos creation and it has no effects in other cases.
+- **-g** *gid* : changes *element*'s owner to (numeric) gid after the creation. Default is the gid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases.
 
-- **-m** *mode* : create *element*'s permissions to (numeric) mode after the creation. Default is `0755`, `0666` and `0777` for a directory, fifo and socket creation respectively. This options is used for directory, fifos and sockets creation and it has no effects in other cases.
+- **-m** *mode* : create *element*'s permissions to (numeric) mode after the creation. Default is `0755`, `0666` and `0777` for a directory, fifo and socket creation respectively. This option is used for directory, fifos and sockets creation and it has no effects in other cases.
 
-- **-s** : element will be `SOCK_DGRAM` where element is a socket. Default `SOCK_STREAM`. This options is used for socket creation and it has no effects in other cases.
+- **-s** : element will be `SOCK_DGRAM` where element is a socket. Default `SOCK_STREAM`. This option is used for socket creation and it has no effects in other cases.
 
-- **-D** : disallow instant rebinding of *element* to the same path where an *element* is a socket. Default is allow. This options is used for socket creation and it has no effects in other cases.
+- **-D** : disallow instant rebinding of *element* to the same path where an *element* is a socket. Default is allow. This option is used for socket creation and it has no effects in other cases.
     
-- **-B** : the *element* will be blocking where *element* is a socket. Default is unlocked. This options is used for socket creation and it has no effects in other cases.
+- **-B** : the *element* will be blocking where *element* is a socket. Default is unlocked. This option is used for socket creation and it has no effects in other cases.
 
 
-- **-b** *backlog* : set the maximum of backlog connection on the *element* where an *element* is a socket. Default `SOMAXCONN`. This options is used for socket creation and it has no effects in other cases.
+- **-b** *backlog* : set the maximum of backlog connection on the *element* where an *element* is a socket. Default `SOMAXCONN`. This option is used for socket creation and it has no effects in other cases.
 
 ## Usage examples
 
@@ -136,7 +136,7 @@ Test a directory but do not create it if it does not exist:
 	66-echo -- "/run/user already exist"
 ```
 
-Test a directory, do not create if it does not exit, and do not execute prog
+Test a directory, do not create it if it does not exist, and do not execute prog
 
 ```
 	#!/usr/bin/execlineb -P
