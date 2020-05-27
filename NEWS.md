@@ -2,6 +2,18 @@
 
 ---
 
+# In 0.0.5.0
+
+- Adapt to oblibs v0.0.8.0
+- add -m option to 66-clock tool
+- New tool:
+	- execl-toc:
+		- this tool allow to check an element and create it if it not exist.
+	- 66-yeller:
+		- A powerfull, specialized echo tool.
+
+---
+
 # In 0.0.4.0
 
 - Minor bugs fix

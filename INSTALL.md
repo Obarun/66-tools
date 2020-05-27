@@ -5,9 +5,9 @@ Build Instructions
 
 - A POSIX-compliant C development environment
 - GNU make version 3.81 or later
-- skalibs version 2.9.1.0 or later
-- execline version 2.5.3.0 or later 
-- oblibs version 0.0.6.0 or later
+- skalibs version 2.9.2.1 or later
+- execline version 2.6.0.2 or later 
+- oblibs version 0.0.8.0 or later
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 
