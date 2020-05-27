@@ -141,7 +141,7 @@ Test a directory, do not create it if it does not exist, and do not execute prog
 ```
 	#!/usr/bin/execlineb -P
 	if -n { execl-toc -X -D -d /run/user/1001 }
-	66-echo -- "/run/user/1001 doesn't exist"
+	66-echo -- "/run/user/1001 does not exist"
 ```
 
 Test a mountpoint and create it if it does not exist
