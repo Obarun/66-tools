@@ -42,7 +42,7 @@ static inline void info_help (void)
 "\n"
 "options:\n"
 "	-h: prints this help\n"
-"	-d: set double output\n"
+"	-d: sets double output\n"
 "	-s: switch stdout and stderr\n"
 "	-S: read from stdin\n"
 "	-1: redirect stdout to file\n"
