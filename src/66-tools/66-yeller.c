@@ -45,8 +45,8 @@ static inline void info_help (void)
 "	-d: set double output\n"
 "	-s: switch stdout and stderr\n"
 "	-S: read from stdin\n"
-"	-1: redirect stdout to file\n" 
-"	-2: redirect stderr to file\n" 
+"	-1: redirect stdout to file\n"
+"	-2: redirect stderr to file\n"
 "	-z: disable color\n"
 "	-n: disable trailing new line\n"
 "	-c: disable time display\n"
@@ -74,15 +74,15 @@ static inline void info_help (void)
 		log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
-static int read_line(stralloc *dst, char const *line) 
+static int read_line(stralloc *dst, char const *line)
 {
 	char b[MAXBUF] ;
 	int fd ;
 	unsigned int n = 0, m = MAXBUF ;
-	
+
 	fd = open(line, O_RDONLY) ;
 	if (fd == -1) return 0 ;
-	
+
 	for(;;)
 	{
 		ssize_t r = read(fd,b+n,m-n);
@@ -102,7 +102,7 @@ static int read_line(stralloc *dst, char const *line)
 		if (r == 0) break ;
 	}
 	close(fd) ;
-	
+
 	if(n)
 	{
 		int i = n ;
@@ -110,14 +110,14 @@ static int read_line(stralloc *dst, char const *line)
 		while (i && b[i-1] == '\0') --i ;
 		while (i--)
 			if (b[i] == '\n' || b[i] == '\0') b[i] = ' ' ;
-		
+
 		if (b[n-1] == ' ') b[n-1] = '\0' ;
 	}
 	b[n] = '\0';
-	
+
 	if (!stralloc_cats(dst,b) ||
 		!stralloc_0(dst)) log_die_nomem("stralloc") ;
- 	return n ;
+	return n ;
 }
 
 static void build_msg(stralloc *list, int argc,char const *const *argv)
@@ -198,12 +198,12 @@ static void rebuild_without_escape(stralloc *list)
 
 static void display_list(stralloc *list, uint8_t level)
 {
-	if (level == 1)	log_info(list->s) ;
+	if (level == 1) log_info(list->s) ;
 	else if (level == 2) log_warn(list->s) ;
 	else if (level == 3) log_1_warn(list->s) ;
-	else if (level == 4) log_trace(list->s) ; 
-	else if (level == 5) log_1_trace(list->s) ; 
-	else if (level == 6) log_die(LOG_EXIT_SYS,list->s) ; 
+	else if (level == 4) log_trace(list->s) ;
+	else if (level == 5) log_1_trace(list->s) ;
+	else if (level == 6) log_die(LOG_EXIT_SYS,list->s) ;
 	else if (level == 7) log_fatal(list->s) ;
 }
 
@@ -214,18 +214,18 @@ int main(int argc, char const *const *argv, char const *const *envp)
 	unsigned int iclock = 1, idble = 0, itimestamp ;
 	char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0, *clock = 0, *dble = 0, *timestamp = 0 ;
 	char proc[4096] ;
-	
+
 	stralloc list = STRALLOC_ZERO ;
 	stralloc saproc = STRALLOC_ZERO ;
-	
+
 	log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
-	
+
 	/** by default log_out() write on stderr
 	 * switch it to sdtout */
 	set_switch_stream(1) ;
-	
+
 	auto_strings(proc,"/proc/") ;
-	
+
 	PROG = "66-yeller" ;
 	{
 		subgetopt_t l = SUBGETOPT_ZERO ;
@@ -236,8 +236,8 @@ int main(int argc, char const *const *argv, char const *const *envp)
 			switch (opt)
 			{
 				case 'h' : 	info_help() ; return 0 ;
-				case 'v' : 	if (!uint0_scan(l.arg,(uint32_t *)&iverbo)) 
-								log_usage(USAGE) ;	
+				case 'v' : 	if (!uint0_scan(l.arg,(uint32_t *)&iverbo))
+								log_usage(USAGE) ;
 							break ;
 				case 'd' : 	idble = 1 ; break ;
 				case 's' : 	set_switch_stream(0) ; break ;
@@ -245,9 +245,9 @@ int main(int argc, char const *const *argv, char const *const *envp)
 				case '1' :	redir1 = l.arg ; break ;
 				case '2' :	redir2 = l.arg ; break ;
 				case 'z' : 	log_color = &log_color_disable ; break ;
-				case 'n' : 	newline = 0 ; set_trailing_newline(0) ;	break ;
+				case 'n' : 	newline = 0 ; set_trailing_newline(0) ; break ;
 				case 'i' : 	set_default_msg(0) ; break ;
-				case 'p' : 	prog = l.arg ;	break ;
+				case 'p' : 	prog = l.arg ; break ;
 				case 'c' : 	iclock = 0 ; break ;
 				case 'w' : 	if (level) log_usage(USAGE) ; level = 2 ; break ;
 				case 'W' : 	if (level) log_usage(USAGE) ; level = 3 ; break ;
@@ -261,16 +261,16 @@ int main(int argc, char const *const *argv, char const *const *envp)
 		argc -= l.ind ; argv += l.ind ;
 	}
 	if (!argc && !read_stdin) log_usage(USAGE) ;
-	
+
 	if (!idble)
 	{
 		dble = env_get2(envp,"DOUBLE_OUTPUT") ;
 		if (dble)
-			if (!uint0_scan(dble,&idble)) 
+			if (!uint0_scan(dble,&idble))
 				log_die(LOG_EXIT_SYS,"invalid format of DOUBLE_OUTPUT environment variable") ;
 	}
 	set_double_output(idble) ;
-	
+
 	if (iclock)
 	{
 		clock = env_get2(envp,"CLOCK_ENABLED") ;
@@ -286,22 +286,22 @@ int main(int argc, char const *const *argv, char const *const *envp)
 				log_die(LOG_EXIT_SYS,"invalid format of CLOCK_TIMESTAMP environment variable") ;
 		set_clock_timestamp(itimestamp) ;
 	}
-	
+
 	if (!level) level = 1 ;
-	
+
 	char fmt[UINT_FMT] ;
 	fmt[uint_fmt(fmt, getppid())] = 0 ;
-	
+
 	auto_string_from(proc,6,fmt,"/comm") ;
-		
+
 	read_line(&saproc,proc) ;
-	
+
 	if (!prog){
 		PROG = env_get2(envp,"PROG") ;
 		if (!PROG) PROG = saproc.s ;
 	}
 	else PROG = prog ;
-	
+
 	if (iverbo == -1)
 	{
 		verbo = env_get2(envp,"VERBOSITY") ;
@@ -312,7 +312,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 		}
 	}
 	else VERBOSITY=iverbo ;
-	
+
 	if (!redir1) {
 		redir1 = env_get2(envp,"REDIRFD_1") ;
 		if (redir1) set_redirfd_1(redir1) ;
@@ -333,7 +333,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 			if (!auto_stra(&tmp," ")) log_die_nomem("stralloc") ;
 			rebuild_without_escape(&tmp) ;
 		}
-		
+
 		char buf[2] ;
 		ssize_t r = 1 ;
 		while(r > 0)
@@ -364,16 +364,15 @@ int main(int argc, char const *const *argv, char const *const *envp)
 	}
 	else
 	{
-			
 		build_msg(&list,argc,argv) ;
-		if (!newline) 
+		if (!newline)
 			if (!stralloc_cats(&list," ")) log_die_nomem("stralloc") ;
-		
+
 		if (!stralloc_0(&list)) log_die_nomem("stralloc") ;
 		rebuild_without_escape(&list) ;
 		display_list(&list,level) ;
 	}
-	
+
 	stralloc_free(&list) ;
 	stralloc_free(&saproc) ;
 	return 0 ;
