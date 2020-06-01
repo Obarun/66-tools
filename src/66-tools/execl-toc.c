@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>//getenv
+#include <stdio.h>//getenv
 
 #include <oblibs/log.h>
 #include <oblibs/directory.h>
@@ -146,8 +147,8 @@ struct opts_common_s
 	mode_t minus_m ; // -m ou -a for socket
 	// socket option
 	uint8_t minus_s ; // -s -> 0 inactive meaning SOCK_STREAM(default), 1 active SOCK_DGRAM
-	int minus_D ; //-D -> -1 inactive(default), 1 active
-	int minus_B ; //-B -> -1 inactive(default), 1 active
+	int minus_D ; //-D -> 0 inactive(default), 1 active
+	int minus_B ; //-B -> 0 inactive(default), 1 active
 	int minus_b ; // -b -> -1 inactive(default), other value active
 } ;
 
@@ -221,7 +222,6 @@ void parse(opts_common_t *arguments,char **nargv)
 	nargv[n] = 0 ;
 	arguments->argc = n ;
 	arguments->argv = nargv ;
-
 }
 
 static int auto_dir(opts_common_t *arguments)
@@ -233,10 +233,11 @@ static int auto_dir(opts_common_t *arguments)
 	if (!ob_dirname(dir,dest)) log_dieu(LOG_EXIT_SYS,"get dirname of: ",dest) ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
-
+	
 	r = scan_mode(dir,S_IFDIR) ;
 	if (r == -1) return 0 ;
 	if (!r) {
+		if (arguments->minus_m) umask(0) ;
 		if (!dir_create_parent(dir,mode))
 			log_dieusys(LOG_EXIT_SYS,"create dir: ",dir) ;
 
@@ -282,14 +283,15 @@ int execl_directory(opts_common_t *arguments,char **nargv)
 	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
 
 	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
-
+	
 	r = scan_mode(arguments->test_on,S_IFDIR) ;
-	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a directory") ;
+	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but it is not a directory") ;
 	if (!r && !arguments->not_create) {
+		if (arguments->minus_m) umask(0) ;
 		if (!dir_create_parent(arguments->test_on,mode))
 			log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
 
-		 if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
+		if (chown(arguments->test_on, arguments->minus_u,arguments->minus_g) == -1)
 			log_dieusys(LOG_EXIT_SYS,"chown: ",arguments->test_on) ;
 		return 1 ;
 	}
@@ -309,7 +311,7 @@ int execl_fifo(opts_common_t *arguments,char **nargv)
 	mode_t mode = !arguments->minus_m ? S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH : arguments->minus_m ;
 
 	r = scan_mode(arguments->test_on,S_IFIFO) ;
-	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a fifo") ;
+	if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but it is not a fifo") ;
 	if (!r && !arguments->not_create) {
 		if (!auto_dir(arguments)) { 
 			errno = EEXIST ;
@@ -349,6 +351,7 @@ int execl_mountpoint(opts_common_t *arguments,char **nargv)
 	if (r == -1 || r == 1)
 	{
 		if (!arguments->not_create) {
+			if (arguments->minus_m) umask(0) ;
 			if (!dir_create_parent(arguments->test_on,mode))
 				log_dieusys(LOG_EXIT_SYS,"create dir: ",arguments->test_on) ;
 			goto mount ;
@@ -400,7 +403,7 @@ int execl_socket(opts_common_t *arguments,char **nargv)
 	mode_t mode = !arguments->minus_m ? 0777 : arguments->minus_m ;
 
 	r = stat(arguments->test_on, &st) ;
-    if (!r && !S_ISSOCK(st.st_mode)) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but its not a socket") ;
+    if (!r && !S_ISSOCK(st.st_mode)) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but it is not a socket") ;
 	if (r == -1 && !arguments->not_create) 
 	{
 		if (!auto_dir(arguments)) { 
@@ -471,19 +474,19 @@ int execl_common(opts_common_t *arguments, char **nargv)
 
 		case T_BLOCK :
 							r = scan_mode(test,S_IFBLK) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but its not a block") ;
+							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a block") ;
 							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a block") ;
 							break ;
 
 		case T_CHAR :
 							r = scan_mode(test,S_IFCHR) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but its not a character") ;
+							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a character") ;
 							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a character") ;
 							break ;
 
 		case T_REGULAR :
 							r = scan_mode(test,S_IFREG) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but its not a regular file") ;
+							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a regular file") ;
 							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a regular file") ;
 							break ;
 
