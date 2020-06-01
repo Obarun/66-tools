@@ -2,6 +2,12 @@
 
 ---
 
+# In 0.0.5.1
+
+- Bug fix: fix wrong umask at creation time
+
+---
+
 # In 0.0.5.0
 
 - Adapt to oblibs v0.0.8.0
