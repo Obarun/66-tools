@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
-//#include <stdio.h>
 
 #include <oblibs/string.h>
 #include <oblibs/log.h>
@@ -57,9 +56,43 @@ void clean_n_unexport(stralloc *modifs, stralloc *dst, stralloc *src)
 	if (!stralloc_cats(dst,src->s)) log_die_nomem("stralloc") ;
 }
 
+static int cmpnsort(stralloc *sa)
+{
+	size_t pos = 0 ;
+	if (!sa->len) return 0 ;
+	size_t salen = sa->len ;
+	size_t nel = sastr_len(sa), idx = 0, a = 0, b = 0 ;
+	char names[nel][MAXENV + 1] ;
+	char tmp[MAXENV + 1] ;
+
+	for (; pos < salen && idx < nel ; pos += strlen(sa->s + pos) + 1,idx++)
+	{
+		memcpy(names[idx],sa->s + pos,strlen(sa->s + pos)) ;
+		names[idx][strlen(sa->s+pos)] = 0 ;
+	}
+	for (; a < nel - 1 ; a++)
+	{
+		for (b = a + 1 ; b < idx ; b++)
+		{
+			if (strcmp(names[a],names[b]) > 0)
+			{
+				strcpy(tmp,names[a]) ;
+				strcpy(names[a],names[b]);
+				strcpy(names[b],tmp);
+			}
+		}
+	}
+	sa->len = 0 ;
+	for (a = 0 ; a < nel ; a++)
+	{
+		if (!sastr_add_string(sa,names[a])) return 0 ;
+	}
+	return 1 ;
+}
+
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-	int r = 0, unexport = 0, insist = 1, nfile = 0, nvar = 0 ;
+	int r = 0, unexport = 0, insist = 1, nvar = 0 ;
 	size_t pos = 0 ;
 	char const *path = 0, *file = 0 ;
 	char tpath[MAXENV + 1], tfile[MAXENV+1] ;
@@ -136,11 +169,11 @@ int main (int argc, char const *const *argv, char const *const *envp)
 	}
 	else
 	{
+		if (sastr_nelement(&toparse) > MAXFILE) log_die(LOG_EXIT_SYS,"to many file to parse in: ",path) ;
+		if (!cmpnsort(&toparse)) log_dieu(LOG_EXIT_SYS,"sort environment file list from: ",path) ;
 		for (;pos < toparse.len; pos += strlen(toparse.s + pos) + 1)
 		{
-			nfile++;
 			src.len = 0 ;
-			if (nfile > MAXFILE) log_die(LOG_EXIT_SYS,"to many file to parse in: ",path) ;
 			if (!file_readputsa(&src,path,toparse.s+pos)) log_dieusys(LOG_EXIT_SYS,"read file: ",path,toparse.s+pos) ;
 			clean_n_unexport(&modifs,&dst,&src) ;
 			nvar = environ_get_num_of_line(&src) ;
