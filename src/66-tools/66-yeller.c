@@ -47,7 +47,7 @@ static inline void info_help (void)
 "	-S: read from stdin\n"
 "	-1: redirect stdout to file\n"
 "	-2: redirect stderr to file\n"
-"	-z: disable color\n"
+"	-z: enable color\n"
 "	-n: disable trailing new line\n"
 "	-c: disable time display\n"
 "	-p: specifies name of the program\n"
@@ -211,14 +211,14 @@ int main(int argc, char const *const *argv, char const *const *envp)
 {
 	uint8_t level = 0, newline = 1, read_stdin = 0 ;
 	int iverbo = -1 ;
-	unsigned int iclock = 1, idble = 0, itimestamp ;
-	char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0, *clock = 0, *dble = 0, *timestamp = 0 ;
+	unsigned int iclock = 1, idble = 0, itimestamp, icolor = 0 ;
+	char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0, *clock = 0, *dble = 0, *timestamp = 0, *color = 0 ;
 	char proc[4096] ;
 
 	stralloc list = STRALLOC_ZERO ;
 	stralloc saproc = STRALLOC_ZERO ;
 
-	log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
+	log_color = &log_color_disable ;
 
 	/** by default log_out() write on stderr
 	 * switch it to sdtout */
@@ -244,7 +244,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 				case 'S' : 	read_stdin = 1 ; break ;
 				case '1' :	redir1 = l.arg ; break ;
 				case '2' :	redir2 = l.arg ; break ;
-				case 'z' : 	log_color = &log_color_disable ; break ;
+				case 'z' : 	icolor = 1 ; break ;
 				case 'n' : 	newline = 0 ; set_trailing_newline(0) ; break ;
 				case 'i' : 	set_default_msg(0) ; break ;
 				case 'p' : 	prog = l.arg ; break ;
@@ -261,6 +261,15 @@ int main(int argc, char const *const *argv, char const *const *envp)
 		argc -= l.ind ; argv += l.ind ;
 	}
 	if (!argc && !read_stdin) log_usage(USAGE) ;
+
+	if (!color)
+	{
+		color = env_get2(envp,"COLOR_ENABLED") ;
+		if (color)
+			if (!uint0_scan(color,&icolor))
+				log_die(LOG_EXIT_SYS,"invalid format of COLOR_ENABLED environment variable") ;
+	}
+	if (icolor) log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
 
 	if (!idble)
 	{

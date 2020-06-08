@@ -39,7 +39,7 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-2** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist. 
 
-- **-z** : disable color. By default *66-yeller* tries to use color. If the *stream_1* does not point to a terminal, the color is automatically disabled. This option tells to *66-yeller* to not use color at all.
+- **-z** : enable color. If the *stream_1* does not point to a terminal, the color is automatically disabled and the option has no effects.
 
 - **-n** : does not output a trailing newline.
 
