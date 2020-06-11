@@ -1,6 +1,6 @@
 #!/bin/sh
 
-html='66-clock 66-getenv 66-gnwenv 66-olexec 66-which 66-writenv 66-yeller execl-cmdline execl-envfile execl-subuidgid execl-toc index'
+html='66-clock 66-getenv 66-gnwenv 66-olexec 66-which 66-writenv 66-yeller execl-cmdline execl-subuidgid execl-toc index'
 
 if [ ! -d doc/html ]; then
     mkdir -p -m 0755 doc/html
