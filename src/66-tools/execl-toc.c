@@ -36,7 +36,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/djbunix.h>
 
-#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
+#define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -M mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
 
 static inline void info_help (void)
 {
@@ -85,9 +85,10 @@ static inline void info_help (void)
 "	-o: mount options(same as mount -o)\n" 
 "	-t: type mount options(same as mount -t), target for symlink\n"
 "	-d: device mount options (same as mount -t type device /directory)\n"
-"	-u: changes element's owner to (numeric) uid after the creation\n"
-"	-g: changes element's owner to (numeric) gid after the creation\n"
-"	-m: creates element with mode as permissions.\n"
+"	-u: changes element's owner to (numeric/name) uid after the creation\n"
+"	-g: changes element's owner to (numeric/name) gid after the creation\n"
+"	-m: creates element's permissions to (numeric) mode.\n"
+"	-M: creates parent directories of the *element* with permissions to (numeric) mode.\n"
 "	-s: type of element will be SOCK_DGRAM instead of SOCK_STREAM\n"
 "	-D: disallow instant rebinding at element to the same path\n"
 "	-B: the element will be blocking.\n"
@@ -145,6 +146,7 @@ struct opts_common_s
 	gid_t minus_g ; // -g
 	uid_t minus_u ; // -u
 	mode_t minus_m ; // -m ou -a for socket
+	mode_t minus_M ; // -M directory of the element permissions
 	// socket option
 	uint8_t minus_s ; // -s -> 0 inactive meaning SOCK_STREAM(default), 1 active SOCK_DGRAM
 	int minus_D ; //-D -> 0 inactive(default), 1 active
@@ -167,6 +169,7 @@ struct opts_common_s
 	0 , \
 	-1 , \
 	-1 , \
+	0 , \
 	0 , \
 	0 , \
 	0 , \
@@ -195,22 +198,48 @@ void parse(opts_common_t *arguments,char **nargv)
 
 		for (;;)
 		{
-			int opt = subgetopt_r(argc,(char const *const *)argv, "o:t:d:g:u:m:sDBb:", &l) ;
+			int opt = subgetopt_r(argc,(char const *const *)argv, "o:t:d:u:g:m:M:sDBb:", &l) ;
 			if (opt == -1) break ;
 			switch (opt)
 			{
-				case 'o' : arguments->minus_o = l.arg ; break ;
-				case 't' : arguments->minus_t = l.arg ; break ;
-				case 'd' : arguments->minus_d = l.arg ; break ;
-				case 'g' : if (!gid0_scan(l.arg, &arguments->minus_g)) log_usage(USAGE) ; break ;
-				case 'u' : if (!uid0_scan(l.arg, &arguments->minus_u)) log_usage(USAGE) ; break ;
-				case 'm' : if (!uint0_oscan(l.arg, &arguments->minus_m)) log_usage(USAGE) ; break ;
+				case 'o' :	arguments->minus_o = l.arg ; break ;
+				case 't' :	arguments->minus_t = l.arg ; break ;
+				case 'd' :	arguments->minus_d = l.arg ; break ;
+				case 'u' :	if (!uid0_scan(l.arg, &arguments->minus_u))
+								if (get_uidbyname(l.arg,&arguments->minus_u) == -1)
+									log_dieusys(LOG_EXIT_SYS,"get uid of: ",l.arg) ;
+							break ;
+				case 'g' :
+							{
+								if (!gid0_scan(l.arg, &arguments->minus_g))
+								{
+									if (get_gidbyname(l.arg,&arguments->minus_g) == 1)
+									{
+										stralloc ngid = STRALLOC_ZERO ;
+										if (get_groupbygid(arguments->minus_g,&ngid) == -1)
+											log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+										if (ngid.len)
+										{
+											if (!stralloc_0(&ngid)) log_die_nomem("stralloc") ;
+											if (get_gidbygroup(ngid.s,&arguments->minus_g) == -1)
+												log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+										}else if (get_gidbygroup(l.arg,&arguments->minus_g) == -1)
+											log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+										stralloc_free(&ngid) ;
+									}
+									else if (get_gidbygroup(l.arg,&arguments->minus_g) == -1)
+										log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+								}
+								break ;
+							}
+				case 'm' :	if (!uint0_oscan(l.arg, &arguments->minus_m)) log_usage(USAGE) ; break ;
+				case 'M' :	if (!uint0_oscan(l.arg, &arguments->minus_M)) log_usage(USAGE) ; break ;
  				// socket special case
- 				case 's' : arguments->minus_s = 1 ; break ;
- 				case 'D' : arguments->minus_D = 1 ; break ;
- 				case 'B' : arguments->minus_B = 1 ; break ;
- 				case 'b' : if (!uint0_scan(l.arg,(unsigned int *)&arguments->minus_b)) log_usage(USAGE) ; break ;
- 				default : log_usage(USAGE) ; 
+				case 's' :	arguments->minus_s = 1 ; break ;
+				case 'D' :	arguments->minus_D = 1 ; break ;
+				case 'B' :	arguments->minus_B = 1 ; break ;
+				case 'b' :	if (!uint0_scan(l.arg,(unsigned int *)&arguments->minus_b)) log_usage(USAGE) ; break ;
+				default :	log_usage(USAGE) ;
 			}
 		}
 		argc -= l.ind ; argv += l.ind ;
@@ -218,7 +247,7 @@ void parse(opts_common_t *arguments,char **nargv)
 	
 	for (; i < argc ; i++)
 		nargv[n++] = (char *)argv[i] ;
-	
+
 	nargv[n] = 0 ;
 	arguments->argc = n ;
 	arguments->argv = nargv ;
@@ -232,12 +261,12 @@ static int auto_dir(opts_common_t *arguments)
 	char dir[len + 1] ;
 	if (!ob_dirname(dir,dest)) log_dieu(LOG_EXIT_SYS,"get dirname of: ",dest) ;
 
-	mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
+	mode_t mode = !arguments->minus_M ? 0755 : arguments->minus_M ;
 	
 	r = scan_mode(dir,S_IFDIR) ;
 	if (r == -1) return 0 ;
 	if (!r) {
-		if (arguments->minus_m) umask(0) ;
+		if (arguments->minus_M) umask(0) ;
 		if (!dir_create_parent(dir,mode))
 			log_dieusys(LOG_EXIT_SYS,"create dir: ",dir) ;
 
@@ -246,9 +275,10 @@ static int auto_dir(opts_common_t *arguments)
 		r = scan_mode(dir,S_IFDIR) ;
 		if (!r) return 0 ;
 
-		if (chown(dir, arguments->minus_u,arguments->minus_g) == -1)
-			log_dieusys(LOG_EXIT_SYS,"chown: ",dir) ;
-		return 1 ;
+		/** only the last element should match the uid and gid
+		 * given at commandline */
+		//if (chown(dir, arguments->minus_u,arguments->minus_g) == -1)
+		//	log_dieusys(LOG_EXIT_SYS,"chown: ",dir) ;
 	}
 	return 1 ;
 }

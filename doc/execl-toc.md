@@ -14,7 +14,7 @@ Tests an element and creates it, if it does not exist yet, with the default or s
 ## Interface
 
 ```
-	execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -s|D|B ] [ -b backlog ] prog...
+	execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -M mode ] [ -s|D|B ] [ -b backlog ] prog...
 ```
 
 *Execl-toc* (Test Or Create) tests an *element* and creates it, if it does not exist yet, where an *element* can be a directory, a fifo, a socket, a mountpoint or a symlink, for testing and creation, and additionally a file and a string for testing only. Then it execs into the rest of its command line.
@@ -103,11 +103,13 @@ Depending on the *element* to create, `create_options` may or may not be mandato
 
 - **-d** *device* : device mount options (correspond to mount -t type device /directory). **Mandatory** is the case of mountpoint creation. This option has no effect in other cases.
 
-- **-u** *uid* : changes *element*'s owner to (numeric) uid after the creation. Default is the uid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases.
+- **-u** *uid* : changes *element*'s owner to (numeric/name) uid after the creation. Default is the uid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases. If *mode* is given by a name, it searches the user database for an entry with a matching name.
 
-- **-g** *gid* : changes *element*'s owner to (numeric) gid after the creation. Default is the gid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases.
+- **-g** *gid* : changes *element*'s owner to (numeric/name) gid after the creation. Default is the gid of the owner of the process. This option is used for directory and fifos creation and it has no effects in other cases. If *mode* is given by a name, it searches the user database for an entry with a matching name then it searches the corresponding group of that name. If it's not found, it searches the group database for an entry with a matching name.
 
-- **-m** *mode* : create *element*'s permissions to (numeric) mode after the creation. Default is `0755`, `0666` and `0777` for a directory, fifo and socket creation respectively. This option is used for directory, fifos and sockets creation and it has no effects in other cases.
+- **-m** *mode* : creates *element*'s permissions to (numeric) mode. Default is `0755`, `0666` and `0777` for a directory, fifo and socket creation respectively. This option is used for directory, fifos and sockets creation and it has no effects in other cases.
+
+- **-M** *mode* : creates parent directories of the *element* with permissions to (numeric) mode. Default is `0755`.
 
 - **-s** : element will be `SOCK_DGRAM` where element is a socket. Default `SOCK_STREAM`. This option is used for socket creation and it has no effects in other cases.
 
