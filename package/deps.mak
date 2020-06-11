@@ -10,7 +10,6 @@ src/66-tools/66-which.o src/66-tools/66-which.lo: src/66-tools/66-which.c
 src/66-tools/66-writenv.o src/66-tools/66-writenv.lo: src/66-tools/66-writenv.c
 src/66-tools/66-yeller.o src/66-tools/66-yeller.lo: src/66-tools/66-yeller.c
 src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-cmdline.c
-src/66-tools/execl-envfile.o src/66-tools/execl-envfile.lo: src/66-tools/execl-envfile.c
 src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/execl-subuidgid.c
 src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
 66-clock: EXTRA_LIBS :=
@@ -29,8 +28,6 @@ src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
 66-yeller: src/66-tools/66-yeller.o -loblibs -lskarnet 
 execl-cmdline: EXTRA_LIBS :=
 execl-cmdline: src/66-tools/execl-cmdline.o -loblibs -lexecline -lskarnet
-execl-envfile: EXTRA_LIBS :=
-execl-envfile: src/66-tools/execl-envfile.o ${LIBEXECLINE} -loblibs -lexecline -lskarnet 
 execl-subuidgid: EXTRA_LIBS :=
 execl-subuidgid: src/66-tools/execl-subuidgid.o -loblibs -lexecline -lskarnet ${LIBEXECLINE}
 execl-toc: EXTRA_LIBS :=
