@@ -7,7 +7,7 @@ Build Instructions
 - GNU make version 3.81 or later
 - skalibs version 2.9.2.1 or later
 - execline version 2.6.0.2 or later 
-- oblibs version 0.0.8.0 or later
+- oblibs version 0.0.9.0 or later
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 
@@ -23,11 +23,11 @@ Other [obarun](https://web.obarun.org) software automatically handles that case 
 
 You can strip the libraries of their extra symbols via `make strip` before the `make install` phase. It will shave a few bytes off them.
 
+Note: the man and html documentation pages will always be generated if *lowdown* is installed on your system. However, if you don't ask to build the documentation the final `DESTDIR` directory will do not contains any documentation at all.
 
 ## Customization
 
 You can customize the installation process via flags given to configure. See `./configure --help` for a list of all available configure options.
-
 
 ## Environment variables
 
@@ -36,7 +36,6 @@ Controlling a build process via environment variables is a big and dangerous ham
 If the CC environment variable is set, its value will override compiler detection by configure. The *--host=HOST* option will still add a HOST- prefix to the value of CC.
 
 The values of *CFLAGS*, *CPPFLAGS* and *LDFLAGS* will be appended to the default flags set by configure. To override those defaults instead of appending to them, use the *CPPFLAGS*, *CFLAGS* and *LDFLAGS* *make variables* instead of environment variables.
-
 
 ## Make variables
 
@@ -79,7 +78,6 @@ When using slashpackage, two additional Makefile targets are available after `ma
 - `make -L update` changes the default version of the software to the freshly installed one. (This is useful when you have several installed versions of the same software, which slashpackage supports.)
 - `make -L global-links` adds links from DIR/command and DIR/library.so to the default version of the binaries and shared libraries.
 The `-L` option to make is necessary because targets are symbolic links, and the default make behaviour is to check the pointed file's timestamp and not the symlink's timestamp.
-
 
 ## Out-of-tree builds
 
