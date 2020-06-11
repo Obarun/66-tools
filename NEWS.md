@@ -2,6 +2,23 @@
 
 ---
 
+# In 0.0.6.0
+
+***WARNING***: execl-envfile binary was **removed**. It now a part of [66](https://framagit.org/obarun/66.git) software.
+
+- adapt to oblibs v0.0.9.0
+
+- execl-toc:
+	- Add *-M* options: create the parent directories of an element with a specific *mode*.
+	- Allow to set the uid/gid at *-u* and *-g* by numeric or name value.
+
+- 66-yeller:
+	- *-z* option mean now enable color instead of disable color. It was a big mistake to do the contrary. Sorry for this inconvenient.
+
+- documentation installation: calling the makefile with `make install` install now the documentation by default.
+
+---
+
 # In 0.0.5.1
 
 - Bug fix: fix wrong umask at creation time
