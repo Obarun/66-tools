@@ -86,7 +86,7 @@ ifneq ($(strip $(ALL_BINS)$(SHARED_LIBS)),)
 	exec $(STRIP) -R .note -R .comment -R .note.GNU-stack $(ALL_BINS) $(SHARED_LIBS)
 endif
 
-install: install-dynlib install-libexec install-bin install-lib install-include
+install: install-dynlib install-libexec install-bin install-lib install-include install-html install-man
 install-dynlib: $(SHARED_LIBS:lib%.so.xyzzy=$(DESTDIR)$(dynlibdir)/lib%.so)
 install-libexec: $(LIBEXEC_TARGETS:%=$(DESTDIR)$(libexecdir)/%)
 install-bin: $(BIN_TARGETS:%=$(DESTDIR)$(bindir)/%)
@@ -94,8 +94,7 @@ install-lib: $(STATIC_LIBS:lib%.a.xyzzy=$(DESTDIR)$(libdir)/lib%.a)
 install-include: $(ALL_INCLUDES:src/include/$(package)/%.h=$(DESTDIR)$(includedir)/$(package)/%.h)
 install-data: $(ALL_DATA:src/etc/%=$(DESTDIR)$(datadir)/%)
 install-html: $(INSTALL_HTML:doc/html/%.html=$(DESTDIR)$(datarootdir)/doc/$(package)/%.html)
-install-man: install-man1
-install-man1: $(INSTALL_MAN:doc/man/man1/%.1=$(DESTDIR)$(mandir)/man1/%.1)
+install-man: $(INSTALL_MAN:doc/man/man1/%.1=$(DESTDIR)$(mandir)/man1/%.1)
 
 ifneq ($(exthome),)
 
