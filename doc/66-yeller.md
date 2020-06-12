@@ -123,6 +123,10 @@ The following environment variable can be set to configure the default *66-yelle
 
 	Corresponds to the **-v** option. Specifies the verbosity level to use.
 
+- ### COLOR_ENABLED
+
+	Corresponds to the **-z** option. Tells to *66-yeller* to use color. A value of `1` enable the color, where `0` disable it.
+
 - ### DOUBLE_OUTPUT
 
 	Corresponds to the **-d** option. Tells to *66-yeller* to use double-output. A value of `1` switches on the double-output, where `0` switches off the double-output.
