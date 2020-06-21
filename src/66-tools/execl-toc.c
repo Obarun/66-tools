@@ -46,8 +46,8 @@ static inline void info_help (void)
 "main_options :\n"
 "	-h: print this help\n" 
 "	-v: increase/decrease verbosity\n"
-"	-n: negate the test"
-"	-t: exit 0 if the test fails"
+"	-n: negate the test\n"
+"	-t: exit 0 if the test fails\n"
 "	-D: only test and disable creation\n"
 "	-X: do not execute prog\n"
 "\n"
@@ -488,7 +488,7 @@ int execl_symlink(opts_common_t *arguments,char **nargv)
 
 int execl_common(opts_common_t *arguments, char **nargv)
 {
-	int r, n = 0, i = 0 ;
+	int r, n = 0, i = 0, e = 1 ;
 	struct stat st ;
 	char const *test = arguments->test_on ;
 	int argc = arguments->argc ;
@@ -499,81 +499,81 @@ int execl_common(opts_common_t *arguments, char **nargv)
 		case T_EXIST :
 	
 							if (stat(test, &st) == -1)
-								log_warn_return(LOG_EXIT_ZERO,test," doesn't exist") ;
+								{ log_warn(test," doesn't exist") ;	e = 0 ;	}
 							break ;
 
 		case T_BLOCK :
 							r = scan_mode(test,S_IFBLK) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a block") ;
-							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a block") ;
+							if (r == -1){ log_warn(test," exist but it is not a block") ; e = 0 ; }
+							if (!r) { log_warn(test," is not a block") ; e = 0 ; }
 							break ;
 
 		case T_CHAR :
 							r = scan_mode(test,S_IFCHR) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a character") ;
-							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a character") ;
+							if (r == -1){ log_warn(test," exist but it is not a character") ; e = 0 ; }
+							if (!r) { log_warn(test," is not a character") ; e = 0 ; }
 							break ;
 
 		case T_REGULAR :
 							r = scan_mode(test,S_IFREG) ;
-							if (r == -1) log_warn_return(LOG_EXIT_ZERO,test," exist but it is not a regular file") ;
-							if (!r) log_warn_return(LOG_EXIT_ZERO,test," is not a regular file") ;
+							if (r == -1) { log_warn(test," exist but it is not a regular file") ; e = 0 ; }
+							if (!r) { log_warn(test," is not a regular file") ; e = 0 ; }
 							break ;
 
 		case T_SGID :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (!(st.st_mode & S_ISGID))
-								log_warn_return(LOG_EXIT_ZERO,test," is not set-group-id") ;
+								{ log_warn(test," is not set-group-id") ; e = 0 ; }
 							break ;
 
 		case T_SUID :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (!(st.st_mode & S_ISUID))
-								log_warn_return(LOG_EXIT_ZERO,"set-user-id bit is not set for: ",test) ;
+								{ log_warn("set-user-id bit is not set for: ",test) ; e = 0 ; }
 							break ;
 
 		case T_STICKY :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if(!(st.st_mode & S_ISVTX))
-								log_warn_return(LOG_EXIT_ZERO,"not sticky bit set for: ",test) ;
+								{ log_warn("not sticky bit set for: ",test) ; e = 0 ; }
 							break ;
 
 		case T_NONZEROFILE :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (!st.st_size)
-								log_warn_return(LOG_EXIT_ZERO,"file size of: ",test," is zero") ;
+								{ log_warn("file size of: ",test," is zero") ; e = 0 ; }
 							break ;
 
 		case T_MODIFIED :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_mtime < st.st_atime)
-								log_warn_return(LOG_EXIT_ZERO,test," was not modified") ;
+								{ log_warn(test," was not modified") ; e = 0 ; }
 							break ;
 
 		case T_EUID :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_uid != geteuid())
-								log_warn_return(LOG_EXIT_ZERO,test," is not owned by the effective user id") ;
+								{ log_warn(test," is not owned by the effective user id") ; e = 0 ; }
 							break ;
 
 		case T_EGID :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_gid != getegid())
-								log_warn_return(LOG_EXIT_ZERO,test," is not owned by the effective group id") ;
+								{ log_warn(test," is not owned by the effective group id") ; e = 0 ; }
 							break ;
 
 		case T_READABLE :
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IRUSR))
-									log_warn_return(LOG_EXIT_ZERO,test," is not readable") ;
+									{ log_warn(test," is not readable") ; e = 0 ; }
 							}
 							else if (st.st_gid == getegid()) { 
 								if (!(st.st_mode & S_IRGRP))
-									log_warn_return(LOG_EXIT_ZERO,test," is not writable") ;
+									{ log_warn(test," is not writable") ; e = 0 ; }
 							}
 							else if (!(st.st_mode & S_IROTH)) {
-								log_warn_return(LOG_EXIT_ZERO,test," is not writable") ;
+								{ log_warn(test," is not writable") ; e = 0 ; }
 							}
 							break ;
 
@@ -581,14 +581,14 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IWUSR))
-									log_warn_return(LOG_EXIT_ZERO,test," is not writable") ;
+									{ log_warn(test," is not writable") ; e = 0 ; }
 							}
 							else if (st.st_gid == getegid()) {
 								if (!(st.st_mode & S_IWGRP))
-									log_warn_return(LOG_EXIT_ZERO,test," is not writable") ;
+									{ log_warn(test," is not writable") ; e = 0 ; }
 							}
 							else if (!(st.st_mode & S_IWOTH)) {
-								log_warn_return(LOG_EXIT_ZERO,test," is not writable") ;
+								{ log_warn(test," is not writable") ; e = 0 ; }
 							}
 							break ;
 
@@ -596,14 +596,14 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IXUSR))
-									log_warn_return(LOG_EXIT_ZERO,test," is not executable") ;
+									{ log_warn(test," is not executable") ; e = 0 ; }
 							}
 							else if (st.st_gid == getegid()) {
 								if (!(st.st_mode & S_IXGRP))
-									log_warn_return(LOG_EXIT_ZERO,test," is not executable") ;
+									{ log_warn(test," is not executable") ; e = 0 ; }
 							}
 							else if (!(st.st_mode & S_IXOTH)) {
-								log_warn_return(LOG_EXIT_ZERO,test," is not executable") ;
+								{ log_warn(test," is not executable") ; e = 0 ; }
 							}
 							break ;
 
@@ -612,20 +612,20 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							unsigned int fd ;
 							if (!uint0_scan(test, &fd))
 								log_dieu(LOG_EXIT_SYS,"scan: ",test) ;
-							if (!isatty(fd)) log_warn_return(LOG_EXIT_ZERO,test," do not refer to a terminal") ;
+							if (!isatty(fd)) { log_warn(test," do not refer to a terminal") ; e = 0 ; }
 							break ;
 						}
 
 		case T_NONZERO :
-							if (!test[0]) log_warn_return(LOG_EXIT_ZERO,test," is empty");
+							if (!test[0]) { log_warn(test," is empty") ; e = 0 ; }
 							break ;
 
 		case T_ZERO :
-							if (arguments->test_on[0]) log_warn_return(LOG_EXIT_ZERO,test," is not empty") ;
+							if (arguments->test_on[0]) { log_warn(test," is not empty") ; e = 0 ; }
 							break ;
 
 		case T_ENV :
-							if (!getenv(arguments->test_on)) log_warn_return(LOG_EXIT_ZERO,"variable: ", test," is not set") ;
+							if (!getenv(arguments->test_on)) { log_warn("variable: ", test," is not set") ; e = 0 ; }
 							break ;
 
 		case T_EMPTY :
@@ -633,13 +633,13 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							stralloc satree = STRALLOC_ZERO ;
 							if (!sastr_dir_get(&satree,test,"",S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK))
 								log_dieusys(LOG_EXIT_ZERO,"get contain of directory: ",test) ;
-							if (satree.len) log_warn_return(LOG_EXIT_ZERO,"directory: ",test," is not empty") ;
+							if (satree.len) { log_warn("directory: ",test," is not empty") ; e = 0 ; }
 							break ;
 						}
 
 		default:			log_die(LOG_EXIT_SYS, "operation not implemented") ;
-	  }
-	 
+	}
+
 	argc -= 1 ; argv += 1 ;
 	for (; i < argc ; i++)
 		nargv[n++] = (char *)argv[i] ;
@@ -650,7 +650,7 @@ int execl_common(opts_common_t *arguments, char **nargv)
 
 	if (!arguments->argc && !arguments->noprog) log_die(LOG_EXIT_USER,"missing argument prog") ;
 	
-	return 1 ;
+	return e ;
 }
 
 int main(int argc,char const *const *argv, char const *const *envp)
@@ -847,7 +847,8 @@ int main(int argc,char const *const *argv, char const *const *envp)
 	if (!arguments.func_name) log_die(LOG_EXIT_SYS, "operation not implemented") ;
 
 	r = (*func)(&arguments,nargv) ;
-	if (negat == !!r) return treat_zero ? LOG_EXIT_ZERO : LOG_EXIT_SYS ;
+
+	if (negat == r) return treat_zero ? LOG_EXIT_ZERO : LOG_EXIT_SYS ;
 	if (arguments.noprog) return LOG_EXIT_ZERO ;
 	
 	xpathexec_run(arguments.argv[0],(char const *const *)arguments.argv,arguments.envp) ;
