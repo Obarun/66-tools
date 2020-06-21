@@ -2,6 +2,12 @@
 
 ---
 
+# In 0.0.6.1
+
+- Bugs fix: fix *execl-toc* **-t** **-n** main_options behavior
+
+---
+
 # In 0.0.6.0
 
 ***WARNING***: execl-envfile binary was **removed**. It now a part of [66](https://framagit.org/obarun/66.git) software.
