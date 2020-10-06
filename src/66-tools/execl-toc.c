@@ -521,49 +521,81 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							break ;
 
 		case T_SGID :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (!(st.st_mode & S_ISGID))
 								{ log_warn(test," is not set-group-id") ; e = 0 ; }
 							break ;
 
 		case T_SUID :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (!(st.st_mode & S_ISUID))
 								{ log_warn("set-user-id bit is not set for: ",test) ; e = 0 ; }
 							break ;
 
 		case T_STICKY :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if(!(st.st_mode & S_ISVTX))
 								{ log_warn("not sticky bit set for: ",test) ; e = 0 ; }
 							break ;
 
 		case T_NONZEROFILE :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (!st.st_size)
 								{ log_warn("file size of: ",test," is zero") ; e = 0 ; }
 							break ;
 
 		case T_MODIFIED :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_mtime < st.st_atime)
 								{ log_warn(test," was not modified") ; e = 0 ; }
 							break ;
 
 		case T_EUID :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_uid != geteuid())
 								{ log_warn(test," is not owned by the effective user id") ; e = 0 ; }
 							break ;
 
 		case T_EGID :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_gid != getegid())
 								{ log_warn(test," is not owned by the effective group id") ; e = 0 ; }
 							break ;
 
 		case T_READABLE :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IRUSR))
 									{ log_warn(test," is not readable") ; e = 0 ; }
@@ -578,7 +610,11 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							break ;
 
 		case T_WRITABLE :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IWUSR))
 									{ log_warn(test," is not writable") ; e = 0 ; }
@@ -593,7 +629,11 @@ int execl_common(opts_common_t *arguments, char **nargv)
 							break ;
 
 		case T_EXECUTABLE :
-							if (stat(test, &st) == -1) log_dieusys(LOG_EXIT_SYS,"stat: ",test) ;
+							if (stat(test, &st) == -1) { 
+								log_warnusys("stat: ",test) ; 
+								e = 0 ; 
+								break ;
+							}
 							if (st.st_uid == geteuid()) {
 								if (!(st.st_mode & S_IXUSR))
 									{ log_warn(test," is not executable") ; e = 0 ; }
@@ -610,8 +650,11 @@ int execl_common(opts_common_t *arguments, char **nargv)
 		case T_TERM :
 						{
 							unsigned int fd ;
-							if (!uint0_scan(test, &fd))
-								log_dieu(LOG_EXIT_SYS,"scan: ",test) ;
+							if (!uint0_scan(test, &fd)) { 
+								log_warnusys("scan: ",test) ;
+								e = 0 ; 
+								break ;
+							}
 							if (!isatty(fd)) { log_warn(test," do not refer to a terminal") ; e = 0 ; }
 							break ;
 						}
@@ -631,8 +674,11 @@ int execl_common(opts_common_t *arguments, char **nargv)
 		case T_EMPTY :
 						{
 							stralloc satree = STRALLOC_ZERO ;
-							if (!sastr_dir_get(&satree,test,"",S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK))
-								log_dieusys(LOG_EXIT_ZERO,"get contain of directory: ",test) ;
+							if (!sastr_dir_get(&satree,test,"",S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK)) {
+								log_warnusys("get contain of directory: ",test) ;
+								e = 0 ;
+								break ;
+							}
 							if (satree.len) { log_warn("directory: ",test," is not empty") ; e = 0 ; }
 							break ;
 						}
