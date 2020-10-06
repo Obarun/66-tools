@@ -2,6 +2,13 @@
 
 ---
 
+# In 0.0.6.2
+
+- bug fix: 
+	- *execl-toc* respect **-t** **-n** options if the test crash
+
+---
+
 # In 0.0.6.1
 
 - Bugs fix: fix *execl-toc* **-t** **-n** main_options behavior
