@@ -54,9 +54,9 @@ static int youruid(uid_t *passto,char const *owner)
 	e = errno ;
 	errno = 0 ;
 	struct passwd *st ;
-	if (!(st = getpwnam(owner)) || errno)
+	if (!(st = getpwnam(owner)))
 	{
-		if (!errno) errno = EINVAL ;
+		if (!errno) errno = ESRCH ;
 		return 0 ;
 	}
 	*passto = st->pw_uid ;
@@ -70,9 +70,9 @@ static int yourgid(gid_t *passto,uid_t owner)
 	e = errno ;
 	errno = 0 ;
 	struct passwd *st ;
-	if (!(st = getpwuid(owner)) || errno)
+	if (!(st = getpwuid(owner)))
 	{
-		if (!errno) errno = EINVAL ;
+		if (!errno) errno = ESRCH ;
 		return 0 ;
 	}
 	*passto = st->pw_gid ;
