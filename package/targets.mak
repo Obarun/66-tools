@@ -11,5 +11,7 @@ execl-cmdline \
 execl-subuidgid \
 execl-toc
 
+RULE_TARGET := $(shell find example/rule -type f)
+
 LIBEXEC_TARGETS :=
 

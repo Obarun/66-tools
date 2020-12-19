@@ -66,7 +66,7 @@ all: $(ALL_LIBS) $(ALL_BINS) $(ALL_INCLUDES)
 clean:
 	@exec rm -f $(ALL_LIBS) $(ALL_BINS) $(wildcard src/*/*.o src/*/*.lo) $(EXTRA_TARGETS) \
 	$(INSTALL_HTML) $(INSTALL_MAN)
-	
+
 distclean: clean
 	@exec rm -f config.mak src/include/$(package)/config.h
 
@@ -87,6 +87,7 @@ ifneq ($(strip $(ALL_BINS)$(SHARED_LIBS)),)
 endif
 
 install: install-dynlib install-libexec install-bin install-lib install-include install-html install-man
+install-ns-rule: $(RULE_TARGET:example/rule/%=$(DESTDIR)$(ns_rule)/%)
 install-dynlib: $(SHARED_LIBS:lib%.so.xyzzy=$(DESTDIR)$(dynlibdir)/lib%.so)
 install-libexec: $(LIBEXEC_TARGETS:%=$(DESTDIR)$(libexecdir)/%)
 install-bin: $(BIN_TARGETS:%=$(DESTDIR)$(bindir)/%)
@@ -122,7 +123,7 @@ $(DESTDIR)$(datarootdir)/doc/$(package)/%.html: doc/html/%.html
 $(DESTDIR)$(mandir)/man1/%.1: doc/man/man1/%.1
 	$(INSTALL) -D -m 644 $< $@ && \
 	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
-	
+
 $(DESTDIR)$(datadir)/%: src/etc/%
 	exec $(INSTALL) -D -m 644 $< $@
 
@@ -143,6 +144,9 @@ $(DESTDIR)$(libdir)/lib%.a: lib%.a.xyzzy
 $(DESTDIR)$(includedir)/$(package)/%.h: src/include/$(package)/%.h
 	exec $(INSTALL) -D -m 644 $< $@
 
+$(DESTDIR)$(ns_rule)/%: example/rule/%
+	$(INSTALL) -D -m 644 $< $@
+
 %.o: %.c
 	exec $(CC) $(CPPFLAGS_ALL) $(CFLAGS_ALL) -c -o $@ $<
 
@@ -159,6 +163,6 @@ lib%.a.xyzzy:
 lib%.so.xyzzy:
 	exec $(CC) -o $@ $(CFLAGS_ALL) $(CFLAGS_SHARED) $(LDFLAGS_ALL) $(LDFLAGS_SHARED) -Wl,-soname,$(patsubst lib%.so.xyzzy,lib%.so.$(version_M),$@) $^ $(EXTRA_LIBS) $(LDLIBS)
 
-.PHONY: it all clean distclean tgz strip install install-dynlib install-bin install-lib install-include install-data install-man install-html
+.PHONY: it all clean distclean tgz strip install install-dynlib install-bin install-lib install-include install-data install-man install-html install-ns-rule
 
 .DELETE_ON_ERROR:
