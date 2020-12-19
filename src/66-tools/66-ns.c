@@ -154,6 +154,7 @@ enum enum_type_flags_e
     TYPE_TMPFS ,
     TYPE_HIDDEN ,
     TYPE_RECURSIVE ,
+    TYPE_CLONE ,
     TYPE_ENDOFKEY
 } ;
 
@@ -161,6 +162,7 @@ char const *enum_type_flags_str[] = {
     "tmpfs" ,
     "hidden" ,
     "recursive" ,
+    "clone" ,
     0
 } ;
 
@@ -1031,9 +1033,7 @@ void mnt_remount_ro(ns_entry_t *entry,genalloc *list)
                     continue ;
 
                 size_t mlen = strlen(dir) ;
-                ns_entry_t nopts = NS_ENTRY_ZERO ;
-
-                nopts = ns_compute_opts(str + m->mnt_opts,SADATA.s + entry->opts) ;
+                ns_entry_t nopts = ns_compute_opts(str + m->mnt_opts,SADATA.s + entry->opts) ;
 
                 char dest[nlen + mlen + 1] ;
 
@@ -1048,9 +1048,7 @@ void mnt_remount_ro(ns_entry_t *entry,genalloc *list)
         }
         {
 
-            ns_entry_t nopts = NS_ENTRY_ZERO ;
-
-            nopts = ns_compute_opts(mopts,SADATA.s + entry->opts) ;
+            ns_entry_t nopts = ns_compute_opts(mopts,SADATA.s + entry->opts) ;
 
             nopts.flags |= myflag | entry->flags ;
 
@@ -1090,9 +1088,7 @@ void ns_mount_recursive(char const *root, ns_entry_t *entry)
             char target[prefix_len + len + 1] ;
             auto_strings(target,root,dir) ;
 
-            ns_entry_t nopts = NS_ENTRY_ZERO ;
-
-            nopts = ns_compute_opts(str + m->mnt_opts,SADATA.s + entry->opts) ;
+            ns_entry_t nopts = ns_compute_opts(str + m->mnt_opts,SADATA.s + entry->opts) ;
 
             nopts.flags |= MS_REMOUNT | MS_BIND | MS_REC ;
             /** We need to apply it after. For example
@@ -1497,6 +1493,15 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 
             break ;
 
+        case TYPE_CLONE:
+
+            if (is_mnt(target))
+                log_die(LOG_EXIT_USER,"type clone cannot be used for a mountpoint") ;
+
+            ns_clone_node(str + entry->path,target) ;
+
+            return ;
+
         default:
 
             break ;
@@ -1512,9 +1517,7 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 
         type = _MNTFILE_SA.s + mnt_type ;
 
-        ns_entry_t nentry = NS_ENTRY_ZERO ;
-
-        nentry = ns_compute_opts(_MNTFILE_SA.s + mntfile_get(str + entry->path,MNTFILE_OPTS), str + entry->opts) ;
+        ns_entry_t nentry = ns_compute_opts(_MNTFILE_SA.s + mntfile_get(str + entry->path,MNTFILE_OPTS), str + entry->opts) ;
 
         flags |= nentry.flags ;
 
@@ -1736,6 +1739,13 @@ void ns_compute_entry(ns_entry_t *entry)
         case TYPE_RECURSIVE:
 
             entry->flags |= MS_BIND | MS_REC ;
+
+            break ;
+
+        case TYPE_CLONE:
+
+            entry->flags = 0 ;
+            entry->opts = -1 ;
 
             break ;
 

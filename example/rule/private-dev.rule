@@ -15,37 +15,37 @@ options=rw
 options=rw
 
 [/dev/ptmx]
-options=rw
+type=clone
 
 [/dev/null]
-options=rw
+type=clone
 
 [/dev/zero]
-options=rw
+type=clone
 
 [/dev/full]
-options=rw
+type=clone
 
 [/dev/random]
-options=rw
+type=clone
 
 [/dev/urandom]
-options=rw
+type=clone
 
 [/dev/tty]
-options=rw
+type=clone
 
 [/dev/core]
-options=rw
+type=clone
 
 [/dev/fd]
-options=rw
+type=clone
 
 [/dev/stdin]
-options=rw
+type=clone
 
 [/dev/stdout]
-options=rw
+type=clone
 
 [/dev/stderr]
-options=rw
+type=clone
