@@ -5,6 +5,7 @@
 src/66-tools/66-clock.o src/66-tools/66-clock.lo: src/66-tools/66-clock.c
 src/66-tools/66-getenv.o src/66-tools/66-getenv.lo: src/66-tools/66-getenv.c
 src/66-tools/66-gnwenv.o src/66-tools/66-gnwenv.lo: src/66-tools/66-gnwenv.c
+src/66-tools/66-ns.o src/66-tools/66-ns.lo: src/66-tools/66-ns.c src/include/66-tools/config.h
 src/66-tools/66-olexec.o src/66-tools/66-olexec.lo: src/66-tools/66-olexec.c
 src/66-tools/66-which.o src/66-tools/66-which.lo: src/66-tools/66-which.c
 src/66-tools/66-writenv.o src/66-tools/66-writenv.lo: src/66-tools/66-writenv.c
@@ -18,6 +19,8 @@ src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
 66-getenv: src/66-tools/66-getenv.o -loblibs -lskarnet 
 66-gnwenv: EXTRA_LIBS :=
 66-gnwenv: src/66-tools/66-gnwenv.o -loblibs -lskarnet 
+66-ns: EXTRA_LIBS :=
+66-ns: src/66-tools/66-ns.o -loblibs -lskarnet 
 66-olexec: EXTRA_LIBS :=
 66-olexec: src/66-tools/66-olexec.o -loblibs -lskarnet 
 66-which: EXTRA_LIBS :=

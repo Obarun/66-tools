@@ -1,0 +1,7 @@
+[/proc/kmsg]
+type=hidden
+ignore=yes
+
+[/dev/kmsg]
+type=hidden
+ignore=yes

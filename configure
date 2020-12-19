@@ -26,7 +26,8 @@ Fine tuning of the installation directories:
   --includedir=DIR              C header files [PREFIX/include]
   --datarootdir=DATAROOTDIR     read-only architecture-independent data root [PREFIX/share]
   --mandir=DIR                  man documentation [$datarootdir/man]
- 
+  --with-ns-rule=DIR            66-ns rule installation directory [DATAROOTDIR/66/script/ns]
+
  If no --prefix option is given, by default libdir (but not dynlibdir) will be
  /usr/lib/$package, and includedir will be /usr/include.
 
@@ -147,6 +148,7 @@ includedir='$prefix/include'
 sysdeps='$prefix/lib/skalibs/sysdeps'
 datarootdir='$prefix/share'
 mandir='$datarootdir/man'
+ns_rule='$datarootdir/66/script/ns'
 manualsysdeps=false
 shared=false
 static=true
@@ -177,6 +179,7 @@ for arg ; do
     --includedir=*) includedir=${arg#*=} ;;
     --datarootdir=*) datarootdir=${arg#*=} ;;
     --mandir=*) mandir=${arg#*=} ;;
+    --with-ns-rule=*) ns_rule=${arg#*=} ;;
     --with-sysdeps=*) sysdeps=${arg#*=} manualsysdeps=true ;;
     --with-include=*) var=${arg#*=} ; stripdir var ; addincpath="$addincpath -I$var" ;;
     --with-lib=*) var=${arg#*=} ; stripdir var ; addlibspath="$addlibspath -L$var" ; vpaths="$vpaths $var" ;;
@@ -225,14 +228,14 @@ fi
 stripdir prefix
 for i in exec_prefix dynlibdir libexecdir \
          bindir libdir includedir sysdeps sproot \
-         datarootdir mandir ; do
+         datarootdir mandir ns_rule ; do
   eval tmp=\${$i}
   eval $i=$tmp
   stripdir $i
 done
 
 stripdir datarootdir
-for i in mandir; do
+for i in mandir ns_rule; do
   eval tmp=\${$i}
   eval $i=$tmp
   stripdir $i
@@ -269,6 +272,7 @@ if $slashpackage ; then
   includedir=${home}/include
   datarootdir=${home}/data
   mandir=${dataroodir}/doc/man
+  ns_rule=${dataroodir}/66/script/ns
   while read dep condvar ; do
     if test -n "$condvar" ; then
       eval "cond=$condvar"
@@ -392,7 +396,7 @@ if test -z "$vpaths" ; then
     base=$(basename $dep) ;
     vpaths="$vpaths /usr/lib/$base"
     addlibspath="$addlibspath -L/usr/lib/$base"
-  done < package/deps-build  
+  done < package/deps-build
 fi
 
 echo "Creating config.mak..."
@@ -414,6 +418,7 @@ libdir := $libdir
 includedir := $includedir
 datarootdir := $datarootdir
 mandir := $mandir
+ns_rule := $ns_rule
 sysdeps := $sysdeps
 slashpackage := $slashpackage
 sproot := $sproot
@@ -484,6 +489,7 @@ else
   echo "#define ${package_macro_name}_EXTBINPREFIX \"\""
 fi
 echo "#define ${package_macro_name}_LIBEXECPREFIX \"$libexecdir/\""
+echo "#define ${package_macro_name}_NSRULE \"$ns_rule/\""
 echo
 echo "#endif"
 exec 1>&3 3>&-

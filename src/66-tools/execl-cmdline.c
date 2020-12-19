@@ -31,7 +31,7 @@
 static inline void info_help (void)
 {
   static char const *help =
-"execl-envfile <options> { command... }\n"
+"execl-cmdline <options> { command... }\n"
 "\n"
 "options :\n"
 "	-h: print this help\n" 
