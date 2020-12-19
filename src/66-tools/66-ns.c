@@ -94,7 +94,7 @@ static char *NSHIDDEN = "/run/66/ns/hidden" ;
 static char *NSPREFIX = "/run/66/ns" ;
 static char *NSTMP = "/run/66/ns/nstmp" ;
 
-#define USAGE "66-ns [ -h ] [ -z ] [ -v verbosity ] [ -e dir:type:options:... ] [ -r rule ] [ -o ns_options,... ] prog"
+#define USAGE "66-ns [ -h ] [ -z ] [ -v verbosity ] [ -d notif ] [ -e dir:type:options:... ] [ -r rule ] [ -o ns_options,... ] prog"
 
 static inline void info_help (void)
 {
@@ -105,6 +105,7 @@ static inline void info_help (void)
         "   -h: print this help\n"
         "   -z: use color\n"
         "   -v: increase/decrease verbosity\n"
+        "   -d: notify readiness on file descriptor notif\n"
         "   -e: element to handle. Can be passed multiple time.\n"
         "   -r: list of rule to apply. Can be passed multiple time.\n"
         "   -o: comma separated list of namespace options\n"
@@ -467,6 +468,16 @@ void ns_parse_rule(stralloc *sadir,stralloc *sarule, char const *filename) ;
  * Helper function
  *
  * */
+
+void notify(int *fd)
+{
+    if ((*fd) >= 0) {
+
+        fd_write((*fd),"\n", 1) ;
+        fd_close((*fd)) ;
+        (*fd) = -1 ;
+    }
+}
 
 static ssize_t get_key(char *table,char const *str)
 {
@@ -2288,7 +2299,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
     uint64_t fdret ;
     pid_t pid ;
     mode_t omask ;
-    int parent_fd = -1, wait_parent_fd = -1 ;
+    int parent_fd = -1, wait_parent_fd = -1, notif = -1 ;
 
     log_color = &log_color_disable ;
 
@@ -2299,7 +2310,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hzv:e:r:o:", &l) ;
+            int opt = subgetopt_r(argc, argv, "hzv:d:e:r:o:", &l) ;
 
             if (opt == -1) break ;
 
@@ -2320,6 +2331,19 @@ int main(int argc, char const *const *argv, char const *const *envp)
                     if (!uint0_scan(l.arg, &VERBOSITY))
                             log_usage(USAGE) ;
                     break ;
+
+                case 'd' :
+
+                    {
+                        unsigned int u ;
+
+                        if (!uint0_scan(l.arg, &u))
+                            log_usage(USAGE) ;
+
+                        notif = u ;
+
+                        break ;
+                    }
 
                 case 'e' :
 
@@ -2353,6 +2377,15 @@ int main(int argc, char const *const *argv, char const *const *envp)
     }
 
     if (!argc) log_usage(USAGE) ;
+
+    if (notif >= 0)
+    {
+        if (notif < 3)
+            log_die(LOG_EXIT_USER,"notification fd must be 3 or more") ;
+
+        if (fcntl(notif, F_GETFD) < 0)
+            log_diesys(LOG_EXIT_USER,"invalid notification fd") ;
+    }
 
     if (sarule.len) {
 
@@ -2469,6 +2502,8 @@ int main(int argc, char const *const *argv, char const *const *envp)
         return init(parent_fd, pid) ;
 
     parent_die() ;
+
+    notify(&notif) ;
 
     pathexec_run(argv[0],argv,envp) ;
 
