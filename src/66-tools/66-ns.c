@@ -60,7 +60,7 @@
 
 #include <66-tools/config.h>
 
-#define NS_MAXOPTS 5
+#define NS_MAXOPTS 6
 #define ns_checkopts(n) if (n >= NS_MAXOPTS) log_die(LOG_EXIT_USER, "too many namespace options")
 #define NS_UNSHARE_DELIM ':'
 #define RULE_MAXOPTS 9
@@ -86,6 +86,7 @@ static unsigned long NS_MNT_FLAGS = MS_SHARED ;
 static int NS_CLONE_FLAGS = SIGCHLD | CLONE_NEWNS ;
 static uint8_t NS_NONEWPRIVELEGES = 0 ;
 static size_t HOSTNAME = 0 ;
+static uint8_t PID1 = 0 ;
 
 stralloc _MNTFILE_SA = STRALLOC_ZERO ;
 genalloc _MNTFILE_GA = GENALLOC_ZERO ;
@@ -137,6 +138,7 @@ enum enum_ns_opts_e
     OPTS_PRIVELEGES,
     OPTS_UNSHARE,
     OPTS_HOSTNAME,
+    OPTS_PID1,
     OPTS_ENDOFKEY
 } ;
 
@@ -146,6 +148,7 @@ ns_opts_map_t const ns_opts_table[] =
     { .str = "nonewprivileges", .id = OPTS_PRIVELEGES },
     { .str = "unshare", .id = OPTS_UNSHARE },
     { .str = "hostname", .id = OPTS_HOSTNAME },
+    { .str = "pid1", .id = OPTS_PID1 },
     { .str = 0 }
 } ;
 
@@ -156,6 +159,8 @@ enum enum_type_flags_e
     TYPE_HIDDEN ,
     TYPE_RECURSIVE ,
     TYPE_CLONE ,
+    /** inner use */
+    TYPE_PROC ,
     TYPE_ENDOFKEY
 } ;
 
@@ -164,6 +169,8 @@ char const *enum_type_flags_str[] = {
     "hidden" ,
     "recursive" ,
     "clone" ,
+    /** inner use*/
+    "proc" ,
     0
 } ;
 
@@ -1305,8 +1312,10 @@ void ns_drop_element(genalloc *ga)
 
         char *two = SADATA.s + genalloc_s(ns_entry_t,ga)[pos+1].path ;
 
-        if (!strcmp(one,two))
+        if (!strcmp(one,two)) {
             genalloc_s(ns_entry_t,ga)[pos].skip = 1 ;
+            genalloc_s(ns_entry_t,ga)[pos].ignore = 1 ;
+        }
     }
 }
 
@@ -1349,6 +1358,17 @@ void ns_drop_hidden(genalloc *ga)
         gparent = pos + 1 ;
 
     }
+
+}
+
+void ns_clean_ns_entry(genalloc *gaentry)
+{
+
+    qsort_indirect(genalloc_s(ns_entry_t,gaentry),genalloc_len(ns_entry_t,gaentry),ns_path_compare) ;
+
+    ns_drop_element(gaentry) ;
+
+    ns_drop_hidden(gaentry) ;
 
 }
 
@@ -1399,17 +1419,6 @@ ssize_t ns_hidden_path(char const *path)
     log_die(LOG_EXIT_SYS,"unrecognized node for: ",path) ;
 
     return -1 ;
-}
-
-void ns_clean_ns_entry(genalloc *gaentry)
-{
-
-    qsort_indirect(genalloc_s(ns_entry_t,gaentry),genalloc_len(ns_entry_t,gaentry),ns_path_compare) ;
-
-    ns_drop_element(gaentry) ;
-
-    ns_drop_hidden(gaentry) ;
-
 }
 
 void ns_resolve_symlinks(genalloc *gaentry)
@@ -1513,6 +1522,17 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 
             return ;
 
+        case TYPE_PROC:
+
+            if (is_mnt(target))
+                umount_recursive(target) ;
+
+            log_trace("mount: proc to: ",target) ;
+            if (!ns_mount("proc",target,"proc",flags,NULL,entry->create))
+                log_dieusys(LOG_EXIT_SYS,"mount: ",str + entry->path," to: ",target) ;
+
+            return ;
+
         default:
 
             break ;
@@ -1550,6 +1570,7 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
      * remount it instead create a new one */
     if (is_mnt(target))
         flags |= MS_REMOUNT ;
+
 
     log_trace("mount: ",str + entry->path," to: ",target) ;
     if (!ns_mount(str + entry->path,target,type,flags,popts,entry->create))
@@ -1721,8 +1742,7 @@ void ns_compute_entry(ns_entry_t *entry)
             log_dieusys(LOG_EXIT_SYS,"find: ",SADATA.s + entry->path) ;
         else
             log_warnsys("ignoring entry: ",SADATA.s + entry->path) ;
-            entry->done = 1 ;
-            entry->skip = 1 ;
+            entry->done = entry->skip = 1 ;
     }
 
 
@@ -1730,6 +1750,11 @@ void ns_compute_entry(ns_entry_t *entry)
     if (entry->target == -1) {
         entry->target = entry->path ;
     }
+
+    if (!strcmp(SADATA.s + entry->path,"/proc") && PID1)
+        /** ignore the entry we handle it*/
+        entry->type = TYPE_PROC ;
+
 
     switch(entry->type) {
 
@@ -1742,7 +1767,6 @@ void ns_compute_entry(ns_entry_t *entry)
 
         case TYPE_HIDDEN:
 
-            entry->flags = 0 ;
             entry->flags = MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV  ;
 
             break ;
@@ -1757,6 +1781,13 @@ void ns_compute_entry(ns_entry_t *entry)
 
             entry->flags = 0 ;
             entry->opts = -1 ;
+
+            break ;
+
+        case TYPE_PROC:
+
+            entry->flags = MS_NOSUID | MS_NODEV | MS_NOEXEC ;
+            entry->skip = entry->done = 0 ;
 
             break ;
 
@@ -2263,6 +2294,14 @@ static void ns_parse_options(char const *str)
 
                         break ;
 
+                    case OPTS_PID1:
+
+                        NS_CLONE_FLAGS |= CLONE_NEWPID ;
+
+                        PID1 = 1 ;
+
+                        break ;
+
                     default:
 
                         break ;
@@ -2387,6 +2426,13 @@ int main(int argc, char const *const *argv, char const *const *envp)
             log_diesys(LOG_EXIT_USER,"invalid notification fd") ;
     }
 
+    if (PID1) {
+
+        if (!sastr_add_string(&sadir,"/proc:type=proc"))
+            log_die_nomem("stralloc") ;
+
+    }
+
     if (sarule.len) {
 
         stralloc rule = STRALLOC_ZERO ;
@@ -2492,14 +2538,17 @@ int main(int argc, char const *const *argv, char const *const *envp)
     stralloc_free(&SADATA) ;
     mntfile_free() ;
 
-    /* Make pid 1 inside pid namespace to avoid zombies */
-    pid = fork() ;
+    if (PID1) {
 
-    if (pid == -1)
-        log_dieusys(LOG_EXIT_SYS,"fork pid 1") ;
+        /* Make pid 1 inside pid namespace to avoid zombies */
+        pid = fork() ;
 
-    if (pid)
-        return init(parent_fd, pid) ;
+        if (pid == -1)
+            log_dieusys(LOG_EXIT_SYS,"fork pid 1") ;
+
+        if (pid)
+            return init(parent_fd, pid) ;
+    }
 
     parent_die() ;
 
