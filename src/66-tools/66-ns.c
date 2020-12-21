@@ -62,11 +62,11 @@
 
 #define NS_MAXOPTS 6
 #define ns_checkopts(n) if (n >= NS_MAXOPTS) log_die(LOG_EXIT_USER, "too many namespace options")
-#define NS_UNSHARE_DELIM ':'
+#define NS_COLON_DELIM ':'
 #define RULE_MAXOPTS 9
 #define rule_checkopts(n) if (n >= RULE_MAXOPTS) log_die(LOG_EXIT_USER, "too many rule options")
-#define NS_DELIM ','
-#define RULE_DELIM ':'
+#define NS_SEMI_COLON_DELIM ','
+
 
 #define qsort_indirect(p, n, func) ({ \
     int (*_func_)(const __typeof__(p[0])*, const __typeof__(p[0])*) = func ; \
@@ -86,7 +86,7 @@ static unsigned long NS_MNT_FLAGS = MS_SHARED ;
 static int NS_CLONE_FLAGS = SIGCHLD | CLONE_NEWNS ;
 static uint8_t NS_NONEWPRIVELEGES = 0 ;
 static size_t HOSTNAME = 0 ;
-static uint8_t PID1 = 0 ;
+static uint8_t PID1 = 0 ; //CLONE_NEWPID is set
 
 stralloc _MNTFILE_SA = STRALLOC_ZERO ;
 genalloc _MNTFILE_GA = GENALLOC_ZERO ;
@@ -138,7 +138,6 @@ enum enum_ns_opts_e
     OPTS_PRIVELEGES,
     OPTS_UNSHARE,
     OPTS_HOSTNAME,
-    OPTS_PID1,
     OPTS_ENDOFKEY
 } ;
 
@@ -148,7 +147,6 @@ ns_opts_map_t const ns_opts_table[] =
     { .str = "nonewprivileges", .id = OPTS_PRIVELEGES },
     { .str = "unshare", .id = OPTS_UNSHARE },
     { .str = "hostname", .id = OPTS_HOSTNAME },
-    { .str = "pid1", .id = OPTS_PID1 },
     { .str = 0 }
 } ;
 
@@ -159,8 +157,9 @@ enum enum_type_flags_e
     TYPE_HIDDEN ,
     TYPE_RECURSIVE ,
     TYPE_CLONE ,
-    /** inner use */
     TYPE_PROC ,
+    TYPE_DEV ,
+    TYPE_SYS ,
     TYPE_ENDOFKEY
 } ;
 
@@ -169,8 +168,9 @@ char const *enum_type_flags_str[] = {
     "hidden" ,
     "recursive" ,
     "clone" ,
-    /** inner use*/
     "proc" ,
+    "dev" ,
+    "sys" ,
     0
 } ;
 
@@ -650,7 +650,7 @@ static void mount_split_opts_flags(ns_entry_t *entry,char const *str)
     for (;pos < slen + 1; pos++)
         keep[pos] = 0 ;
 
-    if (!sastr_clean_string_wdelim(&tmp,str,NS_DELIM))
+    if (!sastr_clean_string_wdelim(&tmp,str,NS_SEMI_COLON_DELIM))
         log_dieu(LOG_EXIT_SYS,"parse options line: ",str) ;
 
     pos = 0 ;
@@ -1533,6 +1533,28 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 
             return ;
 
+        case TYPE_DEV:
+
+            if (is_mnt(target))
+                umount_recursive(target) ;
+
+            log_trace("mount: dev to: ",target) ;
+            if (!ns_mount("dev",target,"devtmpfs",flags,str + entry->opts,entry->create))
+                log_dieusys(LOG_EXIT_SYS,"mount: ",str + entry->path," to: ",target) ;
+
+            return ;
+
+        case TYPE_SYS:
+
+            if (is_mnt(target))
+                umount_recursive(target) ;
+
+            log_trace("mount: sys to: ",target) ;
+            if (!ns_mount("sys",target,"sysfs",flags,NULL,entry->create))
+                log_dieusys(LOG_EXIT_SYS,"mount: ",str + entry->path," to: ",target) ;
+
+            return ;
+
         default:
 
             break ;
@@ -1745,16 +1767,10 @@ void ns_compute_entry(ns_entry_t *entry)
             entry->done = entry->skip = 1 ;
     }
 
-
     // no target was set, use the same as path
     if (entry->target == -1) {
         entry->target = entry->path ;
     }
-
-    if (!strcmp(SADATA.s + entry->path,"/proc") && PID1)
-        /** ignore the entry we handle it*/
-        entry->type = TYPE_PROC ;
-
 
     switch(entry->type) {
 
@@ -1786,10 +1802,35 @@ void ns_compute_entry(ns_entry_t *entry)
 
         case TYPE_PROC:
 
+            if (strcmp(SADATA.s + entry->path,"/proc"))
+                log_die(LOG_EXIT_USER,"type proc was asked -- found element: ",SADATA.s + entry->path) ;
+
             entry->flags = MS_NOSUID | MS_NODEV | MS_NOEXEC ;
             entry->skip = entry->done = 0 ;
 
             break ;
+
+        case TYPE_DEV:
+
+            if (strcmp(SADATA.s + entry->path,"/dev"))
+                log_die(LOG_EXIT_USER,"type dev was asked -- found element: ",SADATA.s + entry->path) ;
+
+            entry->flags = MS_NOSUID| MS_STRICTATIME | MS_NOEXEC | MS_REC ;
+            entry->opts = ns_add_to_sadata("mode=755") ;
+            entry->skip = entry->done = 0 ;
+
+            break ;
+
+        case TYPE_SYS:
+
+            if (strcmp(SADATA.s + entry->path,"/sys"))
+                log_die(LOG_EXIT_USER,"type sys was asked -- found element: ",SADATA.s + entry->path) ;
+
+            entry->flags = MS_NOSUID | MS_STRICTATIME | MS_NOEXEC ;
+            entry->skip = entry->done = 0 ;
+
+            break ;
+
 
         default:
 
@@ -1813,7 +1854,7 @@ static void ns_parse_line(genalloc *gaentry, char const *str)
 
     ns_entry_t entry = NS_ENTRY_ZERO ;
 
-    if (!sastr_clean_string_wdelim(&sa,str,RULE_DELIM))
+    if (!sastr_clean_string_wdelim(&sa,str,NS_COLON_DELIM))
         log_dieu(LOG_EXIT_SYS,"parse directory options") ;
 
     unsigned int n = sastr_len(&sa), nopts = 0 , old = 0 ;
@@ -2044,6 +2085,11 @@ void ns_split_from_section(stralloc *sadir, stralloc *secname, char const *str, 
         if (secname->s[previous_sec] != '/')
             log_die(LOG_EXIT_USER,"Path must be absolute: ",secname->s + previous_sec," on rule file",filename) ;
 
+        /** -e options overwrite a same element
+         * found on a rule file*/
+        if (sastr_cmp(sadir,secname->s) >= 0)
+            return ;
+
         if (!stralloc_cats(&tmp,str))
             log_die_nomem("stralloc") ;
 
@@ -2160,7 +2206,7 @@ static void ns_parse_options(char const *str)
 
     stralloc sa = STRALLOC_ZERO ;
 
-    if (!sastr_clean_string_wdelim(&sa,str,NS_DELIM))
+    if (!sastr_clean_string_wdelim(&sa,str,NS_SEMI_COLON_DELIM))
         log_dieu(LOG_EXIT_SYS,"clean options") ;
 
     unsigned int n = sastr_len(&sa), nopts = 0 , old ;
@@ -2237,8 +2283,8 @@ static void ns_parse_options(char const *str)
                             stralloc unsa = STRALLOC_ZERO ;
                             char *uncurrent = 0 ;
 
-                            if (!sastr_clean_string_wdelim(&unsa,val,NS_UNSHARE_DELIM))
-                                log_dieu(LOG_EXIT_SYS,"clean options") ;
+                            if (!sastr_clean_string_wdelim(&unsa,val,NS_COLON_DELIM))
+                                log_dieu(LOG_EXIT_SYS,"clean unshare options") ;
 
                             FOREACH_SASTR(&unsa,upos) {
 
@@ -2252,6 +2298,8 @@ static void ns_parse_options(char const *str)
                                 else if (!strcmp(uncurrent,"pid")) {
 
                                     NS_CLONE_FLAGS |= CLONE_NEWPID ;
+
+                                    PID1 = 1 ;
                                 }
                                 else if (!strcmp(uncurrent,"net")) {
 
@@ -2291,14 +2339,6 @@ static void ns_parse_options(char const *str)
                     case OPTS_HOSTNAME:
 
                         HOSTNAME = (size_t)ns_add_to_sadata(val) ;
-
-                        break ;
-
-                    case OPTS_PID1:
-
-                        NS_CLONE_FLAGS |= CLONE_NEWPID ;
-
-                        PID1 = 1 ;
 
                         break ;
 
@@ -2355,23 +2395,23 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
             switch (opt)
             {
-                case 'h' :
+                case 'h':
 
                     info_help() ; return 0 ;
 
-                case 'z' :
+                case 'z':
 
                     log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
 
                     break ;
 
-                case 'v' :
+                case 'v':
 
                     if (!uint0_scan(l.arg, &VERBOSITY))
                             log_usage(USAGE) ;
                     break ;
 
-                case 'd' :
+                case 'd':
 
                     {
                         unsigned int u ;
@@ -2384,7 +2424,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
                         break ;
                     }
 
-                case 'e' :
+                case 'e':
 
                     if (l.arg[0] != '/')
                         log_die(LOG_EXIT_USER,"Path must be absolute: ",l.arg) ;
@@ -2394,20 +2434,20 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
                     break ;
 
-                case 'r' :
+                case 'r':
 
-                    if (!sastr_clean_string_wdelim(&sarule,l.arg,NS_DELIM))
+                    if (!sastr_clean_string_wdelim(&sarule,l.arg,NS_SEMI_COLON_DELIM))
                         log_dieu(LOG_EXIT_SYS,"parse rule options") ;
 
                     break ;
 
-                case 'o' :
+                case 'o':
 
                     ns_parse_options(l.arg) ;
 
                     break ;
 
-                default :
+                default:
 
                     log_usage(USAGE) ;
             }
@@ -2424,13 +2464,6 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
         if (fcntl(notif, F_GETFD) < 0)
             log_diesys(LOG_EXIT_USER,"invalid notification fd") ;
-    }
-
-    if (PID1) {
-
-        if (!sastr_add_string(&sadir,"/proc:type=proc"))
-            log_die_nomem("stralloc") ;
-
     }
 
     if (sarule.len) {
