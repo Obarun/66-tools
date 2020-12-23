@@ -1217,6 +1217,9 @@ static int handle_signal(pid_t child_pid)
 
                 return 0 ;
 
+            case SIGTERM:
+            case SIGINT:
+            case SIGQUIT:
             case SIGCHLD:
 
                 while ((pid = wait_nohang(&wstat)) > 0)
@@ -1246,6 +1249,15 @@ static int monitor_child(int parent_fd,int wait_parent_fd,pid_t child_pid)
     x[0].fd = selfpipe_init() ;
 
     if (x[0].fd < 0)
+        log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
+
+    if (selfpipe_trap(SIGINT) < 0)
+        log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
+
+    if (selfpipe_trap(SIGTERM) < 0)
+        log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
+
+    if (selfpipe_trap(SIGQUIT) < 0)
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
     if (selfpipe_trap(SIGCHLD) < 0)
