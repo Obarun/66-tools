@@ -95,7 +95,7 @@ static char *NSHIDDEN = "/run/66/ns/hidden" ;
 static char *NSPREFIX = "/run/66/ns" ;
 static char *NSTMP = "/run/66/ns/nstmp" ;
 
-#define USAGE "66-ns [ -h ] [ -z ] [ -v verbosity ] [ -d notif ] [ -e dir:type:options:... ] [ -r rule ] [ -o ns_options,... ] prog"
+#define USAGE "66-ns [ -h ] [ -z ] [ -v verbosity ] [ -d notif ] [ -o ns_options,... ] [ -e element:type:options:... ] [ -r rule ] prog"
 
 static inline void info_help (void)
 {
@@ -106,10 +106,10 @@ static inline void info_help (void)
         "   -h: print this help\n"
         "   -z: use color\n"
         "   -v: increase/decrease verbosity\n"
+        "   -o: comma separated list of namespace options\n"
         "   -d: notify readiness on file descriptor notif\n"
         "   -e: element to handle. Can be passed multiple time.\n"
         "   -r: list of rule to apply. Can be passed multiple time.\n"
-        "   -o: comma separated list of namespace options\n"
         "\n"
         ;
 
@@ -1539,7 +1539,7 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
                 umount_recursive(target) ;
 
             log_trace("mount: dev to: ",target) ;
-            if (!ns_mount("dev",target,"devtmpfs",flags,str + entry->opts,entry->create))
+            if (!ns_mount("dev",target,"devtmpfs",flags,NULL,entry->create))
                 log_dieusys(LOG_EXIT_SYS,"mount: ",str + entry->path," to: ",target) ;
 
             return ;
@@ -2352,8 +2352,8 @@ static void ns_parse_options(char const *str)
         if (old == nopts)
             log_die(LOG_EXIT_SYS,"invalid option: ",current) ;
     }
-    if (HOSTNAME && !MNT_FLAGS_IS_SET(NS_CLONE_FLAGS,CLONE_NEWUTS))
-        log_die(LOG_EXIT_USER,"options hostname implies options unshare=uts") ;
+    if (HOSTNAME)
+        NS_CLONE_FLAGS |= CLONE_NEWUTS ;
 
     stralloc_free(&sa) ;
 }
@@ -2419,7 +2419,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
                         if (!uint0_scan(l.arg, &u))
                             log_usage(USAGE) ;
 
-                        notif = u ;
+                        notif = !isatty(1) ? u : -1 ;
 
                         break ;
                     }
@@ -2457,7 +2457,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
     if (!argc) log_usage(USAGE) ;
 
-    if (notif >= 0)
+    if (notif > 0)
     {
         if (notif < 3)
             log_die(LOG_EXIT_USER,"notification fd must be 3 or more") ;
