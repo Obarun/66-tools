@@ -87,7 +87,7 @@ ifneq ($(strip $(ALL_BINS)$(SHARED_LIBS)),)
 endif
 
 install: install-dynlib install-libexec install-bin install-lib install-include install-html install-man
-install-ns-rule: $(RULE_TARGET:example/rule/%=$(DESTDIR)$(ns_rule)/%)
+install-ns-rule: $(RULE_TARGET:examples/rule/%=$(DESTDIR)$(ns_rule)/%)
 install-dynlib: $(SHARED_LIBS:lib%.so.xyzzy=$(DESTDIR)$(dynlibdir)/lib%.so)
 install-libexec: $(LIBEXEC_TARGETS:%=$(DESTDIR)$(libexecdir)/%)
 install-bin: $(BIN_TARGETS:%=$(DESTDIR)$(bindir)/%)
@@ -144,7 +144,7 @@ $(DESTDIR)$(libdir)/lib%.a: lib%.a.xyzzy
 $(DESTDIR)$(includedir)/$(package)/%.h: src/include/$(package)/%.h
 	exec $(INSTALL) -D -m 644 $< $@
 
-$(DESTDIR)$(ns_rule)/%: example/rule/%
+$(DESTDIR)$(ns_rule)/%: examples/rule/%
 	$(INSTALL) -D -m 644 $< $@
 
 %.o: %.c
