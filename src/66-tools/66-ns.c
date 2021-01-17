@@ -2599,7 +2599,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
     notify(&notif) ;
 
-    pathexec_run(argv[0],argv,envp) ;
+    exec_ae(argv[0],argv,envp) ;
 
     log_dieusys(LOG_EXIT_SYS,"exec: ",argv[0]) ;
 }

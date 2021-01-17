@@ -1,10 +1,10 @@
-/* 
+/*
  * execl-subuidgid.c
- * 
+ *
  * Copyright (c) 2018-2020 Eric Vidal <eric@obarun.org>
- * 
+ *
  * All rights reserved.
- * 
+ *
  * This file is part of Obarun. It is subject to the license terms in
  * the LICENSE file found in the top-level directory of this
  * distribution.
@@ -38,8 +38,8 @@ static inline void info_help (void)
 "execl-subuidgid <options> prog\n"
 "\n"
 "options :\n"
-"	-h: print this help\n" 
-"	-o: owner to use\n"
+"   -h: print this help\n"
+"   -o: owner to use\n"
 ;
 
  if (buffer_putsflush(buffer_1, help) < 0)
@@ -50,92 +50,92 @@ static inline void info_help (void)
  * 66. This is avoid the dependency from it*/
 static int youruid(uid_t *passto,char const *owner)
 {
-	int e ;
-	e = errno ;
-	errno = 0 ;
-	struct passwd *st ;
-	if (!(st = getpwnam(owner)))
-	{
-		if (!errno) errno = ESRCH ;
-		return 0 ;
-	}
-	*passto = st->pw_uid ;
-	errno = e ;
-	return 1 ;
+    int e ;
+    e = errno ;
+    errno = 0 ;
+    struct passwd *st ;
+    if (!(st = getpwnam(owner)))
+    {
+        if (!errno) errno = ESRCH ;
+        return 0 ;
+    }
+    *passto = st->pw_uid ;
+    errno = e ;
+    return 1 ;
 }
 
 static int yourgid(gid_t *passto,uid_t owner)
 {
-	int e ;
-	e = errno ;
-	errno = 0 ;
-	struct passwd *st ;
-	if (!(st = getpwuid(owner)))
-	{
-		if (!errno) errno = ESRCH ;
-		return 0 ;
-	}
-	*passto = st->pw_gid ;
-	errno = e ;
-	return 1 ;
+    int e ;
+    e = errno ;
+    errno = 0 ;
+    struct passwd *st ;
+    if (!(st = getpwuid(owner)))
+    {
+        if (!errno) errno = ESRCH ;
+        return 0 ;
+    }
+    *passto = st->pw_gid ;
+    errno = e ;
+    return 1 ;
 }
 
 int main (int argc, char const **argv, char const *const *envp)
 {
-	uid_t uid ;
-	gid_t gid ;
-	int r ;
-	char const *owner = 0 ;
-	stralloc sa = STRALLOC_ZERO ;
-	stralloc dst = STRALLOC_ZERO ;
-	exlsn_t info = EXLSN_ZERO;
-	char cuid[UID_FMT], cgid[GID_FMT] ;
-	
-	PROG = "execl-subuidgid" ;
-	
-	{
-		subgetopt_t l = SUBGETOPT_ZERO ;
-		for (;;)
-		{
-		  int opt = subgetopt_r(argc, argv, "ho:", &l) ;
-		  if (opt == -1) break ;
-		  switch (opt)
-		  {
-			case 'h' :	info_help(); return 0 ;
-			case 'o' :	owner = l.arg ; break ;
-			default : 	log_usage(USAGE) ;
-		  }
-		}
-		argc -= l.ind ; argv += l.ind ;
-	}
-	if (owner)
-	{
-		if (!youruid(&uid,owner)) log_dieusys(LOG_EXIT_SYS,"get uid of: ",owner) ;
-	}
-	else uid = getuid() ;
-		
-	if (!yourgid(&gid,uid)) log_dieusys(LOG_EXIT_SYS,"get gid") ;
-	cuid[uid_fmt(cuid,uid)] = 0 ;
-	cgid[gid_fmt(cgid,gid)] = 0 ;
-	
-	if (!environ_add_key_val("UID",cuid,&info)) log_dieusys(LOG_EXIT_SYS,"set UID") ;
-	if (!environ_add_key_val("GID",cgid,&info)) log_dieusys(LOG_EXIT_SYS,"set GID") ;
-	
-	if (!env_string(&sa,argv,(unsigned int) argc)) log_dieusys(LOG_EXIT_SYS,"environment string") ;
-	
-	r = el_substitute (&dst, sa.s, sa.len, info.vars.s, info.values.s,
-		genalloc_s (elsubst_t const, &info.data),genalloc_len (elsubst_t const, &info.data)) ;
-	if (r < 0) log_dieusys(LOG_EXIT_SYS,"el_substitute") ;
-	else if (!r) _exit(0) ;
-	
-	stralloc_free(&sa) ;
-	
-	{
+    uid_t uid ;
+    gid_t gid ;
+    int r ;
+    char const *owner = 0 ;
+    stralloc sa = STRALLOC_ZERO ;
+    stralloc dst = STRALLOC_ZERO ;
+    exlsn_t info = EXLSN_ZERO;
+    char cuid[UID_FMT], cgid[GID_FMT] ;
+
+    PROG = "execl-subuidgid" ;
+
+    {
+        subgetopt_t l = SUBGETOPT_ZERO ;
+        for (;;)
+        {
+          int opt = subgetopt_r(argc, argv, "ho:", &l) ;
+          if (opt == -1) break ;
+          switch (opt)
+          {
+            case 'h' :  info_help(); return 0 ;
+            case 'o' :  owner = l.arg ; break ;
+            default :   log_usage(USAGE) ;
+          }
+        }
+        argc -= l.ind ; argv += l.ind ;
+    }
+    if (owner)
+    {
+        if (!youruid(&uid,owner)) log_dieusys(LOG_EXIT_SYS,"get uid of: ",owner) ;
+    }
+    else uid = getuid() ;
+
+    if (!yourgid(&gid,uid)) log_dieusys(LOG_EXIT_SYS,"get gid") ;
+    cuid[uid_fmt(cuid,uid)] = 0 ;
+    cgid[gid_fmt(cgid,gid)] = 0 ;
+
+    if (!environ_add_key_val("UID",cuid,&info)) log_dieusys(LOG_EXIT_SYS,"set UID") ;
+    if (!environ_add_key_val("GID",cgid,&info)) log_dieusys(LOG_EXIT_SYS,"set GID") ;
+
+    if (!env_string(&sa,argv,(unsigned int) argc)) log_dieusys(LOG_EXIT_SYS,"environment string") ;
+
+    r = el_substitute (&dst, sa.s, sa.len, info.vars.s, info.values.s,
+        genalloc_s (elsubst_t const, &info.data),genalloc_len (elsubst_t const, &info.data)) ;
+    if (r < 0) log_dieusys(LOG_EXIT_SYS,"el_substitute") ;
+    else if (!r) _exit(0) ;
+
+    stralloc_free(&sa) ;
+
+    {
         char const *v[r + 1];
         if (!env_make (v, r, dst.s, dst.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;
         v[r] = 0 ;
-        pathexec_r (v, envp, env_len (envp), info.modifs.s, info.modifs.len) ;
+        mexec_fm (v, envp, env_len (envp), info.modifs.s, info.modifs.len) ;
     }
 
-	return 0 ;	
+    return 0 ;
 }
