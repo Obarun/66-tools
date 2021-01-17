@@ -56,9 +56,9 @@ INSTALL := ./tools/install.sh
 ALL_BINS := $(LIBEXEC_TARGETS) $(BIN_TARGETS)
 ALL_LIBS := $(SHARED_LIBS) $(STATIC_LIBS) $(INTERNAL_LIBS)
 ALL_INCLUDES := $(wildcard src/include/$(package)/*.h)
-GENERATE_HTML := $(shell doc/make-html.sh)
+GENERATE_HTML := $(shell doc/make-html.sh $(version))
 GENERATE_MAN := $(shell doc/make-man.sh)
-INSTALL_HTML := $(wildcard doc/html/*.html)
+INSTALL_HTML := $(wildcard doc/$(version)/html/*.html)
 INSTALL_MAN := $(wildcard doc/man/*/*)
 
 all: $(ALL_LIBS) $(ALL_BINS) $(ALL_INCLUDES)
@@ -94,7 +94,7 @@ install-bin: $(BIN_TARGETS:%=$(DESTDIR)$(bindir)/%)
 install-lib: $(STATIC_LIBS:lib%.a.xyzzy=$(DESTDIR)$(libdir)/lib%.a)
 install-include: $(ALL_INCLUDES:src/include/$(package)/%.h=$(DESTDIR)$(includedir)/$(package)/%.h)
 install-data: $(ALL_DATA:src/etc/%=$(DESTDIR)$(datadir)/%)
-install-html: $(INSTALL_HTML:doc/html/%.html=$(DESTDIR)$(datarootdir)/doc/$(package)/%.html)
+install-html: $(INSTALL_HTML:doc/$(version)html/%.html=$(DESTDIR)$(datarootdir)/doc/$(package)/$(version)/%.html)
 install-man: $(INSTALL_MAN:doc/man/man1/%.1=$(DESTDIR)$(mandir)/man1/%.1)
 
 ifneq ($(exthome),)
@@ -116,7 +116,7 @@ $(DESTDIR)$(sproot)/library.so/lib%.so.$(version_M): $(DESTDIR)$(dynlibdir)/lib%
 
 endif
 
-$(DESTDIR)$(datarootdir)/doc/$(package)/%.html: doc/html/%.html
+$(DESTDIR)$(datarootdir)/doc/$(package)/$(version)/%.html: doc/$(version)/html/%.html
 	$(INSTALL) -D -m 644 $< $@ && \
 	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
 

@@ -19,6 +19,10 @@ Please refer to the [INSTALL.md](https://framagit.org/Obarun/66-tools) file for 
 
 *66-tools* is free software. It is available under the [ISC license](http://opensource.org/licenses/ISC).
 
+### Upgrade
+
+See [changes](upgrade.html) between version.
+
 ---
 
 ## Commands
