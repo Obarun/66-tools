@@ -31,7 +31,6 @@
 #include <oblibs/sastr.h>
 #include <oblibs/string.h>
 
-#include <skalibs/webipc.h>
 #include <skalibs/buffer.h>
 #include <skalibs/types.h>
 #include <skalibs/sgetopt.h>
@@ -153,7 +152,7 @@ struct opts_common_s
     // socket option
     uint8_t minus_s ; // -s -> 0 inactive meaning SOCK_STREAM(default), 1 active SOCK_DGRAM
     int minus_D ; //-D -> 0 inactive(default), 1 active
-    int minus_B ; //-B -> 0 inactive(default), 1 active
+    unsigned int minus_B ; //-B -> O_NONBLOCK(default), 0 blocking
     int minus_b ; // -b -> -1 inactive(default), other value active
 } ;
 
@@ -176,7 +175,7 @@ struct opts_common_s
     0 , \
     0 , \
     0 , \
-    0 , \
+    O_NONBLOCK , \
     -1  \
 }
 
@@ -240,7 +239,7 @@ void parse(opts_common_t *arguments,char **nargv)
                 // socket special case
                 case 's' :  arguments->minus_s = 1 ; break ;
                 case 'D' :  arguments->minus_D = 1 ; break ;
-                case 'B' :  arguments->minus_B = 1 ; break ;
+                case 'B' :  arguments->minus_B = 0 ; break ;
                 case 'b' :  if (!uint0_scan(l.arg,(unsigned int *)&arguments->minus_b)) log_usage(USAGE) ; break ;
                 default :   log_usage(USAGE) ;
             }
@@ -437,7 +436,7 @@ int execl_socket(opts_common_t *arguments,char **nargv)
 
     close(0) ;
     int flagdgram = arguments->minus_s ? 1 : 0 ;
-    int flagblocking = arguments->minus_B ? 1 : 0 ;
+    int flag = arguments->minus_B ;
     int flagreuse = arguments->minus_D ? 0 : 1 ;
     unsigned int backlog = arguments->minus_b > 0 ? arguments->minus_b : SOMAXCONN ;
     mode_t mode = !arguments->minus_m ? 0777 : arguments->minus_m ;
@@ -451,7 +450,7 @@ int execl_socket(opts_common_t *arguments,char **nargv)
             log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
         }
 
-        if (flagdgram ? ipc_datagram_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB) : ipc_stream_internal(flagblocking ? 0 : DJBUNIX_FLAG_NB))
+        if (flagdgram ? ipc_datagram_internal(flag) : ipc_stream_internal(flag))
             log_dieusys(LOG_EXIT_SYS, "create socket") ;
 
         {
