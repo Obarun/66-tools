@@ -1,0 +1,9 @@
+[/home]
+options=ro
+
+[/run/user]
+type=recursive
+options=ro
+
+[/root]
+options=ro

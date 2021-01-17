@@ -1,0 +1,8 @@
+[include]
+system.rule
+
+[/etc]
+options=ro
+
+
+

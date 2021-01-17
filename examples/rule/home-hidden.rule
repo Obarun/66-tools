@@ -1,0 +1,8 @@
+[/home]
+type=hidden
+
+[/run/user]
+type=hidden
+
+[/root]
+type=hidden

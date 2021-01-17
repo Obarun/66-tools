@@ -1,0 +1,12 @@
+[/home]
+type=tmpfs
+options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
+
+[/run/user]
+type=tmpfs
+options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
+
+
+[/root]
+type=tmpfs
+options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
