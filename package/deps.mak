@@ -13,25 +13,25 @@ src/66-tools/66-yeller.o src/66-tools/66-yeller.lo: src/66-tools/66-yeller.c
 src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-cmdline.c
 src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/execl-subuidgid.c
 src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
-66-clock: EXTRA_LIBS :=
-66-clock: src/66-tools/66-clock.o -loblibs -lskarnet 
-66-getenv: EXTRA_LIBS :=
-66-getenv: src/66-tools/66-getenv.o -loblibs -lskarnet 
-66-gnwenv: EXTRA_LIBS :=
-66-gnwenv: src/66-tools/66-gnwenv.o -loblibs -lskarnet 
-66-ns: EXTRA_LIBS :=
-66-ns: src/66-tools/66-ns.o -loblibs -lskarnet 
-66-olexec: EXTRA_LIBS :=
-66-olexec: src/66-tools/66-olexec.o -loblibs -lskarnet 
-66-which: EXTRA_LIBS :=
-66-which: src/66-tools/66-which.o -loblibs -lskarnet 
-66-writenv: EXTRA_LIBS :=
-66-writenv: src/66-tools/66-writenv.o -loblibs -lskarnet
-66-yeller: EXTRA_LIBS :=
-66-yeller: src/66-tools/66-yeller.o -loblibs -lskarnet 
-execl-cmdline: EXTRA_LIBS :=
-execl-cmdline: src/66-tools/execl-cmdline.o -loblibs -lexecline -lskarnet
-execl-subuidgid: EXTRA_LIBS :=
-execl-subuidgid: src/66-tools/execl-subuidgid.o -loblibs -lexecline -lskarnet ${LIBEXECLINE}
-execl-toc: EXTRA_LIBS :=
-execl-toc: src/66-tools/execl-toc.o -loblibs -lskarnet 
+66-clock: EXTRA_LIBS := -loblibs -lskarnet
+66-clock: src/66-tools/66-clock.o 
+66-getenv: EXTRA_LIBS := -loblibs -lskarnet
+66-getenv: src/66-tools/66-getenv.o 
+66-gnwenv: EXTRA_LIBS := -loblibs -lskarnet
+66-gnwenv: src/66-tools/66-gnwenv.o 
+66-ns: EXTRA_LIBS := -loblibs -lskarnet
+66-ns: src/66-tools/66-ns.o 
+66-olexec: EXTRA_LIBS := -loblibs -lskarnet
+66-olexec: src/66-tools/66-olexec.o 
+66-which: EXTRA_LIBS := -loblibs -lskarnet
+66-which: src/66-tools/66-which.o 
+66-writenv: EXTRA_LIBS := -loblibs -lskarnet
+66-writenv: src/66-tools/66-writenv.o
+66-yeller: EXTRA_LIBS := -loblibs -lskarnet
+66-yeller: src/66-tools/66-yeller.o 
+execl-cmdline: EXTRA_LIBS := -loblibs -lexecline -lskarnet
+execl-cmdline: src/66-tools/execl-cmdline.o
+execl-subuidgid: EXTRA_LIBS := -loblibs -lexecline -lskarnet
+execl-subuidgid: src/66-tools/execl-subuidgid.o ${LIBEXECLINE}
+execl-toc: EXTRA_LIBS := -loblibs -lskarnet
+execl-toc: src/66-tools/execl-toc.o 
