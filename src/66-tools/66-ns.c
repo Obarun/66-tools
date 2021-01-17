@@ -57,6 +57,7 @@
 #include <skalibs/selfpipe.h>
 #include <skalibs/tai.h>
 #include <skalibs/djbunix.h> //wait_nohang,...
+#include <skalibs/exec.h>
 
 #include <66-tools/config.h>
 

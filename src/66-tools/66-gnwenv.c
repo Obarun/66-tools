@@ -27,6 +27,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/env.h>
 #include <skalibs/djbunix.h>
+#include <skalibs/exec.h>
 
 #define MAX_ENV 4095
 static char const *pattern = 0 ;
