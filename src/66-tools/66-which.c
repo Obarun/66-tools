@@ -2,7 +2,7 @@
  * 66-which.c
  *
  * Copyright (c) 2019 Dyne.org Foundation, Amsterdam
- * Copyright (c) 2020 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2020-2021 Eric Vidal <eric@obarun.org>
  *
  * Written by:
  *  - Danilo Spinella <danyspin97@protonmail.com>
