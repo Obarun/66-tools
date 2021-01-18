@@ -5,16 +5,16 @@ Build Instructions
 
 - A POSIX-compliant C development environment
 - GNU make version 3.81 or later
-- skalibs version 2.9.2.1 or later
-- execline version 2.6.0.2 or later 
-- oblibs version 0.0.9.0 or later
+- skalibs version 2.10.0.0 or later: http://skarnet.org/software/skalibs/
+- execline version 2.7.0.0 or later: http://skarnet.org/software/execline/
+- oblibs version 0.1.2.0 or later: https://framagit.org/Obarun/oblibs/
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 
 This software will install on any operating system that implements POSIX.1-2008, available at [opengroup](http://pubs.opengroup.org/onlinepubs/9699919799/)
 
 ## Standard usage
-  
+
 `./configure && make && sudo make install` will work for most users.
 It will install the static libraries in /usr/lib/66-tools, the shared libraries in /lib.
 
@@ -42,7 +42,7 @@ The values of *CFLAGS*, *CPPFLAGS* and *LDFLAGS* will be appended to the default
 You can invoke make with a few variables for more configuration.
 
 *CC*, *CFLAGS*, *CPPFLAGS*, *LDFLAGS*, *LDLIBS*, *AR*, *RANLIB*, *STRIP*, *INSTALL* and *CROSS_COMPILE* can all be overridden on the make command line. This is an even bigger hammer than running `./configure` with environment variables, so it is advised to only do this when it is the only way of obtaining the behaviour you want.
- 
+
 *DESTDIR* can be given on the `make install` command line in order to install to a staging directory.
 
 ## Static binaries
@@ -60,7 +60,7 @@ cross-compiled skalibs, the rest is easy.
 options as necessary.
 
 ## The slashpackage convention
- 
+
 The [slashpackage convention](http://cr.yp.to/slashpackage.html) is a package installation scheme that provides a few guarantees over other conventions such as the FHS, for instance fixed absolute pathnames. obarun.org packages support it: use the *--enable-slashpackage* option to configure, or *--enable-slashpackage=DIR* for a prefixed DIR/package tree. This option will activate slashpackage support during the build and set slashpackage-compatible installation directories. If
 $version is the current 66-tools version number:
 

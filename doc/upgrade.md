@@ -11,6 +11,21 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.0.7.0
+
+- Adapt to skalibs 2.10.0.0
+
+- Adapt to execline 2.7.0.0
+
+- Adapt to oblibs 0.1.2.0
+
+- New tool:
+    - *66-ns*: setup a namespace and execs a program inside it.
+
+- html documentation is now versionned.
+
+---
+
 # In 0.0.6.2
 
 - bug fix:
