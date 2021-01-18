@@ -41,6 +41,8 @@ See [changes](upgrade.html) between version.
 
 - [66-gnwenv](66-gnwenv.html)
 
+- [66-ns](66-ns.html)
+
 - [66-olexec](66-olexec.html)
 
 - [66-writenv](66-writenv.html)
