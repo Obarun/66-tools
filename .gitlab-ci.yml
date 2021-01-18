@@ -3,15 +3,15 @@ image: obarun/base:latest
 before_script:
   - pacman -Syu --noconfirm
   - pacman -S autoconf automake binutils bison file flex gcc gettext git grep groff libtool m4 make patch pkgconf texinfo which --noconfirm
-  - ./build_toolchain.sh
-  
+  - ./build_toolchain.sh commit
+
 test:
   stage: test
   script:
   - ./configure --bindir=/usr/bin
   - make
   - make install DESTDIR=gitlab-ci
-   
+
   only:
   - merge_requests
 
@@ -21,10 +21,10 @@ build:
   - ./configure --bindir=/usr/bin
   - make
   - make install DESTDIR=gitlab-ci
-  
+
   retry:
     max: 2
 
   only:
     - master
-    
+
