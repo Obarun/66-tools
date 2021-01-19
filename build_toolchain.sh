@@ -107,6 +107,6 @@ _run() {
 ## do it
 _run build_skalibs
 _run build_execline
-_run build_s6
-_run build_s6_rc
+#_run build_s6
+#_run build_s6_rc
 _run build_oblibs
