@@ -11,6 +11,12 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.0.7.1
+
+- Fix musl build
+
+---
+
 # In 0.0.7.0
 
 - Adapt to skalibs 2.10.0.0
