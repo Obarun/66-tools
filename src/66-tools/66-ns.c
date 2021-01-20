@@ -67,6 +67,13 @@
 #define rule_checkopts(n) if (n >= RULE_MAXOPTS) log_die(LOG_EXIT_USER, "too many rule options")
 #define NS_SEMI_COLON_DELIM ','
 
+/** __compar_fn_t is an internal function of glibc
+ * so define it for musl
+ * */
+#ifndef __COMPAR_FN_T
+#define __COMPAR_FN_T
+typedef int (*__compar_fn_t)(const void *, const void *);
+#endif
 
 #define qsort_indirect(p, n, func) ({ \
     int (*_func_)(const __typeof__(p[0])*, const __typeof__(p[0])*) = func ; \
