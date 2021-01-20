@@ -29,8 +29,6 @@ See [changes](upgrade.html) between version.
 
 - [execl-cmdline](execl-cmdline.html)
 
-- [execl-envfile](https://web.obarun.org/software/66/execl-envfile.html) **!** this tool is now a part of the [66](https://framagit.org/obarun/66.git) software.
-
 - [execl-subuidgid](execl-subuidgid.html)
 
 - [execl-toc](execl-toc.html)
