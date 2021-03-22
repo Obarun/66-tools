@@ -11,6 +11,13 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.0.7.2
+
+- Bugs fix:
+    *66-ns*: Fix overeating cpu usage
+
+---
+
 # In 0.0.7.1
 
 - Fix musl build
