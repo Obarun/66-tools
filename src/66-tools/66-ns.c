@@ -1251,6 +1251,7 @@ static int monitor_child(int parent_fd,int wait_parent_fd,pid_t child_pid)
     tain_t deadline ;
     deadline = tain_infinite_relative ;
     tain_now_set_stopwatch_g() ;
+    tain_add_g(&deadline,&deadline) ;
 
     x[1].fd = parent_fd ;
     x[0].fd = selfpipe_init() ;
@@ -1278,11 +1279,13 @@ static int monitor_child(int parent_fd,int wait_parent_fd,pid_t child_pid)
         r = iopause_g(x,2,&deadline) ;
         if (r == -1)
             log_dieusys(LOG_EXIT_SYS,"iopause") ;
+        if (!r)
+            log_dieusys(LOG_EXIT_SYS,"timeout") ;
 
         /** grandchild do not contain more children */
         if (x[1].revents & IOPAUSE_READ) {
-
-            fdread = read(parent_fd,&fdret, 8) ;
+            errno = 0 ;
+            fdread = selfpipe_read() ;
             if (fdread == -1 && errno != EINTR && errno != EAGAIN)
                 log_dieusys(LOG_EXIT_SYS,"read parent_fd") ;
 
