@@ -14,12 +14,12 @@ author: Eric Vidal <eric@obarun.org>
 ## Interface
 
 ```
-	66-getenv [ -h ] [ -x ] [ -d delim ] process	
+    66-getenv [ -h ] [ -x ] [ -d delim ] process
 ```
 
 - It find the corresponding pid of the *process* name applying a regex search.
 
-- It open and read /proc/<pid>/environ file and displays its contain.
+- It open and read `/proc/<pid>/environ` file and displays its contain.
 
 ## Exit codes
 
@@ -33,15 +33,15 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-x** : match exactly with the process name. It can be a complete command line, in such case its must be double-quoted.
 
-- **-d** *delim* : specify output delimiter. The default is `\n` character. 
+- **-d** *delim* : specify output delimiter. The default is `\n` character.
 
 ## Usage example
 
 ```
-	66-getenv -x jwm
-	66-getenv "ck-launch-session" jwm
+    66-getenv -x jwm
+    66-getenv "ck-launch-session" jwm
 ```
 
 ## Note
 
-The file */proc/<pid>/environ* contains the initial environment that was set when the currently executing program was started via *execve(2)*. If, after an *execve(2)*, the process modifies its environment (e.g., by calling functions such as *putenv(3)* or modifying the *environ(7)* variable directly), this file will *not* reflect those changes—see *proc(5)* for futher informations.
+The file `/proc/<pid>/environ` contains the initial environment that was set when the currently executing program was started via *execve(2)*. If, after an *execve(2)*, the process modifies its environment (e.g., by calling functions such as *putenv(3)* or modifying the *environ(7)* variable directly), this file will *not* reflect those changes—see *proc(5)* for futher informations.
