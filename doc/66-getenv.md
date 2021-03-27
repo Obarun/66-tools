@@ -39,7 +39,7 @@ author: Eric Vidal <eric@obarun.org>
 
 ```
     66-getenv -x jwm
-    66-getenv "ck-launch-session" jwm
+    66-getenv "ck-launch-session"
 ```
 
 ## Note
