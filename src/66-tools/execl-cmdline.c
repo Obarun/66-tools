@@ -50,10 +50,12 @@ void clean_string(stralloc *modifs, stralloc *tmodifs)
     for (;pos < tmodifs->len; pos += strlen(tmodifs->s + pos)+1)
     {
         tmp.len = 0 ;
-        if (!sastr_clean_string(&tmp,tmodifs->s+pos)) log_die(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
+        if (!sastr_clean_string(&tmp,tmodifs->s+pos) && (strlen(tmodifs->s + pos)))
+            log_die(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
         if (!sastr_rebuild_in_oneline(&tmp)) log_die(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
         if (!stralloc_0(&tmp)) log_die_nomem("stralloc") ;
-        if (!sastr_add_string(modifs,tmp.s)) log_die(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
+        if (tmp.len > 1)
+            if (!sastr_add_string(modifs,tmp.s)) log_die(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
     }
     stralloc_free(&tmp) ;
 }
