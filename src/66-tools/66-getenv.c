@@ -51,7 +51,7 @@ static inline void info_help (void)
     log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
-static int read_line(stralloc *dst, char const *line)
+static int read_line(stralloc *dst, char const *line, char subdelim)
 {
     char b[MAXBUF] ;
     int fd ;
@@ -86,7 +86,8 @@ static int read_line(stralloc *dst, char const *line)
         // remove trailing zeroes
         while (i && b[i-1] == '\0') --i ;
         while (i--)
-            if (b[i] == '\n' || b[i] == '\0') b[i] = ' ' ;
+            if (b[i] == '\n' || b[i] == '\0')
+                 b[i] = subdelim ;
 
         if (b[n-1] == ' ') b[n-1] = '\0' ;
     }
@@ -159,6 +160,7 @@ void get_procs ()
     for (;i < len; i += strlen(saproc.s + i) + 1)
     {
         satmp.len = 0 ;
+        char subdelim = ' ' ;
         int found = 1 ;
         char *name = saproc.s + i ;
         size_t namelen = strlen(name) ;
@@ -169,7 +171,7 @@ void get_procs ()
         memcpy(tmp + proclen + 1,name,namelen) ;
         memcpy(tmp + proclen + 1 + namelen,cmdline,linelen) ;
         tmp[proclen + 1 + namelen + linelen] = 0 ;
-        if (!read_line(&satmp,tmp)) continue ;
+        if (!read_line(&satmp,tmp,subdelim)) continue ;
 
         if (regexec (preg, satmp.s, 0, NULL, 0) != 0)
             found = 0 ;
@@ -177,17 +179,22 @@ void get_procs ()
         satmp.len = 0 ;
         memcpy(tmp + proclen + 1 + namelen,environ,linelen) ;
         tmp[proclen + 1 + namelen + linelen] = 0 ;
-        if (!read_line(&satmp,tmp)) continue ;
+        subdelim = '\n' ;
+        if (!read_line(&satmp,tmp,subdelim)) continue ;
 
         if (found)
         {
+            /** ensure to have an empty end line */
+            if (!stralloc_catb(&satmp,"\n",1))
+                log_die_nomem("stralloc") ;
+
             size_t j = 0 ;
             for(;j < satmp.len; j++)
             {
                 char ch[2] = { satmp.s[j], 0 } ;
-                if (satmp.s[j] == ' ' || satmp.s[j] == '\0')
+                if (satmp.s[j] == '\n')
                 {
-                    if (buffer_putsflush(buffer_1, delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
+                    if (buffer_putsflush(buffer_1, &delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
                 }
                 else if (buffer_puts(buffer_1, ch) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
             }
