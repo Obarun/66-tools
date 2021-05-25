@@ -1,0 +1,7 @@
+[/tmp]
+type=tmpfs
+options=ro,mode=0755,nodev,strictatime,size=10%,nr_inodes=400k
+
+[/var/tmp]
+type=tmpfs
+options=ro,mode=0755,nodev,strictatime,size=25%,nr_inodes=1m
