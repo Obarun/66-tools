@@ -11,6 +11,16 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.0.7.3
+
+- Behavior changes:
+    *execl-cmdline*: accept empty value for a key with -s options
+
+- Bugs fix:
+    *66-getenv*: do not split single/double quoted value
+
+---
+
 # In 0.0.7.2
 
 - Bugs fix:
