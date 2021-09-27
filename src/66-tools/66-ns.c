@@ -1248,7 +1248,7 @@ static int monitor_child(int parent_fd,int wait_parent_fd,pid_t child_pid)
     ssize_t fdread ;
     uint64_t fdret = 1 ;
     iopause_fd x[2] = { { .events = IOPAUSE_READ }, { .events = IOPAUSE_READ } } ;
-    tain_t deadline ;
+    tain deadline ;
     deadline = tain_infinite_relative ;
     tain_now_set_stopwatch_g() ;
     tain_add_g(&deadline,&deadline) ;
@@ -1259,16 +1259,16 @@ static int monitor_child(int parent_fd,int wait_parent_fd,pid_t child_pid)
     if (x[0].fd < 0)
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
-    if (selfpipe_trap(SIGINT) < 0)
+    if (!selfpipe_trap(SIGINT))
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
-    if (selfpipe_trap(SIGTERM) < 0)
+    if (!selfpipe_trap(SIGTERM))
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
-    if (selfpipe_trap(SIGQUIT) < 0)
+    if (!selfpipe_trap(SIGQUIT))
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
-    if (selfpipe_trap(SIGCHLD) < 0)
+    if (!selfpipe_trap(SIGCHLD))
         log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
 
     fdread = write(wait_parent_fd, &fdret, 8) ;
@@ -1782,11 +1782,12 @@ void ns_compute_entry(ns_entry_t *entry)
      struct stat st ;
 
      if (lstat(SADATA.s + entry->path,&st) == -1) {
-        if (!entry->ignore)
+        if (!entry->ignore) {
             log_dieusys(LOG_EXIT_SYS,"find: ",SADATA.s + entry->path) ;
-        else
+        } else {
             log_warnsys("ignoring entry: ",SADATA.s + entry->path) ;
             entry->done = entry->skip = 1 ;
+        }
     }
 
     // no target was set, use the same as path
@@ -2407,7 +2408,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
     PROG = "66-ns" ;
     {
 
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
 
         for (;;)
         {

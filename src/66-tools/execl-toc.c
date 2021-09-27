@@ -196,7 +196,7 @@ void parse(opts_common_t *arguments,char **nargv)
     char **argv = arguments->argv ;
 
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
 
         for (;;)
         {
@@ -722,7 +722,8 @@ int main(int argc,char const *const *argv, char const *const *envp)
 
     PROG = "execl-toc" ;
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
           int opt = subgetopt_r(argc, argv, "hv:ntDX", &l) ;
@@ -750,7 +751,8 @@ int main(int argc,char const *const *argv, char const *const *envp)
     nargv[n] = 0 ;
 
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
             int opt = subgetopt_r(3,(char const *const *)nargv, "d:p:S:m:L:b:c:k:n:g:r:s:t:u:w:x:e:f:z:O:U:N:V:E:", &l) ;

@@ -194,7 +194,7 @@ void get_procs ()
                 char ch[2] = { satmp.s[j], 0 } ;
                 if (satmp.s[j] == '\n')
                 {
-                    if (buffer_putsflush(buffer_1, &delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
+                    if (buffer_putsflush(buffer_1, delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
                 }
                 else if (buffer_puts(buffer_1, ch) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
             }
@@ -210,7 +210,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
 {
     PROG = "66-getenv" ;
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
             int opt = subgetopt_r(argc, argv, "hxd:", &l) ;

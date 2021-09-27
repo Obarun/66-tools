@@ -128,7 +128,8 @@ int main(int argc, char const **argv, char const *const *envp)
     r =  argc1 = split = 0 ;
 
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
           int opt = subgetopt_r(argc, argv, "hs", &l) ;

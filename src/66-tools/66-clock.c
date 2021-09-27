@@ -49,7 +49,7 @@ void display_clock(unsigned int flags,uint8_t nl,char const *msg)
     char hstamp[32 + slen + 1] ;
     char tstamp[TIMESTAMP + slen + 1] ;
     char *pstr = 0 ;
-    tain_t now ;
+    tain now ;
     tain_wallclock_read(&now) ;
 
     if (flags & 1)
@@ -66,7 +66,7 @@ void display_clock(unsigned int flags,uint8_t nl,char const *msg)
     }
     if (flags & 2)
     {
-        localtmn_t l ;
+        localtmn l ;
         localtmn_from_tain(&l, &now, 1) ;
         hlen = localtmn_fmt(hstamp, &l) ;
         if (msg) {
@@ -90,7 +90,8 @@ int main (int argc, char const *const *argv)
 
     PROG = "66-clock" ;
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
             int opt = subgetopt_r(argc, argv, "hnm:", &l) ;

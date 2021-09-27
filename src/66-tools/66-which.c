@@ -149,7 +149,8 @@ int main (int argc, char const *const *argv)
     genalloc paths = GENALLOC_ZERO ; // char const *
     PROG = "66-which" ;
     {
-        subgetopt_t l = SUBGETOPT_ZERO ;
+        subgetopt l = SUBGETOPT_ZERO ;
+
         for (;;)
         {
             int opt = subgetopt_r(argc, argv, "haq", &l) ;
