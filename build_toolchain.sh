@@ -1,16 +1,16 @@
 #!/bin/sh
 
-tag=0
+tag=1
 
 if [ "$1" == "commit" ]; then
-    tag=1
+    tag=0
 fi
 
-skalibs_tag="v2.10.0.0"
-execline_tag="v2.7.0.0"
-s6_tag="v2.10.0.0"
-s6_rc_tag="v0.5.2.1"
-oblibs_tag="v0.1.2.0"
+skalibs_tag="v2.11.0.0"
+execline_tag="v2.8.0.0"
+s6_tag="v2.11.0.0"
+s6_rc_tag="v0.5.2.3"
+oblibs_tag="v0.1.4.0"
 
 check_tag(){
 
