@@ -101,25 +101,6 @@ install-html: $(INSTALL_HTML:doc/$(version)/html/%.html=$(DESTDIR)$(datarootdir)
 install-man: $(INSTALL_MAN:doc/man/man1/%.1=$(DESTDIR)$(mandir)/man1/%.1)
 install-ns-rule: $(RULE_TARGET:examples/rule/%=$(DESTDIR)$(ns_rule)/%)
 
-ifneq ($(exthome),)
-
-$(DESTDIR)$(exthome): $(DESTDIR)$(home)
-	exec $(INSTALL) -l $(notdir $(home)) $(DESTDIR)$(exthome)
-
-update: $(DESTDIR)$(exthome)
-
-global-links: $(DESTDIR)$(exthome) $(SHARED_LIBS:lib%.so.xyzzy=$(DESTDIR)$(sproot)/library.so/lib%.so.$(version_M)) $(BIN_TARGETS:%=$(DESTDIR)$(sproot)/command/%)
-
-$(DESTDIR)$(sproot)/command/%: $(DESTDIR)$(home)/command/%
-	exec $(INSTALL) -D -l ..$(subst $(sproot),,$(exthome))/command/$(<F) $@
-
-$(DESTDIR)$(sproot)/library.so/lib%.so.$(version_M): $(DESTDIR)$(dynlibdir)/lib%.so.$(version_M)
-	exec $(INSTALL) -D -l ..$(subst $(sproot),,$(exthome))/library.so/$(<F) $@
-
-.PHONY: update global-links
-
-endif
-
 $(DESTDIR)$(datarootdir)/doc/$(package)/$(version)/%.html: doc/$(version)/html/%.html
 	$(INSTALL) -D -m 644 $< $@ && \
 	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
