@@ -5,9 +5,9 @@ Build Instructions
 
 - A POSIX-compliant C development environment
 - GNU make version 3.81 or later
-- skalibs version 2.10.0.0 or later: http://skarnet.org/software/skalibs/
-- execline version 2.7.0.0 or later: http://skarnet.org/software/execline/
-- oblibs version 0.1.2.0 or later: https://framagit.org/Obarun/oblibs/
+- skalibs version 2.11.0.0: http://skarnet.org/software/skalibs/
+- execline version 2.8.1.0: http://skarnet.org/software/execline/
+- oblibs version 0.1.4.0: https://framagit.org/Obarun/oblibs/
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 
@@ -58,26 +58,6 @@ cross-compiled skalibs, the rest is easy.
 - Make sure your cross-toolchain binaries (i.e. prefixed with HOST-) are accessible via your *PATH* environment variable.
 - Make sure to use the correct version of skalibs for your target, and the correct sysdeps directory, making use of the *--with-include*, *--with-lib*, *--with-dynlib* and *--with-sysdeps*
 options as necessary.
-
-## The slashpackage convention
-
-The [slashpackage convention](http://cr.yp.to/slashpackage.html) is a package installation scheme that provides a few guarantees over other conventions such as the FHS, for instance fixed absolute pathnames. obarun.org packages support it: use the *--enable-slashpackage* option to configure, or *--enable-slashpackage=DIR* for a prefixed DIR/package tree. This option will activate slashpackage support during the build and set slashpackage-compatible installation directories. If
-$version is the current 66-tools version number:
-
-- *--bindir* will be set to /package/prog/66-tools-$version/command
-- *--includedir* will be set to /package/prog/66-tools-$version/include
-- *--libdir* will be set to /package/prog/66-tools-$version/library
-- *--dynlibdir* will be set to /package/prog/66-tools-$version/library.so
-
-
-Note that *--datadir* will be unchanged, because the data exported by 66-tools, i.e. the leap second table, is system-wide. You should manually specify *--datadir=...* if you want to deviate from the default.
-
-*--prefix* is pretty much ignored when you use *--enable-slashpackage*: it will only impact *--datadir*. You should probably not use both *--enable-slashpackage* and *--prefix*.
-
-When using slashpackage, two additional Makefile targets are available after `make install`:
-- `make -L update` changes the default version of the software to the freshly installed one. (This is useful when you have several installed versions of the same software, which slashpackage supports.)
-- `make -L global-links` adds links from DIR/command and DIR/library.so to the default version of the binaries and shared libraries.
-The `-L` option to make is necessary because targets are symbolic links, and the default make behaviour is to check the pointed file's timestamp and not the symlink's timestamp.
 
 ## Out-of-tree builds
 
