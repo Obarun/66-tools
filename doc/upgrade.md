@@ -17,7 +17,7 @@ author: Eric Vidal <eric@obarun.org>
 
 - Adapt to execline 2.8.1.0
 
-- Adapt to execline 0.1.4.0
+- Adapt to oblibs 0.1.4.0
 
 - Remove slashpackage convention.
 
