@@ -28,7 +28,7 @@ Contact information
   https://web.obarun.org/
 
 * XMPP Channel:
-  obarun@muc.syntazia.org
+  obarun@xmpp.obarun.org
 
 Supports the project
 ---------------------
