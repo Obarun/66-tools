@@ -65,7 +65,7 @@
 #define NS_COLON_DELIM ':'
 #define RULE_MAXOPTS 9
 #define rule_checkopts(n) if (n >= RULE_MAXOPTS) log_die(LOG_EXIT_USER, "too many rule options")
-#define NS_SEMI_COLON_DELIM ','
+#define NS_COMMA_DELIM ','
 
 /** __compar_fn_t is an internal function of glibc
  * so define it for musl
@@ -657,7 +657,7 @@ static void mount_split_opts_flags(ns_entry_t *entry,char const *str)
     for (;pos < slen + 1; pos++)
         keep[pos] = 0 ;
 
-    if (!sastr_clean_string_wdelim(&tmp,str,NS_SEMI_COLON_DELIM))
+    if (!sastr_clean_string_wdelim(&tmp,str,NS_COMMA_DELIM))
         log_dieu(LOG_EXIT_SYS,"parse options line: ",str) ;
 
     pos = 0 ;
@@ -1628,7 +1628,6 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 void ns_setup_ns(genalloc *gaentry)
 {
 
-
     ns_resolve_symlinks(gaentry) ;
 
     /** make a private copy of '/' */
@@ -1719,7 +1718,7 @@ void ns_prepare_hidden_directory(void)
         { "/run/66/ns/hidden",              S_IFDIR  | 0000 },
         { "/run/66/ns/hidden/file",         S_IFREG  | 0000 },
         { "/run/66/ns/hidden/directory",    S_IFDIR  | 0000 },
-        { "/run/66/ns/hidden/fifo",             S_IFIFO  | 0000 },
+        { "/run/66/ns/hidden/fifo",         S_IFIFO  | 0000 },
         { "/run/66/ns/hidden/sock",         S_IFSOCK | 0000 },
         { "/run/66/ns/hidden/chr",          S_IFCHR  | 0000 },
         { "/run/66/ns/hidden/blk",          S_IFBLK  | 0000 },
@@ -2151,7 +2150,7 @@ void ns_parse_rule(stralloc *sadir,stralloc *sarule, char const *filename)
             log_die_nomem("stralloc") ;
 
         // we are not able to find any section and we are at the start of the file
-        if (!found && !pos)
+        if (!found && !start)
             log_die(LOG_EXIT_USER,"invalid rule file: ", filename) ;
 
         // not more section, end of file. We copy the rest of the file
@@ -2193,10 +2192,10 @@ void ns_parse_rule(stralloc *sadir,stralloc *sarule, char const *filename)
                 len = r - start ;
 
                 char tmp[len + 1] ;
-                memcpy(tmp,sarule->s + start + 1,len) ;
-                tmp[len ] = 0 ;
+                memcpy(tmp, sarule->s + start + 1, len) ;
+                tmp[len] = 0 ;
 
-                ns_split_from_section(sadir,&secname,tmp,filename) ;
+                ns_split_from_section(sadir, &secname, tmp, filename) ;
             }
             else {
 
@@ -2229,7 +2228,7 @@ static void ns_parse_options(char const *str)
 
     stralloc sa = STRALLOC_ZERO ;
 
-    if (!sastr_clean_string_wdelim(&sa,str,NS_SEMI_COLON_DELIM))
+    if (!sastr_clean_string_wdelim(&sa,str,NS_COMMA_DELIM))
         log_dieu(LOG_EXIT_SYS,"clean options") ;
 
     unsigned int n = sastr_len(&sa), nopts = 0 , old ;
@@ -2459,7 +2458,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
                 case 'r':
 
-                    if (!sastr_clean_string_wdelim(&sarule,l.arg,NS_SEMI_COLON_DELIM))
+                    if (!sastr_clean_string_wdelim(&sarule,l.arg,NS_COMMA_DELIM))
                         log_dieu(LOG_EXIT_SYS,"parse rule options") ;
 
                     break ;

@@ -143,8 +143,9 @@ void get_procs ()
     preg = regex_cmp() ;
     stralloc satmp = STRALLOC_ZERO ;
     stralloc saproc = STRALLOC_ZERO ;
+    char const *exclude[1] = { 0 } ;
 
-    if (!sastr_dir_get(&satmp,proc,"",S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
+    if (!sastr_dir_get(&satmp,proc,exclude,S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
 
     i = 0, len = satmp.len ;
     for (;i < len; i += strlen(satmp.s + i) + 1)
