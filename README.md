@@ -1,4 +1,4 @@
-![GitLabl Build Status](https://framagit.org/Obarun/66-tools/badges/master/pipeline.svg)
+![GitLabl Build Status](https://git.obarun.org/Obarun/66-tools/badges/master/pipeline.svg)
 
 66-tools - Helpers tools to accomplish various and repetitive tasks in service scripts administration common tasks
 ====
@@ -28,7 +28,7 @@ Contact information
   https://web.obarun.org/
 
 * XMPP Channel:
-  obarun@muc.syntazia.org
+  obarun@xmpp.obarun.org
 
 Supports the project
 ---------------------
