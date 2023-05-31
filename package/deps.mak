@@ -12,7 +12,6 @@ src/66-tools/66-writenv.o src/66-tools/66-writenv.lo: src/66-tools/66-writenv.c
 src/66-tools/66-yeller.o src/66-tools/66-yeller.lo: src/66-tools/66-yeller.c
 src/66-tools/execl-cmdline.o src/66-tools/execl-cmdline.lo: src/66-tools/execl-cmdline.c
 src/66-tools/execl-subuidgid.o src/66-tools/execl-subuidgid.lo: src/66-tools/execl-subuidgid.c
-src/66-tools/execl-toc.o src/66-tools/execl-toc.lo: src/66-tools/execl-toc.c
 66-clock: EXTRA_LIBS := -loblibs -lskarnet
 66-clock: src/66-tools/66-clock.o 
 66-getenv: EXTRA_LIBS := -loblibs -lskarnet
@@ -33,5 +32,3 @@ execl-cmdline: EXTRA_LIBS := -loblibs -lexecline -lskarnet
 execl-cmdline: src/66-tools/execl-cmdline.o
 execl-subuidgid: EXTRA_LIBS := -loblibs -lexecline -lskarnet
 execl-subuidgid: src/66-tools/execl-subuidgid.o ${LIBEXECLINE}
-execl-toc: EXTRA_LIBS := -loblibs -lskarnet
-execl-toc: src/66-tools/execl-toc.o 
