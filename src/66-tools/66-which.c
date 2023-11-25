@@ -69,7 +69,7 @@ int parse_path(genalloc* folders, char* path) {
             found = 0;
             len = genalloc_len(char const*, folders);
             for ( i = 0 ; i < len ; i++) {
-                if (obstr_equal(ss[i], rp)) {
+                if (!strcmp(ss[i], rp)) {
                     found = 1 ;
                     break ;
                 }
