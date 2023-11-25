@@ -45,6 +45,7 @@
 #include <oblibs/mill.h>
 #include <oblibs/directory.h>
 #include <oblibs/types.h>
+#include <oblibs/stack.h>
 
 #include <skalibs/sgetopt.h>
 #include <skalibs/types.h>
@@ -1990,23 +1991,18 @@ int ns_get_section(stralloc *secname, char const *str,size_t *pos)
 {
     size_t len = strlen(str) ;
     size_t newpos = 0, found = 0 ;
-
-    stralloc tmp = STRALLOC_ZERO ;
+    _init_stack_(stk, len + 1) ;
 
     while ((*pos) < len)
     {
-        tmp.len = 0 ;
+        stk.len = 0 ;
         newpos = 0 ;
 
-        if (mill_element(&tmp,str+(*pos),&MILL_GET_SECTION_NAME,&newpos) == -1)
-            goto end ;
+        if (mill_element(&stk,str+(*pos),&MILL_GET_SECTION_NAME,&newpos) == -1)
+            return found ? 1 : 0 ;
 
-        if (tmp.len) {
-            if (!stralloc_0(&tmp))
-               return -1 ;
-
+        if (stk.len)
             found = 1 ;
-        }
 
         (*pos) += newpos ;
 
