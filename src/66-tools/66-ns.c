@@ -2010,12 +2010,9 @@ int ns_get_section(stralloc *secname, char const *str,size_t *pos)
     }
 
     if (found) {
-        if (!stralloc_catb(secname,tmp.s,strlen(tmp.s) + 1))
+        if (!stralloc_catb(secname,stk.s,strlen(stk.s) + 1))
             return -1 ;
     }
-
-    end:
-    stralloc_free(&tmp) ;
 
     return found ? 1 : 0 ;
 }
