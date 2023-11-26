@@ -1,0 +1,4 @@
+-loblibs
+-lexecline
+-lskarnet
+${LIBEXECLINE}
