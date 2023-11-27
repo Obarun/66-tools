@@ -11,6 +11,16 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.1.0.0
+
+- Adapt to skalibs 2.14.0.1
+
+- Adapt to execline 2.9.4.0
+
+- Adapt to oblibs 0.2.0.0
+
+---
+
 # In 0.0.8.0
 
 - Adapt to skalibs 2.11.0.0

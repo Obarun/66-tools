@@ -5,9 +5,9 @@ Build Instructions
 
 - A POSIX-compliant C development environment
 - GNU make version 3.81 or later
-- skalibs version 2.11.0.0: http://skarnet.org/software/skalibs/
-- execline version 2.8.1.0: http://skarnet.org/software/execline/
-- oblibs version 0.1.4.0: https://framagit.org/Obarun/oblibs/
+- skalibs version 2.12.0.2: http://skarnet.org/software/skalibs/
+- execline version 2.9.4.0: http://skarnet.org/software/execline/
+- oblibs version 0.2.0.0: https://git.obarun.org/Obarun/oblibs/
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 

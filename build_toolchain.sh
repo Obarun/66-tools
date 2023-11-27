@@ -6,11 +6,9 @@ if [ "$1" == "commit" ]; then
     tag=0
 fi
 
-skalibs_tag="v2.11.0.0"
-execline_tag="v2.8.0.0"
-s6_tag="v2.11.0.0"
-s6_rc_tag="v0.5.2.3"
-oblibs_tag="v0.1.4.0"
+skalibs_tag="v2.14.0.1"
+execline_tag="v2.9.4.0"
+oblibs_tag="0.2.0.0"
 
 check_tag(){
 
@@ -52,41 +50,10 @@ build_execline() {
     cd ..
 }
 
-## s6
-build_s6() {
-
-    git clone https://github.com/skarnet/s6
-    cd s6
-    check_tag "${s6_tag}"
-    ./configure \
-        --prefix=/usr \
-        --bindir=/usr/bin \
-        --sbindir=/usr/bin \
-        --enable-shared
-
-    make install || return 1
-    cd ..
-}
-
-## s6-rc
-build_s6_rc() {
-    git clone https://github.com/skarnet/s6-rc
-    cd s6-rc
-    check_tag "${s6_rc_tag}"
-    ./configure \
-        --prefix=/usr \
-        --bindir=/usr/bin \
-        --sbindir=/usr/bin \
-        --enable-shared
-
-    make install || return 1
-    cd ..
-}
-
 ## oblibs
 build_oblibs() {
 
-    git clone https://framagit.org/obarun/oblibs
+    git clone https://git.obarun.org/obarun/oblibs
     cd oblibs
     check_tag "${oblibs_tag}"
     ./configure \
@@ -107,6 +74,4 @@ _run() {
 ## do it
 _run build_skalibs
 _run build_execline
-#_run build_s6
-#_run build_s6_rc
 _run build_oblibs
