@@ -1,7 +1,7 @@
 /*
  * 66-ns.c
  *
- * Copyright (c) 2018-2023 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -584,8 +584,8 @@ void ns_clone_node(char const *path, char const *target)
     else if (S_ISLNK(st.st_mode)) {
 
         /* should be enough */
-        char dest[1024] ;
-        ssize_t d = readlink(path,dest,1024) ;
+        char dest[4096] ;
+        ssize_t d = readlink(path,dest,4096) ;
         if (d == -1)
             log_dieusys(LOG_EXIT_SYS,"readlink: ",path) ;
 
@@ -1233,7 +1233,6 @@ static int handle_signal(pid_t child_pid)
                 while ((pid = wait_nohang(&wstat)) > 0)
                     if (pid == child_pid)
                         return compute_exit(wstat) ;
-
                 break ;
         }
     }
@@ -1971,13 +1970,15 @@ static void ns_parse_line(genalloc *gaentry, char const *str)
 
                 }
                 nopts++ ;
+                break ;
             }
         }
         if (old == nopts)
             log_die(LOG_EXIT_USER,"invalid option: ",current," for entry: ",SADATA.s + entry.path) ;
     }
 
-    mount_split_opts_flags(&entry,SADATA.s + entry.opts) ;
+    if (entry.opts >= 0)
+        mount_split_opts_flags(&entry,SADATA.s + entry.opts) ;
 
     ns_compute_entry(&entry) ;
 
