@@ -24,5 +24,4 @@ build:
 
   only:
     - master
-    - dev
 
