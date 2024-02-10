@@ -51,11 +51,11 @@ void clean_string(stralloc *modifs, stralloc *tmodifs)
     {
         tmp.len = 0 ;
         if (!sastr_clean_string(&tmp,tmodifs->s+pos) && (strlen(tmodifs->s + pos)))
-            log_die(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
-        if (!sastr_rebuild_in_oneline(&tmp)) log_die(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
+            log_dieu(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
+        if (!sastr_rebuild_in_oneline(&tmp)) log_dieu(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
         if (!stralloc_0(&tmp)) log_die_nomem("stralloc") ;
         if (tmp.len > 1)
-            if (!sastr_add_string(modifs,tmp.s)) log_die(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
+            if (!sastr_add_string(modifs,tmp.s)) log_dieu(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
     }
     stralloc_free(&tmp) ;
 }
@@ -181,6 +181,10 @@ int main(int argc, char const **argv, char const *const *envp)
     stralloc_free(&tmp) ;
     stralloc_free(&tmodifs) ;
 
+	/* TODO
+	 * stralloc modifs cannot be freed before exec
+	 * due of the env_make behavior.
+	 * The env_make() should be remade for our needs */
     r = sastr_len(&modifs) ;
     char const *newarg[r + 1] ;
     if (!env_make(newarg, r, modifs.s, modifs.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;
