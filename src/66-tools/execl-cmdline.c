@@ -17,6 +17,7 @@
 #include <oblibs/log.h>
 #include <oblibs/sastr.h>
 #include <oblibs/string.h>
+#include <oblibs/environ.h>
 
 #include <skalibs/stralloc.h>
 #include <skalibs/env.h>
@@ -148,7 +149,8 @@ int main(int argc, char const **argv, char const *const *envp)
     if (argc1 >= argc) log_die(100, "unterminated block") ;
     argv[argc1] = 0 ;
 
-    if (!env_string(&tmodifs,argv,argc1)) log_dieu(LOG_EXIT_SYS,"environment string") ;
+    if (!environ_import_arguments(&tmodifs, argv, argc1))
+        log_dieu(LOG_EXIT_SYS, "import arguments to environment") ;
 
     clean_string(&modifs,&tmodifs) ;
 
@@ -170,7 +172,7 @@ int main(int argc, char const **argv, char const *const *envp)
                 tmodifs.len = 0 ;
                 stralloc_cats(&tmodifs,line) ;
                 stralloc_0(&tmodifs) ;
-                if (!sastr_clean_element(&tmodifs))
+                if (!sastr_clean_string(&tmodifs, tmodifs.s))
                     log_dieu(LOG_EXIT_SYS,"split element of: ",tmodifs.s) ;
                 for (tpos = 0 ; tpos < tmodifs.len ; tpos += strlen(tmodifs.s + tpos) + 1)
                     if (!sastr_add_string(&tmp,tmodifs.s+tpos)) log_dieu(LOG_EXIT_SYS,"add line: ", tmodifs.s) ;
