@@ -42,10 +42,10 @@
 #include <oblibs/log.h>
 #include <oblibs/string.h>
 #include <oblibs/files.h>
-#include <oblibs/mill.h>
 #include <oblibs/directory.h>
 #include <oblibs/types.h>
 #include <oblibs/stack.h>
+#include <oblibs/lexer.h>
 
 #include <skalibs/sgetopt.h>
 #include <skalibs/types.h>
@@ -61,6 +61,7 @@
 
 #include <66-tools/config.h>
 
+#include <stdio.h>
 #define NS_MAXOPTS 6
 #define ns_checkopts(n) if (n >= NS_MAXOPTS) log_die(LOG_EXIT_USER, "too many namespace options")
 #define NS_COLON_DELIM ':'
@@ -124,13 +125,6 @@ static inline void info_help (void)
     if (buffer_putsflush(buffer_1, help) < 0)
         log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
-
-parse_mill_t MILL_GET_SECTION_NAME = \
-{ \
-    .open = '[', .close = ']', \
-    .forceclose = 1, .forceskip = 1, \
-    .skip = " \t\r", .skiplen = 3, \
-    .inner.debug = "get_section_name" } ;
 
 typedef struct ns_opts_map_s ns_opts_map_t ;
 struct ns_opts_map_s
@@ -547,6 +541,7 @@ ssize_t ns_get_previous_element(stralloc *sa,size_t where)
 
 void ns_clone_node(char const *path, char const *target)
 {
+    log_flow() ;
 
     struct stat st ;
 
@@ -615,6 +610,8 @@ void ns_clone_node(char const *path, char const *target)
  * @Return MNT_IGNORE for user flags */
 static int mount_sanitize_flags(unsigned long *flags, char const *str)
 {
+    log_flow() ;
+
     size_t n = sizeof (mount_opts_table) / sizeof (*mount_opts_table) ;
 
     size_t i = 0 ;
@@ -646,28 +643,30 @@ static int mount_sanitize_flags(unsigned long *flags, char const *str)
 
 static void mount_split_opts_flags(ns_entry_t *entry,char const *str)
 {
+    log_flow() ;
+
     size_t pos = 0, len = 0, next = 0, slen = strlen(str), klen = 0 ;
 
     ssize_t dummy = -1 ;
 
     int r = MNT_IGNORE ;
 
-    stralloc tmp = STRALLOC_ZERO ;
+    _alloc_stk_(stk, slen + 1) ;
 
     char keep[slen + 1] ;
     for (;pos < slen + 1; pos++)
         keep[pos] = 0 ;
 
-    if (!sastr_clean_string_wdelim(&tmp,str,NS_COMMA_DELIM))
+    if (!lexer_trim_with_delim(&stk,str,NS_COMMA_DELIM))
         log_dieu(LOG_EXIT_SYS,"parse options line: ",str) ;
 
     pos = 0 ;
 
-    FOREACH_SASTR(&tmp,pos) {
+    FOREACH_STK(&stk,pos) {
 
-        char *o = tmp.s + pos ;
+        char *o = stk.s + pos ;
 
-        next = pos + (strlen(tmp.s + pos) + 1) < tmp.len ? 1 : 0 ;
+        next = pos + (strlen(stk.s + pos) + 1) < stk.len ? 1 : 0 ;
 
         len = strlen(o) ;
 
@@ -706,12 +705,11 @@ static void mount_split_opts_flags(ns_entry_t *entry,char const *str)
     if (*keep)
         entry->opts = ns_add_to_sadata(keep) ;
     else entry->opts = -1 ;
-
-    stralloc_free(&tmp) ;
 }
 
 ns_entry_t ns_compute_opts(char const *mntopts,char const *useropts)
 {
+    log_flow() ;
 
     ns_entry_t new = NS_ENTRY_ZERO ;
 
@@ -720,10 +718,10 @@ ns_entry_t ns_compute_opts(char const *mntopts,char const *useropts)
 
     auto_strings(o,mntopts,!*mntopts ? "" :",",useropts) ;
 
-    mount_split_opts_flags(&new,o) ;
+    if (strlen(o))
+        mount_split_opts_flags(&new,o) ;
 
     return new ;
-
 }
 
 /**
@@ -751,6 +749,7 @@ ssize_t mntfile_add_string(char const *str)
 
 void mntfile_init()
 {
+    log_flow() ;
 
     FILE *file_mounts = setmntent ("/proc/self/mounts", "r") ;
 
@@ -783,6 +782,8 @@ void mntfile_init()
 
 ssize_t mntfile_get(char const *path, uint8_t entry)
 {
+    log_flow() ;
+
     char *str = _MNTFILE_SA.s ;
     size_t pos = 0, plen = strlen(path) ;
     char p[plen + 1] ;
@@ -838,6 +839,8 @@ ssize_t mntfile_get(char const *path, uint8_t entry)
 
 static int is_mnt(char const *str)
 {
+    log_flow() ;
+
     struct stat st;
 
     size_t slen = strlen(str) ;
@@ -864,7 +867,9 @@ static int is_mnt(char const *str)
     return is_not_mnt ? 0 : 1 ;
 }
 
-static void umount_recursive(char const *path) {
+static void umount_recursive(char const *path)
+{
+    log_flow() ;
 
     size_t pos = 0, nstmp_len = strlen(NSTMP), mnt_len = 0 ;
     char *str = _MNTFILE_SA.s ;
@@ -903,8 +908,7 @@ static void umount_recursive(char const *path) {
              *
              *
              * */
-            if (!strcmp(type, "fuse") || !strcmp(type, "fuseblk") ||
-                !strncmp(type, "fuse.", 5) || !strncmp(type, "fuseblk.", 8))
+            if (!strncmp(type, "fuse", 4))
             {
 
                 log_trace("unmount fuse mountpoint: ",path) ;
@@ -935,6 +939,8 @@ static void umount_recursive(char const *path) {
 
 int mount_move_root (char const *path)
 {
+    log_flow() ;
+
     if (chdir(path) == -1)
         log_warnusys_return(LOG_EXIT_ZERO,"chdir") ;
 
@@ -952,6 +958,7 @@ int mount_move_root (char const *path)
 
 int ns_mount(char const *path,char const *target,char const *type,unsigned long flags, char const *opts,uint8_t create)
 {
+    log_flow() ;
 
     int fd ;
     size_t len = strlen("/proc/self/fd/") ;
@@ -976,9 +983,8 @@ int ns_mount(char const *path,char const *target,char const *type,unsigned long 
 
             ns_clone_node(path,target) ;
 
-            if (mount(path,target,type,flags,opts) == -1) {
+            if (mount(path,target,type,flags,opts) == -1)
                 log_dieusys(LOG_EXIT_SYS,"mount: ",path," to: ",target) ;
-            }
         }
         else log_dieusys(LOG_EXIT_SYS,"mount: ",path," to: ",target) ;
     }
@@ -989,6 +995,7 @@ int ns_mount(char const *path,char const *target,char const *type,unsigned long 
 
 void mnt_remount_ro(ns_entry_t *entry,genalloc *list)
 {
+    log_flow() ;
 
     if (entry->ignore)
         return ;
@@ -1088,6 +1095,7 @@ void mnt_remount_ro(ns_entry_t *entry,genalloc *list)
 
 void ns_mount_recursive(char const *root, ns_entry_t *entry)
 {
+    log_flow() ;
 
     size_t pos = 0, prefix_len = strlen(root) ;
     char *str = _MNTFILE_SA.s, *sentry = SADATA.s ;
@@ -1318,6 +1326,8 @@ int ns_path_compare(const ns_entry_t *a,const ns_entry_t *b)
 
 void ns_drop_element(genalloc *ga)
 {
+    log_flow() ;
+
     size_t pos = 0 ;
     size_t galen = genalloc_len(ns_entry_t,ga) ;
 
@@ -1343,6 +1353,7 @@ void ns_drop_element(genalloc *ga)
 
 void ns_drop_hidden(genalloc *ga)
 {
+    log_flow() ;
 
     size_t pos = 0 ;
     size_t galen = genalloc_len(ns_entry_t,ga) ;
@@ -1385,6 +1396,7 @@ void ns_drop_hidden(genalloc *ga)
 
 void ns_clean_ns_entry(genalloc *gaentry)
 {
+    log_flow() ;
 
     qsort_indirect(genalloc_s(ns_entry_t,gaentry),genalloc_len(ns_entry_t,gaentry),ns_path_compare) ;
 
@@ -1396,6 +1408,8 @@ void ns_clean_ns_entry(genalloc *gaentry)
 
 ssize_t ns_hidden_path(char const *path)
 {
+    log_flow() ;
+
     size_t path_len = strlen(path), hidden_len = strlen(NSHIDDEN) + 10 ;
     char hidden[path_len + hidden_len + 1] ;
     struct stat st ;
@@ -1445,6 +1459,7 @@ ssize_t ns_hidden_path(char const *path)
 
 void ns_resolve_symlinks(genalloc *gaentry)
 {
+    log_flow() ;
 
     size_t pos = 0 ;
 
@@ -1474,6 +1489,7 @@ void ns_resolve_symlinks(genalloc *gaentry)
 
 void ns_apply_entry(ns_entry_t *entry,char const *root)
 {
+    log_flow() ;
 
     if (entry->ignore)
         return ;
@@ -1627,6 +1643,7 @@ void ns_apply_entry(ns_entry_t *entry,char const *root)
 
 void ns_setup_ns(genalloc *gaentry)
 {
+    log_flow() ;
 
     ns_resolve_symlinks(gaentry) ;
 
@@ -1708,6 +1725,8 @@ void ns_setup_ns(genalloc *gaentry)
 
 void ns_prepare_hidden_directory(void)
 {
+    log_flow() ;
+
     size_t i = 0 ;
     mode_t u ;
     static const struct {
@@ -1750,6 +1769,8 @@ void ns_prepare_hidden_directory(void)
 
 void ns_prepare_directory(void)
 {
+    log_flow() ;
+
     mode_t mode = S_IRWXU ;// 0700
 
     if (rm_rf(NSPREFIX) == -1)
@@ -1775,6 +1796,8 @@ void ns_prepare_directory(void)
 
 void ns_compute_entry(ns_entry_t *entry)
 {
+    log_flow() ;
+
     /** check if the entry exist.
      * if not and entry->ignore is set to no
      * die else warn the user */
@@ -1787,6 +1810,8 @@ void ns_compute_entry(ns_entry_t *entry)
             log_warnsys("ignoring entry: ",SADATA.s + entry->path) ;
             entry->done = entry->skip = 1 ;
         }
+    } else {
+        entry->ignore = 0 ;
     }
 
     // no target was set, use the same as path
@@ -1865,31 +1890,31 @@ void ns_compute_entry(ns_entry_t *entry)
 
 static void ns_parse_line(genalloc *gaentry, char const *str)
 {
+    log_flow() ;
+
     size_t pos = 0, len = 0 ;
     ssize_t r = 0 ;
 
     char *current = 0, *key = 0, *val = 0 ;
 
-    stralloc sa = STRALLOC_ZERO ;
+    _alloc_stk_(stk, strlen(str) + 1) ;
 
     ns_rule_map_t const *t ;
 
     ns_entry_t entry = NS_ENTRY_ZERO ;
 
-    if (!sastr_clean_string_wdelim(&sa,str,NS_COLON_DELIM))
+    if (!lexer_trim_with_delim(&stk,str,NS_COLON_DELIM))
         log_dieu(LOG_EXIT_SYS,"parse directory options") ;
 
-    unsigned int n = sastr_len(&sa), nopts = 0 , old = 0 ;
+    unsigned int nopts = 0 , old = 0 ;
 
     /** +1, the first string is the name of
      * the element to handle */
-    rule_checkopts(n + 1) ;
+    rule_checkopts(stk.count + 1) ;
 
+    FOREACH_STK(&stk,pos) {
 
-    FOREACH_SASTR(&sa,pos) {
-
-
-        current = sa.s + pos ;
+        current = stk.s + pos ;
 
         if (!pos) {
 
@@ -1984,42 +2009,50 @@ static void ns_parse_line(genalloc *gaentry, char const *str)
 
     if (!genalloc_append(ns_entry_t,gaentry,&entry))
         log_die_nomem("genalloc") ;
-
-    stralloc_free(&sa) ;
 }
 
 int ns_get_section(stralloc *secname, char const *str,size_t *pos)
 {
+    log_flow() ;
+
     size_t len = strlen(str) ;
-    size_t newpos = 0, found = 0 ;
-    _init_stack_(stk, len + 1) ;
+    _alloc_stk_(stk, len + 1) ;
+    lexer_config cfg = LEXER_CONFIG_ZERO ;
+    cfg.open = "[" ; cfg.olen = 1 ;
+    cfg.close = "]" ; cfg.clen = 1 ;
+    cfg.skip = " \t\r" ; cfg.skiplen = 3 ;
+    cfg.forceclose = 1 ; cfg.firstoccurence = 1 ;
+    cfg.kopen = 0 ; cfg.kclose = 0 ;
 
-    while ((*pos) < len)
-    {
-        stk.len = 0 ;
-        newpos = 0 ;
+    while ((*pos) < len) {
 
-        if (mill_element(&stk,str+(*pos),&MILL_GET_SECTION_NAME,&newpos) == -1)
-            return found ? 1 : 0 ;
+        stack_reset(&stk) ;
+        cfg.found = 0 ;
 
-        if (stk.len)
-            found = 1 ;
+        if (!lexer_trim_with_g(&stk, str + (*pos), &cfg))
+            return 0 ;
 
-        (*pos) += newpos ;
+        (*pos) += cfg.pos ;
 
-        if (found) break ;
+        if (cfg.found) break ;
+        if (!cfg.count) {
+            /** no more section*/
+            *pos = len ;
+        }
     }
 
-    if (found) {
+    if (cfg.found) {
         if (!stralloc_catb(secname,stk.s,strlen(stk.s) + 1))
             return -1 ;
     }
 
-    return found ? 1 : 0 ;
+    return cfg.found ;
 }
 
 void ns_rebuild_rule_for_entry(stralloc *sadir, stralloc *sa,char const *secname)
 {
+    log_flow() ;
+
     size_t pos = 0, next = 0 ;
 
     stralloc tmp = STRALLOC_ZERO ;
@@ -2057,6 +2090,7 @@ void ns_rebuild_rule_for_entry(stralloc *sadir, stralloc *sa,char const *secname
 
 void ns_split_from_section(stralloc *sadir, stralloc *secname, char const *str, char const *filename)
 {
+    log_flow() ;
 
     stralloc sarule = STRALLOC_ZERO ;
     stralloc tmp = STRALLOC_ZERO ;
@@ -2106,8 +2140,9 @@ void ns_split_from_section(stralloc *sadir, stralloc *secname, char const *str, 
         if (sastr_cmp(sadir,secname->s) >= 0)
             return ;
 
-        if (!stralloc_cats(&tmp,str))
-            log_die_nomem("stralloc") ;
+        if (!stralloc_cats(&tmp,str) ||
+            !stralloc_0(&tmp))
+                log_die_nomem("stralloc") ;
 
         if (!tmp.len)
             log_die(LOG_EXIT_USER,"section: ",secname->s," is empty") ;
@@ -2122,6 +2157,7 @@ void ns_split_from_section(stralloc *sadir, stralloc *secname, char const *str, 
 
 void ns_parse_rule(stralloc *sadir,stralloc *sarule, char const *filename)
 {
+    log_flow() ;
 
     stralloc secname = STRALLOC_ZERO ;
 
@@ -2215,23 +2251,25 @@ void ns_parse_rule(stralloc *sadir,stralloc *sarule, char const *filename)
 
 static void ns_parse_options(char const *str)
 {
+    log_flow() ;
+
     size_t pos = 0, len = 0 ;
     ssize_t r ;
     char *current = 0, *key = 0, *val = 0 ;
     ns_opts_map_t const *t ;
 
-    stralloc sa = STRALLOC_ZERO ;
+    _alloc_stk_(stk, strlen(str) + 1) ;
 
-    if (!sastr_clean_string_wdelim(&sa,str,NS_COMMA_DELIM))
+    if (!lexer_trim_with_delim(&stk,str,NS_COMMA_DELIM))
         log_dieu(LOG_EXIT_SYS,"clean options") ;
 
-    unsigned int n = sastr_len(&sa), nopts = 0 , old ;
+    unsigned int nopts = 0 , old ;
 
-    ns_checkopts(n) ;
+    ns_checkopts(stk.count) ;
 
-    FOREACH_SASTR(&sa,pos) {
+    FOREACH_STK(&stk,pos) {
 
-        current = sa.s + pos ;
+        current = stk.s + pos ;
         t = ns_opts_table ;
         old = nopts ;
 
@@ -2296,13 +2334,13 @@ static void ns_parse_options(char const *str)
                         {
                             size_t upos = 0 ;
                             struct stat st ;
-                            stralloc unsa = STRALLOC_ZERO ;
+                            _alloc_stk_(unsa, strlen(val) + 1) ;
                             char *uncurrent = 0 ;
 
-                            if (!sastr_clean_string_wdelim(&unsa,val,NS_COLON_DELIM))
+                            if (!lexer_trim_with_delim(&unsa,val,NS_COLON_DELIM))
                                 log_dieu(LOG_EXIT_SYS,"clean unshare options") ;
 
-                            FOREACH_SASTR(&unsa,upos) {
+                            FOREACH_STK(&unsa,upos) {
 
                                 uncurrent = unsa.s + upos ;
 
@@ -2347,7 +2385,6 @@ static void ns_parse_options(char const *str)
                                     log_die(LOG_EXIT_SYS,"invalid unshare option: ",uncurrent) ;
                             }
 
-                            stralloc_free(&unsa) ;
                         }
 
                         break ;
@@ -2370,8 +2407,6 @@ static void ns_parse_options(char const *str)
     }
     if (HOSTNAME)
         NS_CLONE_FLAGS |= CLONE_NEWUTS ;
-
-    stralloc_free(&sa) ;
 }
 
 int main(int argc, char const *const *argv, char const *const *envp)
@@ -2452,8 +2487,8 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
                 case 'r':
 
-                    if (!sastr_clean_string_wdelim(&sarule,l.arg,NS_COMMA_DELIM))
-                        log_dieu(LOG_EXIT_SYS,"parse rule options") ;
+                    if (!sastr_add_string(&sarule,l.arg))
+                        log_dieusys(LOG_EXIT_SYS,"store rules file to handle") ;
 
                     break ;
 
@@ -2505,7 +2540,6 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
         stralloc_free(&rule) ;
     }
-
 
     pos = 0 ;
 
