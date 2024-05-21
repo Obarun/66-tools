@@ -10,6 +10,18 @@ author: Eric Vidal <eric@obarun.org>
 # Changelog for 66-tools
 
 ---
+
+# In 0.1.0.2
+
+- Adapt to `oblibs` 0.3.0.0
+
+- Bugs fix:
+
+    - fix `-r` options at *66-ns* program.
+    - reset ignore options if element exist to avoid skipping it.
+
+---
+
 # In 0.1.0.1
 
 - Bugs fix
