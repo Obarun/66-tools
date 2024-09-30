@@ -28,6 +28,7 @@
 
 #include <skalibs/tai.h>
 #include <skalibs/iopause.h>
+#include <skalibs/djbunix.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/types.h>
 #include <skalibs/selfpipe.h>
@@ -45,7 +46,7 @@ static inline void info_help (void)
         "   -h: print this help\n"
         "   -z: use color\n"
         "   -v: increase/decrease verbosity\n"
-		"   -d: notify readiness on file descriptor notif(must be superior to 5, default 6)\n"
+		"   -d: notify readiness on file descriptor notif\n"
         "\n"
         ;
 
@@ -60,8 +61,8 @@ static int notifier_isvalid(const char *str)
 	if (!uint0_scan(str, &u))
 		log_usage(USAGE) ;
 
-	if (u < 6)
-		log_die(LOG_EXIT_USER, "file descriptor must be 6 or more") ;
+	if (u < 3)
+		log_die(LOG_EXIT_USER, "file descriptor must be 3 or more") ;
 
 	if (fcntl(u, F_GETFD) < 0)
 		log_diesys(LOG_EXIT_USER, "invalid file descriptor") ;
@@ -71,13 +72,15 @@ static int notifier_isvalid(const char *str)
 
 int main(int argc, char const *const *argv)
 {
-	unsigned int notif = 6 ;
+	unsigned int notif = 0 ;
 	int r, istty ;
 	struct service_s *hservice = NULL ;
 	dbs_cleanup_(launcher_freep) launcher_t *launcher = 0 ;
 
 	log_color = &log_color_disable ;
 	istty = isatty(1) ;
+
+	set_clock_enable(1) ;
 
 	PROG = "66-dbus-launch" ;
 	{
@@ -107,11 +110,17 @@ int main(int argc, char const *const *argv)
 		argc -= l.ind ; argv += l.ind ;
 	}
 
+	if (!fd_sanitize())
+		log_dieusys(LOG_EXIT_SYS, "sanitize standards I/O") ;
+
 	/** bind and listen dbus socket */
 	int socket = dbs_socket_bind() ;
 
 	if (dbs_setenv_dbus_address() < 0)
 		log_dieusys(LOG_EXIT_SYS, "set ", !getuid() ? "DBUS_SYSTEM_BUS_ADDRESS" : "DBUS_SESSION_BUS_ADDRESS") ;
+
+	if (!fd_ensure_open(notif, notif))
+		log_dieusys(LOG_EXIT_SYS, "reverse fd for notification") ;
 
 	int spfd = selfpipe_init() ;
 	if (spfd < 0)
@@ -139,7 +148,7 @@ int main(int argc, char const *const *argv)
 		log_dieu(LOG_EXIT_SYS, "run launcher") ;
 
 	// notify right before the loop
-	if (notif > 0 && istty) {
+	if (notif) {
 		write(notif, "\n", 1) ;
 		close(notif) ;
 	}
