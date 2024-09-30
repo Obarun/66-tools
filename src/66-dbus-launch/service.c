@@ -386,12 +386,17 @@ int service_activate(launcher_t *launcher, int id)
 	_alloc_stk_(name, strlen(s->name) + DBS_SERVICE_SUFFIX_LEN) ;
 	auto_strings(name.s, s->name, DBS_SERVICE_SUFFIX) ;
 
+	char fmt[INT_FMT] ;
+	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+
 	log_info("activation requested for service: ", name.s) ;
 
 	if (s) {
 
 		char *nargv[] = {
 			"66",
+			"-v",
+			fmt,
 			"start",
 			name.s,
 			0
@@ -409,10 +414,15 @@ int service_deactivate(struct service_s *service)
 	_alloc_stk_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
 	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
 
+	char fmt[INT_FMT] ;
+	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+
 	log_info("deactivation requested for service: ", name.s) ;
 
 	char *nargv[] = {
 		"66",
+		"-v",
+		fmt,
 		"remove",
 		name.s,
 		0
@@ -435,9 +445,14 @@ void service_discard_tree(void)
 {
 	log_flow() ;
 
+	char fmt[INT_FMT] ;
+	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+
 	char *nargv[] = {
 		"66",
 		"-T3000",
+		"-v",
+		fmt,
 		"tree",
 		"free",
 		"dbus",
