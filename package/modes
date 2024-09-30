@@ -9,3 +9,4 @@
 execl-cmdline   0755
 execl-subuidgid 0755
 execl-toc       0755
+66-dbus-launch  0755

@@ -62,3 +62,7 @@ options as necessary.
 ## Out-of-tree builds
 
 obarun.org packages do not support out-of-tree builds. They are small, so it does not cost much to duplicate the entire source tree if parallel builds are needed.
+
+## Dbus support
+
+The 66-dbus-broker-launch tool is built if you give the `--enable-dbus=<implementation>` flag to configure. There are two supported values for `<implementation>: basu and elogind. You should install the relevant header and library files for your chosen implementation before building the 66-dbus-broker-launch.

@@ -9,47 +9,53 @@ Usage: $0 [OPTION]... [TARGET]
 Defaults for the options are specified in brackets.
 System types:
 
-  --target=TARGET               configure to run on target TARGET [detected]
-  --host=TARGET                 same as --target
+  --target=TARGET                 configure to run on target TARGET [detected]
+  --host=TARGET                   same as --target
 
 Installation directories:
 
-  --prefix=PREFIX               main installation prefix [/]
-  --exec-prefix=EPREFIX         installation prefix for executable files [PREFIX]
+  --prefix=PREFIX                 main installation prefix [/]
+  --exec-prefix=EPREFIX           installation prefix for executable files [PREFIX]
 
 Fine tuning of the installation directories:
 
-  --dynlibdir=DIR               shared library files [PREFIX/lib]
-  --bindir=BINDIR               user executables [EPREFIX/bin]
-  --libexecdir=DIR              package-scoped executables [EPREFIX/libexec]
-  --libdir=DIR                  static library files [PREFIX/lib/$package]
-  --includedir=DIR              C header files [PREFIX/include]
-  --datarootdir=DATAROOTDIR     read-only architecture-independent data root [PREFIX/share]
-  --mandir=DIR                  man documentation [$datarootdir/man]
-  --with-ns-rule=DIR            66-ns rule installation directory [DATAROOTDIR/66/script/ns]
+  --dynlibdir=DIR                 shared library files [PREFIX/lib]
+  --bindir=BINDIR                 user executables [EPREFIX/bin]
+  --libexecdir=DIR                package-scoped executables [EPREFIX/libexec]
+  --libdir=DIR                    static library files [PREFIX/lib/$package]
+  --includedir=DIR                C header files [PREFIX/include]
+  --datarootdir=DATAROOTDIR       read-only architecture-independent data root [PREFIX/share]
+  --mandir=DIR                    man documentation [$datarootdir/man]
+  --with-ns-rule=DIR              66-ns rule installation directory [DATAROOTDIR/66/script/ns]
 
  If no --prefix option is given, by default libdir (but not dynlibdir) will be
  /usr/lib/$package, and includedir will be /usr/include.
 
 Dependencies:
 
-  --with-sysdeps=DIR            use sysdeps in DIR [PREFIX/lib/skalibs/sysdeps]
-  --with-include=DIR            add DIR to the list of searched directories for headers
-  --with-lib=DIR                add DIR to the list of searched directories for static libraries
-  --with-dynlib=DIR             add DIR to the list of searched directories for shared libraries
+  --with-sysdeps=DIR              use sysdeps in DIR [PREFIX/lib/skalibs/sysdeps]
+  --with-include=DIR              add DIR to the list of searched directories for headers
+  --with-lib=DIR                  add DIR to the list of searched directories for static libraries
+  --with-dynlib=DIR               add DIR to the list of searched directories for shared libraries
 
  If no --prefix option is given, by default sysdeps will be fetched from
  /usr/lib/skalibs/sysdeps.
 
 Optional features:
 
-  --enable-shared               build shared libraries [disabled]
-  --disable-static              do not build static libraries [enabled]
-  --disable-allstatic           do not prefer linking against static libraries [enabled]
-  --enable-static-libc          make entirely static binaries [disabled]
-  --disable-all-pic             do not build executables and static libs as PIC [enabled]
-  --enable-absolute-paths       do not rely on PATH to access this package's binaries,
+  --enable-shared                 build shared libraries [disabled]
+  --disable-static                do not build static libraries [enabled]
+  --disable-allstatic             do not prefer linking against static libraries [enabled]
+  --enable-static-libc            make entirely static binaries [disabled]
+  --disable-all-pic               do not build executables and static libs as PIC [enabled]
+  --enable-absolute-paths         do not rely on PATH to access this package's binaries,
                                   hardcode absolute BINDIR/foobar paths instead [disabled]
+Dbus support:
+  --enable-sdbus=basu|elogind     build 66-dbus-broker-launch program with basu or elogind [disabled]
+  --with-dbus-system-service-dir=DIR   directory of system service [DATAROOTDIR/dbus-1/system-services]
+  --with-dbus-session-service-dir=DIR  directory of session service [DATAROOTDIR/dbus-1/services]
+  --with-dbus-system-name=NAME    name of the dbus system socket[system_bus_socket]
+  --with-dbus-session-name=NAME   name of the dbus session socket[dbus]
 EOF
 exit 0
 }
@@ -148,6 +154,10 @@ sysdeps='$prefix/lib/skalibs/sysdeps'
 datarootdir='$prefix/share'
 mandir='$datarootdir/man'
 ns_rule='$datarootdir/66/script/ns'
+dbus_session_service='$datarootdir/dbus-1/services'
+dbus_system_service='$datarootdir/dbus-1/system-services'
+dbus_system_name='system_bus_socket'
+dbus_session_name='bus'
 manualsysdeps=false
 shared=false
 static=true
@@ -162,6 +172,7 @@ addlibdpath=''
 vpaths=''
 vpathd=''
 build=
+sdbus=
 
 for arg ; do
   case "$arg" in
@@ -192,6 +203,13 @@ for arg ; do
     --disable-all-pic|--enable-all-pic=no) allpic=false ;;
     --enable-absolute-paths|--enable-absolute-paths=yes) abspath=true ;;
     --disable-absolute-paths|--enable-absolute-paths=no) abspath=false ;;
+    --enable-sdbus=basu) sdbus=basu ;;
+    --enable-sdbus=elogind) sdbus=elogind ;;
+    --disable-sdbus|--disable-sdbus=no|--disable-sdbus=none) sdbus= ;;
+    --with-dbus-system-service-dir=*) dbus_system_service=${arg#*=} ;;
+    --with-dbus-session-service-dir=*) dbus_session_service=${arg#*=} ;;
+    --with-dbus-system-name=*) dbus_system_name=${arg#*=} ;;
+    --with-dbus-session-name=*) dbus_session_name=${arg#*=} ;;
     --enable-*|--disable-*|--with-*|--without-*|--*dir=*) ;;
     --host=*|--target=*) target=${arg#*=} ;;
     --build=*) build=${arg#*=} ;;
@@ -221,7 +239,8 @@ fi
 stripdir prefix
 for i in exec_prefix dynlibdir libexecdir \
          bindir libdir includedir sysdeps \
-         datarootdir mandir ns_rule ; do
+         datarootdir mandir ns_rule \
+         dbus_system_service dbus_session_service; do
   eval tmp=\${$i}
   eval $i=$tmp
   stripdir $i
@@ -353,14 +372,6 @@ else
   LDFLAGS_NOSHARED="${LDFLAGS_NOSHARED}${addlibdpath}"
 fi
 
-if test -z "$vpaths" ; then
-  while read dep ; do
-    base=$(basename $dep)
-    vpaths="$vpaths /usr/lib/$base"
-    addlibspath="$addlibspath -L/usr/lib/$base"
-  done < package/deps-build
-fi
-
 echo "Creating config.mak..."
 cmdline=$(quote "$0")
 for i ; do cmdline="$cmdline $(quote "$i")" ; done
@@ -369,6 +380,7 @@ cat << EOF
 # This file was generated by:
 # $cmdline
 # Any changes made here will be lost if configure is re-run.
+
 target := $target
 package := $package
 prefix := $prefix
@@ -381,14 +393,20 @@ includedir := $includedir
 datarootdir := $datarootdir
 mandir := $mandir
 ns_rule := $ns_rule
+dbus_system_service := $dbus_system_service
+dbus_session_service := $dbus_session_service
+dbus_system_name := $dbus_system_name
+dbus_session_name := $dbus_session_name
 sysdeps := $sysdeps
 version := $version
 home := $home
+
 SPAWN_LIB := ${spawn_lib}
 SOCKET_LIB := ${socket_lib}
 SYSCLOCK_LIB := ${sysclock_lib}
 TIMER_LIB := ${timer_lib}
 UTIL_LIB := ${util_lib}
+
 CC := $CC_AUTO
 CPPFLAGS_AUTO := $CPPFLAGS_AUTO
 CPPFLAGS := $CPPFLAGS $CPPFLAGS_POST
@@ -399,6 +417,7 @@ LDFLAGS := $LDFLAGS $LDFLAGS_POST
 LDFLAGS_SHARED := $LDFLAGS_SHARED
 LDFLAGS_NOSHARED := $LDFLAGS_NOSHARED
 CROSS_COMPILE := $cross
+
 vpath lib%.a$vpaths
 vpath lib%.so$vpathd
 EOF
@@ -423,6 +442,11 @@ if $allpic ; then
 else
   echo "STATIC_LIBS_ARE_PIC :="
 fi
+if test -n $sdbus ; then
+  echo "SDBUS_IMPL := $sdbus"
+else
+  echo "SDBUS_IMPL :="
+fi
 
 exec 1>&3 3>&-
 echo "  ... done."
@@ -446,6 +470,18 @@ else
 fi
 echo "#define ${package_macro_name}_LIBEXECPREFIX \"$libexecdir/\""
 echo "#define ${package_macro_name}_NSRULE \"$ns_rule/\""
+echo "#define ${package_macro_name}_DBS_SYSTEM_SERVICE \"$dbus_system_service/\""
+echo "#define ${package_macro_name}_DBS_SESSION_SERVICE \"$dbus_session_service/\""
+echo "#define ${package_macro_name}_DBS_SYSTEM_NAME \"$dbus_system_name\""
+echo "#define ${package_macro_name}_DBS_SESSION_NAME \"$dbus_session_name\""
+echo "#undef ${package_macro_name}_USE_BASU"
+echo "#undef ${package_macro_name}_USE_ELOGIND"
+if test "basu" = "$sdbus" ; then
+  echo "#define ${package_macro_name}_USE_BASU"
+elif test "elogind" = "$sdbus" ; then
+  echo "#define ${package_macro_name}_USE_ELOGIND"
+fi
+
 echo
 echo "#endif"
 exec 1>&3 3>&-
