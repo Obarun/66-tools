@@ -45,8 +45,7 @@ static inline void info_help (void)
         "   -h: print this help\n"
         "   -z: use color\n"
         "   -v: increase/decrease verbosity\n"
-		"   -d: notify readiness on file descriptor notif (default 4)\n"
-		"	-c: file descriptor used for controller (default 3)\n"
+		"   -d: notify readiness on file descriptor notif(must be superior to 5, default 6)\n"
         "\n"
         ;
 
@@ -61,8 +60,8 @@ static int notifier_isvalid(const char *str)
 	if (!uint0_scan(str, &u))
 		log_usage(USAGE) ;
 
-	if (u < 4)
-		log_die(LOG_EXIT_USER, "file descriptor must be 4 or more") ;
+	if (u < 6)
+		log_die(LOG_EXIT_USER, "file descriptor must be 6 or more") ;
 
 	if (fcntl(u, F_GETFD) < 0)
 		log_diesys(LOG_EXIT_USER, "invalid file descriptor") ;
