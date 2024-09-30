@@ -293,7 +293,7 @@ int launcher_loop(launcher_t *launcher)
 
 	iopause_fd x[2] = {
 		{ .fd = launcher->spfd, .events = IOPAUSE_READ, .revents = 0 },
-		{ .fd = launcher->fd_dbus, .events = IOPAUSE_READ, .revents = 0 }
+		{ .fd = launcher->fd_controller_in, .events = IOPAUSE_READ, .revents = 0 }
 	} ;
 
 	tain_now_set_stopwatch_g() ;
@@ -308,16 +308,6 @@ int launcher_loop(launcher_t *launcher)
 			// never reached
             log_warnusys_return(DBS_EXIT_FATAL, "timeout") ;
 
-		if (x[0].revents & IOPAUSE_READ) {
-
-			r = handle_signal(launcher, launcher->bpid) ;
-			if (r == DBS_EXIT_MAIN)
-				break ;
-			if (r == DBS_EXIT_FATAL)
-				return DBS_EXIT_FATAL ;
-			continue ;
-        }
-
 		if (x[1].revents & IOPAUSE_READ) {
 
 			do r = sd_bus_process(launcher->bus_controller, NULL) ;
@@ -328,10 +318,15 @@ int launcher_loop(launcher_t *launcher)
 				continue ;
 		}
 
-		/* Wait for the next request to process */
-		r = sd_bus_wait(launcher->bus_controller, (uint64_t) - 1) ;
-		if (r < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "wait on bus") ;
+		if (x[0].revents & IOPAUSE_READ) {
+
+			r = handle_signal(launcher, launcher->bpid) ;
+			if (r == DBS_EXIT_MAIN)
+				break ;
+			if (r == DBS_EXIT_FATAL)
+				return DBS_EXIT_FATAL ;
+			continue ;
+        }
 	}
 
 	return 1 ;
@@ -432,13 +427,13 @@ void launcher_get_machine_id(launcher_t *launcher)
 
 	int fd = io_open("/etc/machine-id", O_RDONLY) ;
 	if (fd < 0) {
-		memcpy(launcher->machineid, "0123456789abcdef0123456789abcdef", 32) ;
+		memcpy(launcher->machineid, "00000000000000000000000000000001", 32) ;
         goto exit ;
     }
 
     int r = io_read(launcher->machineid, fd, 32) ;
     if (r < 0)
-        memcpy(launcher->machineid, "0123456789abcdef0123456789abcdef", 32) ;
+        memcpy(launcher->machineid, "00000000000000000000000000000001", 32) ;
 
     exit:
 	    r = 32 ;
