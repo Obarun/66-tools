@@ -1,7 +1,7 @@
 /*
  * 66-gnwenv.c
  *
- * Copyright (c) 2018-2023 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -147,6 +147,3 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
     xmexec_f (newargv, v, r) ;
 }
-
-
-

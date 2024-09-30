@@ -1,7 +1,7 @@
 /*
  * execl-cmdline.c
  *
- * Copyright (c) 2018-2023 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -17,6 +17,7 @@
 #include <oblibs/log.h>
 #include <oblibs/sastr.h>
 #include <oblibs/string.h>
+#include <oblibs/environ.h>
 
 #include <skalibs/stralloc.h>
 #include <skalibs/env.h>
@@ -51,11 +52,11 @@ void clean_string(stralloc *modifs, stralloc *tmodifs)
     {
         tmp.len = 0 ;
         if (!sastr_clean_string(&tmp,tmodifs->s+pos) && (strlen(tmodifs->s + pos)))
-            log_die(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
-        if (!sastr_rebuild_in_oneline(&tmp)) log_die(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
+            log_dieu(LOG_EXIT_SYS,"clean element of: ",tmodifs->s) ;
+        if (!sastr_rebuild_in_oneline(&tmp)) log_dieu(LOG_EXIT_SYS,"rebuild line: ",tmp.s) ;
         if (!stralloc_0(&tmp)) log_die_nomem("stralloc") ;
         if (tmp.len > 1)
-            if (!sastr_add_string(modifs,tmp.s)) log_die(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
+            if (!sastr_add_string(modifs,tmp.s)) log_dieu(LOG_EXIT_SYS,"rebuild final line: ",tmp.s) ;
     }
     stralloc_free(&tmp) ;
 }
@@ -148,7 +149,8 @@ int main(int argc, char const **argv, char const *const *envp)
     if (argc1 >= argc) log_die(100, "unterminated block") ;
     argv[argc1] = 0 ;
 
-    if (!env_string(&tmodifs,argv,argc1)) log_dieu(LOG_EXIT_SYS,"environment string") ;
+    if (!environ_import_arguments(&tmodifs, argv, argc1))
+        log_dieu(LOG_EXIT_SYS, "import arguments to environment") ;
 
     clean_string(&modifs,&tmodifs) ;
 
@@ -170,7 +172,7 @@ int main(int argc, char const **argv, char const *const *envp)
                 tmodifs.len = 0 ;
                 stralloc_cats(&tmodifs,line) ;
                 stralloc_0(&tmodifs) ;
-                if (!sastr_clean_element(&tmodifs))
+                if (!sastr_clean_string(&tmodifs, tmodifs.s))
                     log_dieu(LOG_EXIT_SYS,"split element of: ",tmodifs.s) ;
                 for (tpos = 0 ; tpos < tmodifs.len ; tpos += strlen(tmodifs.s + tpos) + 1)
                     if (!sastr_add_string(&tmp,tmodifs.s+tpos)) log_dieu(LOG_EXIT_SYS,"add line: ", tmodifs.s) ;
@@ -181,6 +183,10 @@ int main(int argc, char const **argv, char const *const *envp)
     stralloc_free(&tmp) ;
     stralloc_free(&tmodifs) ;
 
+	/* TODO
+	 * stralloc modifs cannot be freed before exec
+	 * due of the env_make behavior.
+	 * The env_make() should be remade for our needs */
     r = sastr_len(&modifs) ;
     char const *newarg[r + 1] ;
     if (!env_make(newarg, r, modifs.s, modifs.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;

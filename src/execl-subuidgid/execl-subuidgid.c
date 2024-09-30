@@ -1,7 +1,7 @@
 /*
  * execl-subuidgid.c
  *
- * Copyright (c) 2018-2023 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -20,6 +20,8 @@
 
 #include <oblibs/log.h>
 #include <oblibs/environ.h>
+#include <oblibs/sastr.h>
+#include <oblibs/string.h>
 
 #include <skalibs/types.h>
 #include <skalibs/buffer.h>
@@ -87,8 +89,8 @@ int main (int argc, char const **argv, char const *const *envp)
     gid_t gid ;
     int r ;
     char const *owner = 0 ;
-    stralloc sa = STRALLOC_ZERO ;
-    stralloc dst = STRALLOC_ZERO ;
+    _alloc_sa_(sa) ;
+    _alloc_sa_(dst) ;
     exlsn_t info = EXLSN_ZERO;
     char cuid[UID_FMT], cgid[GID_FMT] ;
 
@@ -120,10 +122,22 @@ int main (int argc, char const **argv, char const *const *envp)
     cuid[uid_fmt(cuid,uid)] = 0 ;
     cgid[gid_fmt(cgid,gid)] = 0 ;
 
-    if (!environ_add_key_val("UID",cuid,&info)) log_dieusys(LOG_EXIT_SYS,"set UID") ;
-    if (!environ_add_key_val("GID",cgid,&info)) log_dieusys(LOG_EXIT_SYS,"set GID") ;
+    _alloc_stk_(ukey, 4 + strlen(cuid) + 1) ;
+    _alloc_stk_(gkey, 4 + strlen(cgid) + 1) ;
+    auto_strings(ukey.s, "UID=", cuid) ;
+    auto_strings(gkey.s, "GID=", cgid) ;
 
-    if (!env_string(&sa,argv,(unsigned int) argc)) log_dieusys(LOG_EXIT_SYS,"environment string") ;
+    if (!sastr_add_string(&sa, ukey.s) ||
+        !sastr_add_string(&sa, gkey.s))
+            log_die_nomem("stralloc") ;
+
+    if (!environ_substitute(&sa, &info))
+        log_dieusys(LOG_EXIT_SYS, "substitue environment variables") ;
+
+    sa.len = 0 ;
+
+    if (!environ_import_arguments(&sa, argv, argc))
+        log_dieusys(LOG_EXIT_SYS, "import arguments to environment") ;
 
     r = el_substitute (&dst, sa.s, sa.len, info.vars.s, info.values.s,
         genalloc_s (elsubst_t const, &info.data),genalloc_len (elsubst_t const, &info.data)) ;
