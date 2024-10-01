@@ -37,7 +37,7 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-1** *file* : redirects *stream_1* to *file*. The file is opened for appending and created if it doesn't exist.
 
-- **-2** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist. 
+- **-2** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist.
 
 - **-z** : enable color. If the *stream_1* does not point to a terminal, the color is automatically disabled and the option has no effects.
 
@@ -47,10 +47,13 @@ author: Eric Vidal <eric@obarun.org>
 
 - **-p** *prog* : use *prog* as the program name to display. By default *66-yeller* tries to find the name of the calling process by reading and parsing the `/proc/<pid>/comm` file. This option tells to *66-yeller* to use *prog* as the default program name to display.
 
-- **-v** *verbosity* : increases/decreases the verbosity of the command.
-    * *1* : prints error and information messages. This is the default.
-    * *2* : also prints warning messages.
-    * *3* : also prints tracing messages.
+- **-v** *verbosity*: increases/decreases the verbosity of the command.
+    * *0*: only print error messages.
+    * *1*: also, print informative messages. This is the default.
+    * *2*: also, print warning messages.
+    * *3*: also, print tracing messages.
+    * *4*: also, print function name and line code of the messages.
+    * *5*: also, display the sequence of the current process function by function.
 
 - **-i** : does not write the informative message.
 
@@ -113,7 +116,7 @@ author: Eric Vidal <eric@obarun.org>
 
 ## Environment variables
 
-The following environment variable can be set to configure the default *66-yeller* behavior. The corresponding options set at commandline overwrite the environment variable. 
+The following environment variable can be set to configure the default *66-yeller* behavior. The corresponding options set at commandline overwrite the environment variable.
 
 - ### PROG
 
@@ -241,7 +244,7 @@ Reads *msg* from stdin:
 Reads message from stdin. Does not display informative message and the system time. Uses double output and redirects *stream_2* to `myfile`
 
 ```
-	% ls -la /tmp | 66-yeller -cdi2 /tmp/myfile -S /tmp contents "->"  
+	% ls -la /tmp | 66-yeller -cdi2 /tmp/myfile -S /tmp contents "->"
 	/tmp contents -> total 844K
 	/tmp contents -> drwxrwxrwt  6 root   root   240 May 18 09:40 ./
 	/tmp contents -> drwxr-xr-x 19 root   root  4.0K May 16 09:13 ../
@@ -257,15 +260,15 @@ Use *66-yeller* in a `sh` script called `script.sh` with a pre-defined behavior 
 	export VERBOSITY=2
 	export DOUBLE_OUTPUT=1
 	export REDIRFD_2=/tmp/my_awesome_script.log
-	
+
 	set -e
-	
+
 	if ! [ -e /etc/66/init.conf ]; then
 		66-yeller -f "file /etc/66/init.conf doesn't exist"
 	else
 		cat /etc/66/init.conf | 66-yeller -Sic "%y->%n "
 	fi
-	
+
 	if ! [ -e /etc/66/toto.conf ]; then
 		66-yeller -f "file /etc/66/toto.conf doesn't exist"
 	else
@@ -301,5 +304,5 @@ Use *66-yeller* in a `sh` script called `script.sh` with a pre-defined behavior 
 	-> RESCAN=0
 	-> ISHELL=/etc/66/ishell
 	2020-05-18 10:03:28.94 my_awesome_script: fatal: file /etc/66/toto.conf doesn't exist
-	
+
 ```
