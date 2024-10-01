@@ -13,6 +13,7 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -121,7 +122,7 @@ void service_remove_hash(launcher_t *launcher, const char *name)
 	}
 }
 
-int service_environ_filepath(char *store, launcher_t *launcher)
+int service_environ_file_name(char *store, launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -247,6 +248,23 @@ int service_parse(struct service_s *service, const char *path)
 	return 1 ;
 }
 
+int service_frontend_path(char *store, launcher_t *launcher, const char *service)
+{
+	if (launcher->uid > 0) {
+
+		if (!set_ownerhome_stack_byuid(store, launcher->uid))
+			log_warnu_return(DBS_EXIT_WARN, "set home directory") ;
+
+		auto_string_builder(store, strlen(store), (char const *[]){ SS_SERVICE_USERDIR, service, DBS_SERVICE_SUFFIX, NULL}) ;
+
+	} else {
+
+		auto_strings(store, SS_SERVICE_ADMDIR, service, DBS_SERVICE_SUFFIX) ;
+	}
+
+	return 1 ;
+}
+
 int service_write_frontend(launcher_t *launcher, struct service_s *service)
 {
 	log_flow() ;
@@ -262,7 +280,7 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 		suid = "root" ;
 	}
 
-	if (!service_environ_filepath(efile, launcher))
+	if (!service_environ_file_name(efile, launcher))
 		log_warnu_return(DBS_EXIT_WARN, "get environment file path") ;
 
 	if (!auto_stra(&sa,
@@ -291,32 +309,17 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 		"ImportFile=", efile, "\n"))
 			log_warnu_return(DBS_EXIT_FATAL, "stralloc") ;
 
-	if (launcher->uid > 0) {
+	if (!service_frontend_path(service->frontend, launcher, service->name))
+		log_warnu_return(DBS_EXIT_WARN, "get frontend service file of service: ", service->name) ;
 
-		_alloc_stk_(file, SS_MAX_PATH + strlen(SS_SERVICE_USERDIR) + strlen(service->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
-		if (!set_ownerhome_stack_byuid(file.s, launcher->uid))
-			log_warnu_return(DBS_EXIT_WARN, "set home directory") ;
-
-		auto_string_builder(file.s, strlen(file.s), (char const *[]){ SS_SERVICE_USERDIR, service->name, DBS_SERVICE_SUFFIX, NULL}) ;
-
-		log_info("writing frontend of service: ", file.s) ;
-		if (!file_write_unsafe_g(file.s, sa.s))
-			log_warnu_return(DBS_EXIT_WARN, "write file: ", file.s) ;
-
-	} else {
-
-		_alloc_stk_(file, strlen(SS_SERVICE_ADMDIR) + strlen(service->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
-		auto_strings(file.s, SS_SERVICE_ADMDIR, service->name, DBS_SERVICE_SUFFIX) ;
-
-		log_info("writing frontend of service: ", file.s) ;
-		if (!file_write_unsafe_g(file.s, sa.s))
-			log_warnu_return(DBS_EXIT_WARN, "write file: ", file.s) ;
-	}
+	log_info("writing frontend of service: ", service->frontend) ;
+	if (!file_write_unsafe_g(service->frontend, sa.s))
+		log_warnu_return(DBS_EXIT_WARN, "write file: ", service->frontend) ;
 
 	return 1 ;
 }
 
-void service_sync_dbus_list(launcher_t *launcher)
+void service_sync_launcher_broker(launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -325,8 +328,12 @@ void service_sync_dbus_list(launcher_t *launcher)
 
 	HASH_ITER(hh, *launcher->hservice, c, tmp) {
 
-		if (c->pending == DBS_SERVICE_OK)
+		if (c->pending == DBS_SERVICE_OK) {
+
+			if (!access(c->frontend, F_OK))
+				service_reconfigure(c) ;
 			continue ;
+		}
 
 		char fmt[SIZE_FMT] ;
 		size_t ilen = size_fmt(fmt, c->id) ;
@@ -374,7 +381,7 @@ void service_load(launcher_t *launcher)
 	log_flow() ;
 
 	service_collect(launcher) ;
-	service_sync_dbus_list(launcher) ;
+	service_sync_launcher_broker(launcher) ;
 }
 
 int service_activate(launcher_t *launcher, int id)
@@ -424,6 +431,30 @@ int service_deactivate(struct service_s *service)
 		"-v",
 		fmt,
 		"remove",
+		name.s,
+		0
+	} ;
+
+	return sync_spawn(nargv) ;
+}
+
+int service_reconfigure(struct service_s *service)
+{
+	log_flow() ;
+
+	_alloc_stk_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
+
+	char fmt[INT_FMT] ;
+	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+
+	log_info("reconfiguration requested for service: ", name.s) ;
+
+	char *nargv[] = {
+		"66",
+		"-v",
+		fmt,
+		"reconfigure",
 		name.s,
 		0
 	} ;

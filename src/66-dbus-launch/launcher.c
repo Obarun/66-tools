@@ -172,7 +172,7 @@ int launcher_setup(launcher_t *launcher)
 	if (launcher_connect(launcher) < 0)
 	 	log_warnusys_return(DBS_EXIT_FATAL, "connect to dbus socket") ;
 
-	service_sync_dbus_list(launcher) ;
+	service_sync_launcher_broker(launcher) ;
 
 	r = launcher_drop_permissions(launcher) ;
 	if (r < 0)
@@ -409,7 +409,7 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 		}
 	}
 
-	if (!service_environ_filepath(home, launcher))
+	if (!service_environ_file_name(home, launcher))
 		goto exit ;
 
 	if (!file_write_unsafe_g(home, sa.s))
