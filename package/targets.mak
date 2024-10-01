@@ -17,21 +17,21 @@ LIBEXEC_TARGETS :=
 
 LIB_DEFS :=
 
-ifneq ($(SDBUS_IMPL),)
+ifneq ($(DBUS_IMPL),)
 
 BIN_TARGETS += 66-dbus-launch
 
-ifeq ($(SDBUS_IMPL),basu)
+ifeq ($(DBUS_IMPL),basu)
 
-SDBUS_LIB := -lbasu
+DBUS_LIB := -lbasu
 
-else ifeq ($(SDBUS_IMPL),elogind)
+else ifeq ($(DBUS_IMPL),elogind)
 
-SDBUS_LIB := -lelogind
+DBUS_LIB := -lelogind
 
 else
 
-SDBUS_LIB := $(error invalid SDBUS_IMPL. Please configure with --enable-sdbus=basu or --enable-sdbus=elogind.)
+DBUS_LIB := $(error invalid DBUS_IMPL. Please configure with --enable-dbus=basu or --enable-dbus=elogind.)
 
 endif
 endif

@@ -10,6 +10,7 @@ echo
 internal_libs=
 
 for dir in src/include/${package} src/* ; do
+
   for file in $(ls -1 $dir | grep -- \\.h$) ; do
     {
       grep -F -- "#include <${package}/" < ${dir}/$file | cut -d'<' -f2 | cut -d'>' -f1 ;
@@ -25,11 +26,19 @@ for dir in src/include/${package} src/* ; do
           deps="$deps src/include-local/$dep"
         fi
       done
+      dbus=$(echo ${dir} | cut -d '/' -f2)
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'ifneq ($(strip $(DBUS_IMPL)),)'
+      fi
       if test -n "$deps" ; then
         echo "${dir}/${file}:${deps}"
       fi
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'endif'
+      fi
     }
   done
+
 done
 
 for dir in src/* ; do
@@ -48,9 +57,16 @@ for dir in src/* ; do
           deps="$deps src/include-local/$dep"
         fi
       done
+      dbus=$(echo ${dir} | cut -d '/' -f2)
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'ifneq ($(strip $(DBUS_IMPL)),)'
+      fi
       o=$(echo $file | sed s/\\.c$/.o/)
       lo=$(echo $file | sed s/\\.c$/.lo/)
       echo "${dir}/${o} ${dir}/${lo}:${deps}"
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'endif'
+      fi
     }
   done
 done
@@ -67,6 +83,10 @@ for dir in $(ls -1 src | grep -v ^include) ; do
         deps="$deps src/$dir/$dep"
       fi
     done < src/$dir/deps-lib/$file
+    dbus=$(echo ${dir} | cut -d '/' -f2)
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'ifneq ($(strip $(DBUS_IMPL)),)'
+      fi
     echo 'ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)'
     echo "lib${file}.a.xyzzy:$deps"
     echo else
@@ -78,6 +98,10 @@ for dir in $(ls -1 src | grep -v ^include) ; do
     else
       internal_libs="$internal_libs lib${file}.a.xyzzy"
     fi
+    dbus=$(echo ${dir} | cut -d '/' -f2)
+      if test ${dbus} = "66-dbus-launch"; then
+        echo 'endif'
+      fi
   done
 
   for file in $(ls -1 src/$dir/deps-exe) ; do
@@ -93,8 +117,16 @@ for dir in $(ls -1 src | grep -v ^include) ; do
         deps="$deps $dep"
       fi
     done < src/$dir/deps-exe/$file
+    dbus=$(echo ${dir} | cut -d '/' -f2)
+    if test ${dbus} = "66-dbus-launch"; then
+      echo 'ifneq ($(strip $(DBUS_IMPL)),)'
+    fi
     echo "$file: EXTRA_LIBS :=$libs"
     echo "$file: src/$dir/$file.o$deps"
+    dbus=$(echo ${dir} | cut -d '/' -f2)
+    if test ${dbus} = "66-dbus-launch"; then
+      echo 'endif'
+    fi
   done
 done
 echo "INTERNAL_LIBS :=$internal_libs"
