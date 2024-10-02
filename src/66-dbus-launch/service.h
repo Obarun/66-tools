@@ -20,6 +20,8 @@
 
 #include "launcher.h"
 
+#include <skalibs/stralloc.h>
+
 #include <66/hash.h>
 #include <66/constants.h>
 #include <66/config.h>
@@ -31,12 +33,10 @@
 #define DBS_SERVICE_SECTION "[D-BUS Service]"
 #define DBS_SERVICE_SECTION_LEN (sizeof DBS_SERVICE_SECTION - 1)
 
-enum {
-	DBS_SERVICE_OK = 0,
-	DBS_SERVICE_INSERT,
-	DBS_SERVICE_DELETE,
-	DBS_SERVICE_ENDOFKEY
-} ;
+#define DBS_SERVICE_OK (1 << 1)
+#define DBS_SERVICE_INSERT (1 << 2)
+#define DBS_SERVICE_PARSE (1 << 3)
+#define DBS_SERVICE_DELETE (1 << 4)
 
 struct service_s {
 	char name[SS_MAX_SERVICE_NAME + 1] ;
@@ -44,32 +44,40 @@ struct service_s {
 	char user[1024 + 1] ;
 	char frontend[SS_MAX_PATH_LEN + 1] ;
 	size_t id ;
-	uint8_t pending ;
+	uint8_t state ;
 	UT_hash_handle hh ;
 } ;
 
-#define SERVICE_ZERO { {0}, {0}, {0}, {0}, 0, DBS_SERVICE_DELETE, NULL }
-
-extern char const *pending_list[] ;
+#define SERVICE_ZERO { {0}, {0}, {0}, {0}, 0, 0, NULL }
 
 extern void service_hash_free(struct service_s **hservice) ;
 extern struct service_s *service_search_byname(struct service_s **hservice, const char *name) ;
 extern struct service_s *service_search_byid(struct service_s **hservice, int id) ;
+extern int service_get_list(stralloc *sa, launcher_t *launcher) ;
 extern void service_add_hash(launcher_t *launcher, struct service_s *service) ;
 extern void service_remove_hash(launcher_t *launcher, const char *name) ;
 extern int service_environ_owner_path(char *store, launcher_t *launcher) ;
 extern int service_environ_file_name(char *store, launcher_t *launcher) ;
-extern int service_collect(launcher_t *launcher) ;
 extern int service_parse(struct service_s *service, const char *path) ;
 extern int service_frontend_path(char *store, launcher_t *launcher, const char *service) ;
+extern int service_resolve_path(char *store, launcher_t *launcher, const char *service) ;
 extern int service_write_frontend(launcher_t *launcher, struct service_s *service) ;
+extern int service_translate(launcher_t *launcher, const char *name) ;
+extern int service_load(launcher_t *launcher) ;
+extern void service_handle_state(stralloc *sa, launcher_t *launcher) ;
 extern void service_sync_launcher_broker(launcher_t *launcher) ;
-extern void service_load(launcher_t *launcher) ;
+extern int service_reload(launcher_t *launcher) ;
 extern int service_activate(launcher_t *launcher, int id) ;
+extern int service_reactivate(struct service_s *service) ;
 extern int service_deactivate(struct service_s *service) ;
-extern int service_reconfigure(struct service_s *service) ;
 extern void service_discard(launcher_t *launcher, struct service_s *service) ;
 extern void service_discard_tree(void) ;
+
+
+
+
+
+
 
 #endif
 

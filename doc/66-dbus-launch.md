@@ -14,7 +14,7 @@ author: Eric Vidal <eric@obarun.org>
 ## Interface
 
 ```
-    66-dbus-launch [ -h ] [ -z ] [ -v verbosity] [ -d notif]
+    66-dbus-launch [ -h ] [ -z ] [ -v verbosity ] [ -d notif ]
 ```
 
 *66-dbus-launch* acts as a launcher for the [dbus-broker](https://github.com/bus1/dbus-broker), spawning and managing a D-Bus Message Bus.
@@ -22,7 +22,7 @@ author: Eric Vidal <eric@obarun.org>
 On receiving D-Bus or kernel signals, the launcher executes tasks based on the signal received(see [Execution tasks](#execution-tasks)).
 Each instance of *66-dbus-launch* manages exactly one message bus. Each message bus is independent.
 
-When started by a regular user, *66-dbus-launch* will drop privileges before executing dbus-broker. The launcher only manages services and environments for the process owner, meaning a user launcher cannot manage root services or environments and vice versa.
+When started by a regular user, *66-dbus-launch* will drop privileges before executing [dbus-broker](https://github.com/bus1/dbus-broker). The launcher only manages services and environments for the process owner, meaning a user launcher cannot manage root services or environments and vice versa.
 
 This program is only built if the `--enable-dbus=` option is passed during compilation (see [Build Requirements](#build-requirements)).
 
@@ -90,14 +90,17 @@ It ensures that you use the latest *D-Bus* file declarations by overwriting any 
 
 *66-dbus-launch* responds to kernel signals. A `SIGHUP` signal triggers a reading, parsing, translating and writting process.
 Synchronization of services can also be manually triggered via `66 reload dbus` or `66 signal -s HUP dbus`.
-It also synchronizes the available list of services between the launcher and the broker, activating or deactivating services, and starting or stopping them based on their state between the broker and the launcher. To stop a service, it use [`66 remove <service>`](66-remove.html) command, which is important to keep in mind.
+It also synchronizes the available list of services between the launcher and the broke as follows:
+- If a *D-Bus* service file is removed, the launcher deactivates from the broker, executes `66 remove <service>`, and erases the corresponding *66* frontend file.
+- If a new *D-Bus* service is found, the launcher triggers the reading, parsing, translating and writting process, and activates the service in the broker.
+- For an existing service with the same name, the launcher executes `66 parse -f <service>` to ensure the latest *D-Bus* service declaration is used. Note that the service need to restarted for any changes to take effect.
 
 *66-dbus-launch* reacts on D-Bus signals:
 
 - Activation requested invoke a `66 start <service>` command.
 - A `org.freedesktop.DBus.UpdateActivationEnvironment()` request trigger the update environment variables, writing them by default to `/etc/66/environment/0000-dbus` or `$HOME/.66/environment/0000-dbus`, depending on ownership. The file is overwritten for each update. You can also use the [dbus-update-activation-environment](https://dbus.freedesktop.org/doc/dbus-update-activation-environment.1.html) program to trigger this update. Note that you may need to define the `DBUS_SESSION_BUS_ADDRESS` before launching the *dbus-update-activation-environment* program. For root, use `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/%%dbus_system_name%%`, and for regular user, use `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/UID/%%dbus_session_name%%`.
 
-- A `org.freedesktop.DBus.ReloadConfig()` request triggers the read, parse, translate and write process and synchronization between launcher and broker, just like a  `SIGHUP`. It launch the `66 reconfigure <service>` command if the frontend file previously existed.
+- A `org.freedesktop.DBus.ReloadConfig()` request triggers the same process as a `SIGHUP` signal.
 
 ### Stop time
 

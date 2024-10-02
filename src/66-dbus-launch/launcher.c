@@ -363,9 +363,9 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 
 			r = service_activate(launcher, atoi(stk.s)) ;
 
-			if (r != 0) {
-				r = sd_bus_call_method(launcher->bus_controller, NULL, obj_path, "org.bus1.DBus.Name", "Reset", NULL, NULL, "t", serial);
-			}
+			if (r != 0)
+				sd_bus_call_method(launcher->bus_controller, NULL, obj_path, "org.bus1.DBus.Name", "Reset", NULL, NULL, "t", serial) ;
+
 		}
 
 	} else if (!strcmp(obj_path, "/org/bus1/DBus/Broker")) {
@@ -377,6 +377,16 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 	return 0 ;
 }
 
+int launcher_on_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error)
+{
+	log_flow() ;
+
+    launcher_t *launcher = userdata ;
+	log_info("config reload requested") ;
+	service_reload(launcher) ;
+	return sd_bus_reply_method_return(message, NULL) ;
+}
+
 // https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L459
 void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 {
@@ -386,6 +396,8 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 	_alloc_sa_(sa) ;
 
 	memset(home, 0, sizeof(char) * SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + 9) ;
+
+	log_info("environment update requested") ;
 
 	int r = sd_bus_message_enter_container(m, 'a', "{ss}") ;
 	if (r != 1) {
@@ -412,6 +424,7 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 	if (!service_environ_file_name(home, launcher))
 		goto exit ;
 
+	log_trace("write environment file: ", home) ;
 	if (!file_write_unsafe_g(home, sa.s))
 		log_warnusys("write file: ", home) ;
 

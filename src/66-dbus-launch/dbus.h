@@ -35,7 +35,6 @@
 
 extern const sd_bus_vtable launcher_vtable[] ;
 extern sd_bus *dbs_close_unref(sd_bus *bus) ;
-extern int dbs_method_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error) ;
 extern void dbs_get_socket_path(char *store) ;
 extern int dbs_get_socket_unix_path(char *store) ;
 extern int dbs_socket_bind(void) ;

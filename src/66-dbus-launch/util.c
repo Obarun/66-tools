@@ -109,7 +109,7 @@ int handle_signal(launcher_t *launcher, pid_t ppid)
             case 0 : return DBS_EXIT_MAIN ;
 			case SIGHUP:
 				log_info("caught SIGHUP signal, reloading services and configuration") ;
-				service_load(launcher) ;
+				service_reload(launcher) ;
 				return DBS_EXIT_CHILD ;
 			case SIGTERM:
             case SIGINT:

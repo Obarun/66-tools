@@ -139,7 +139,7 @@ int main(int argc, char const *const *argv)
 	if (r < 0)
 		log_dieu(LOG_EXIT_SYS, "make new launcher") ;
 
-	r = service_collect(launcher) ;
+	r = service_load(launcher) ;
 	if (r <= 0)
 		log_dieu(LOG_EXIT_SYS, "collect service") ;
 

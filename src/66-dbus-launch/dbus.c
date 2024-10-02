@@ -37,7 +37,7 @@
 
 const sd_bus_vtable launcher_vtable[] = {
 	SD_BUS_VTABLE_START(0),
-	SD_BUS_METHOD("ReloadConfig", NULL, NULL, dbs_method_reload_config, 0),
+	SD_BUS_METHOD("ReloadConfig", NULL, NULL, launcher_on_reload_config, 0),
 	SD_BUS_VTABLE_END
 } ;
 
@@ -59,16 +59,6 @@ sd_bus *dbs_close_unref(sd_bus *bus)
 	//sd_bus_close(bus) ;
 
 	return sd_bus_unref(bus) ;
-}
-
-int dbs_method_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error)
-{
-	log_flow() ;
-
-    launcher_t *launcher = userdata ;
-	log_warnusys("config reload requested") ;
-	service_load(launcher) ;
-	return sd_bus_reply_method_return(message, NULL) ;
 }
 
 void dbs_get_socket_path(char *path)

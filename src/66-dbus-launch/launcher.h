@@ -42,7 +42,7 @@ struct launcher_s
 	struct service_s **hservice ;
 } ;
 
-#define LAUNCHER_ZERO { 0, 0, 0, {0}, -1, -1, NULL, NULL, -1, 1, NULL } ;
+#define LAUNCHER_ZERO { 0, 0, 0, {0}, -1, -1, NULL, NULL, -1, {0}, 0, 1, NULL } ;
 
 extern launcher_t *launcher_free(launcher_t *launcher) ;
 
@@ -53,6 +53,7 @@ extern int launcher_setup(launcher_t *launcher) ;
 extern int launcher_run_broker(launcher_t *launcher) ;
 extern int launcher_add_listener(launcher_t *launcher) ;
 extern int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error) ;
+extern int launcher_on_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error) ;
 extern void launcher_update_environment(launcher_t *launcher, sd_bus_message *m) ;
 extern void launcher_get_machine_id(launcher_t *launcher) ;
 extern int launcher_drop_permissions(launcher_t *launcher) ;
