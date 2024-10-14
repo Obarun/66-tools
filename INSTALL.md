@@ -1,13 +1,13 @@
-Build Instructions
-------------------
+# Build Instructions
 
 ## Requirements
 
 - A POSIX-compliant C development environment
 - GNU make version 3.81 or later
-- skalibs version 2.14.1.1: http://skarnet.org/software/skalibs/
-- execline version 2.9.4.0: http://skarnet.org/software/execline/
-- oblibs version 0.3.0.0: https://git.obarun.org/Obarun/oblibs/
+- skalibs version 2.14.3.0: http://skarnet.org/software/skalibs/
+- execline version 2.9.6.1: http://skarnet.org/software/execline/
+- oblibs version 0.3.1.0: https://git.obarun.org/Obarun/oblibs/
+- 66 version 0.8.0.0: https://git.obarun.org/Obarun/66 (only for 66-dbus-launch tool)
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
 
@@ -46,11 +46,13 @@ You can invoke make with a few variables for more configuration.
 *DESTDIR* can be given on the `make install` command line in order to install to a staging directory.
 
 ## Static binaries
+
 By default, binaries are linked against static versions of all the libraries they depend on, except for the libc. You can enforce linking against the static libc with *--enable-static-libc*.
 
-(If you are using a GNU/Linux system, be aware that the GNU libc behaves badly with static linking and produces huge executables, which is why it is not the default. Other libcs are better suited to static linking, for instance [musl](http://musl-libc.org/)
+If you are using a GNU/Linux system, be aware that the GNU libc behaves badly with static linking and produces huge executables, which is why it is not the default. Other libcs are better suited to static linking, for instance [musl](http://musl-libc.org/).
 
 ## Cross-compilation
+
 skarnet.org packages centralize all the difficulty of cross-compilation in one place: skalibs. Once you have
 cross-compiled skalibs, the rest is easy.
 
@@ -65,4 +67,4 @@ obarun.org packages do not support out-of-tree builds. They are small, so it doe
 
 ## Dbus support
 
-The 66-dbus-broker-launch tool is built if you give the `--enable-dbus=<implementation>` flag to configure. There are two supported values for `<implementation>: basu and elogind. You should install the relevant header and library files for your chosen implementation before building the 66-dbus-broker-launch.
+The *66-dbus-launch* tool is built if you give the `--enable-dbus=<implementation>` flag to configure. There are two supported values for `<implementation>: basu and elogind. You should install the relevant header and library files for your chosen implementation before building the *66-dbus-launch*.

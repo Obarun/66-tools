@@ -11,6 +11,19 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.1.1.0
+
+- Adapt to `oblibs` 0.3.1.0
+
+## New features
+
+- [66-dbus-launch](66-dbus-launch.html): A tool for launching, supervising, and reacting to [dbus-broker](https://github.com/bus1/dbus-broker) events emitted by relevant D-Bus signals. This tool is not build by default, see `./configure --help` at `Dbus support` section and [66-dbus-launch documentation](66-dbus-launch.html) for build requirements and use.
+
+## Bug Fixes
+
+- Typo fix
+
+---
 # In 0.1.0.2
 
 - Adapt to `oblibs` 0.3.0.0

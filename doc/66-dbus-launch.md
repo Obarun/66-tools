@@ -26,6 +26,8 @@ When started by a regular user, *66-dbus-launch* will drop privileges before exe
 
 This program is only built if the `--enable-dbus=` option is passed during compilation (see [Build Requirements](#build-requirements)).
 
+This tool is inspired by the [dbus-controllers](https://github.com/st3r4g/dbus-controllers) project and the original [dbus-broker](https://github.com/bus1/dbus-broker) program.
+
 ## Exit codes
 
 - *0* success
