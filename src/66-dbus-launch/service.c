@@ -259,7 +259,6 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 	}
 
 	if (!auto_stra(&sa, "Execute = (\n",
-		" 	if { printenv }\n"
 		"	execl-envfile -l ${ImportFile}\n",
 		"	", service->exec, "\n",
 		")\n\n",
