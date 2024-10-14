@@ -103,11 +103,21 @@ install-ns-rule: $(RULE_TARGET:examples/rule/%=$(DESTDIR)$(ns_rule)/%)
 
 $(DESTDIR)$(datarootdir)/doc/$(package)/$(version)/%.html: doc/$(version)/html/%.html
 	$(INSTALL) -D -m 644 $< $@ && \
-	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
+	sed -e 's,%%dbus_system_service%%,$(dbus_system_service),g' \
+		-e 's,%%dbus_session_service%%,$(dbus_session_service),g' \
+		-e 's,%%dbus_system_name%%,$(dbus_system_name),g' \
+		-e 's,%%dbus_session_name%%,$(dbus_session_name),g' \
+		-e 's,%%datarootdir%%,$(datarootdir),g' \
+		-e 's,%%ns_rule%%,$(ns_rule),g' $< > $@
 
 $(DESTDIR)$(mandir)/man1/%.1: doc/man/man1/%.1
 	$(INSTALL) -D -m 644 $< $@ && \
-	sed -e 's,%%service_admconf%%,/etc/66/conf,g' $< > $@
+	sed -e 's,%%dbus_system_service%%,$(dbus_system_service),g' \
+		-e 's,%%dbus_session_service%%,$(dbus_session_service),g' \
+		-e 's,%%dbus_system_name%%,$(dbus_system_name),g' \
+		-e 's,%%dbus_session_name%%,$(dbus_session_name),g' \
+		-e 's,%%datarootdir%%,$(datarootdir),g' \
+		-e 's,%%ns_rule%%,$(ns_rule),g' $< > $@
 
 $(DESTDIR)$(datadir)/%: src/etc/%
 	exec $(INSTALL) -D -m 644 $< $@

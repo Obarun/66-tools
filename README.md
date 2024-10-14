@@ -1,6 +1,7 @@
 ![GitLabl Build Status](https://git.obarun.org/Obarun/66-tools/badges/master/pipeline.svg)
 
-66-tools - Helpers tools to accomplish various and repetitive tasks in service scripts administration common tasks
+66-tools: A set of helper tools designed to simplify and automate various repetitive tasks commonly encountered in service script administration. These tools also provide additional functionalities to enhance service management.
+
 ====
 
 Some utilities are language [execline](https://skarnet.org/software/execline) specific (usually named with `execl-` prefix) where other can be used on classic shell.
@@ -28,7 +29,7 @@ Contact information
   https://web.obarun.org/
 
 * XMPP Channel:
-  obarun@xmpp.obarun.org
+  obarun@conference.xmpp.obarun.org
 
 Supports the project
 ---------------------

@@ -147,6 +147,3 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
     xmexec_f (newargv, v, r) ;
 }
-
-
-

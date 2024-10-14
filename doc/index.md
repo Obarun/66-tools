@@ -7,13 +7,13 @@ author: Eric Vidal <eric@obarun.org>
 
 # What is 66-tools
 
-Sixty-six-tools is a collection of helpers tools to accomplish various and repetitive tasks in service scripts. Some utilities are language [execline](https://skarnet.org/software/execline) specific (usually named with `execl-` prefix) where other can be used on classic shell.
+Sixty-six-tools is a set of helper tools designed to simplify and automate various repetitive tasks commonly encountered in service script administration. These tools also provide additional functionalities to enhance service management.
 
 ## Installation
 
 ### Requirements
 
-Please refer to the [INSTALL.md](https://framagit.org/Obarun/66-tools) file for details.
+Please refer to the [INSTALL.md](https://git.obarun.org/Obarun/66-tools) file for details.
 
 ### Licensing
 
@@ -48,3 +48,5 @@ See [changes](upgrade.html) between version.
 - [66-which](66-which.html)
 
 - [66-yeller](66-yeller.html)
+
+- [66-dbus-launch](66-dbus-launch.html)
