@@ -42,8 +42,7 @@ Dependencies:
  /usr/lib/skalibs/sysdeps.
 
 Optional features:
-
-  --enable-shared                 build shared libraries [disabled]
+  --enable-shared                 build shared libraries [enabled]
   --disable-static                do not build static libraries [enabled]
   --disable-allstatic             do not prefer linking against static libraries [enabled]
   --enable-static-libc            make entirely static binaries [disabled]
@@ -159,13 +158,12 @@ dbus_system_service='$datarootdir/dbus-1/system-services'
 dbus_system_name='system_bus_socket'
 dbus_session_name='bus'
 manualsysdeps=false
-shared=false
-static=true
-allpic=true
-abspath=false
-home=
-allstatic=true
+shared=true
+static=false
+allpic=false
+allstatic=false
 evenmorestatic=false
+abspath=false
 addincpath=''
 addlibspath=''
 addlibdpath=''
@@ -399,7 +397,6 @@ dbus_system_name := $dbus_system_name
 dbus_session_name := $dbus_session_name
 sysdeps := $sysdeps
 version := $version
-home := $home
 
 SPAWN_LIB := ${spawn_lib}
 SOCKET_LIB := ${socket_lib}
