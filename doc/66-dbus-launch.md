@@ -60,26 +60,28 @@ At startup, 66-dbus-launch performs the following tasks:
 - Sets the `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/%%dbus_system_name%%` and `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/UID/%%dbus_session_name%%` environment variables according to the owner of the process.
 
 - For each D-Bus service file found in `%%dbus_system_service%%` or `%%dbus_session_service%%`, it reads, parses, translates, and writes a corresponding 66 frontend file. An example:
-```
-[Main]
-Type = classic
-Description "org.freedesktop.Consolekit.dbus dbus service"
-User = ( root )
-Version = 0.0.1
-InTree = dbus
-MaxDeath = 5
-TimeoutStart = 3000
-TimeoutStop = 3000
 
-[Start]
-Execute = (
-    execl-envfile -l ${ImportFile}
-    /usr/bin/console-kit-daemon --nodaemon
-)
+    ```
+    [Main]
+    Type = classic
+    Description "org.freedesktop.Consolekit.dbus dbus service"
+    User = ( root )
+    Version = 0.0.1
+    InTree = dbus
+    MaxDeath = 5
+    TimeoutStart = 3000
+    TimeoutStop = 3000
 
-[Environment]
-ImportFile=/etc/66/environment/0000-dbus
-```
+    [Start]
+    Execute = (
+        execl-envfile -l ${ImportFile}
+        /usr/bin/console-kit-daemon --nodaemon
+    )
+
+    [Environment]
+    ImportFile=/etc/66/environment/0000-dbus
+    ```
+
 It ensures that you use the latest *D-Bus* file declarations by overwriting any existing frontend files with the same name.
 
 - Creates an unbound socket pair and forks the command `/usr/bin/dbus-broker --controller FD --machine-id MachineId`, with *FD* being the file descriptor of the connected socket's standard input. If `/etc/machine-id` is unreadable, it defaults to `00000000000000000000000000000001`. For regular users, privileges are dropped before execution.
