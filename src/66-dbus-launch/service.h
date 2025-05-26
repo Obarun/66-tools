@@ -20,9 +20,10 @@
 
 #include "launcher.h"
 
+#include <oblibs/hash.h>
+
 #include <skalibs/stralloc.h>
 
-#include <66/hash.h>
 #include <66/constants.h>
 #include <66/config.h>
 
@@ -43,7 +44,7 @@ struct service_s {
 	char exec[1024 + 1] ;
 	char user[1024 + 1] ;
 	char frontend[SS_MAX_PATH_LEN + 1] ;
-	size_t id ;
+	int id ;
 	uint8_t state ;
 	UT_hash_handle hh ;
 } ;

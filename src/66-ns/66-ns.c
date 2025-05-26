@@ -2465,7 +2465,7 @@ int main(int argc, char const *const *argv, char const *const *envp)
                 case 'd':
 
                     {
-                        unsigned int u ;
+                        int u ;
 
                         if (!uint0_scan(l.arg, &u))
                             log_usage(USAGE) ;

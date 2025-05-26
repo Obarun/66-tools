@@ -30,10 +30,10 @@
 #include <oblibs/environ.h>
 #include <oblibs/files.h>
 #include <oblibs/types.h>
+#include <oblibs/hash.h>
 
 #include <skalibs/types.h>
 
-#include <66/hash.h>
 #include <66/utils.h>
 #include <66/config.h>
 #include <66/constants.h>
@@ -156,7 +156,7 @@ int service_parse(struct service_s *service, const char *path)
 	if (!stack_read_file(&file, path))
 		log_warnu_return(DBS_EXIT_WARN, "read file: ", path) ;
 
-	size_t seclen = str_contain(file.s, DBS_SERVICE_SECTION) ;
+	int seclen = str_contain(file.s, DBS_SERVICE_SECTION) ;
 	if (seclen < 0)
 		log_warnu_return(DBS_EXIT_WARN, "get section " DBS_SERVICE_SECTION) ;
 
@@ -259,7 +259,6 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 	}
 
 	if (!auto_stra(&sa, "Execute = (\n",
-		"	execl-envfile -l ${ImportFile}\n",
 		"	", service->exec, "\n",
 		")\n\n",
 		"[Environment]\n",
@@ -400,8 +399,8 @@ void service_sync_launcher_broker(launcher_t *launcher)
 			continue ;
 		}
 
-		char fmt[SIZE_FMT] ;
-		size_t ilen = size_fmt(fmt, c->id) ;
+		char fmt[UINT_FMT] ;
+		size_t ilen = (size_t)uint_fmt(fmt, c->id) ;
 		fmt[ilen] = 0 ;
 		_alloc_stk_(path, strlen("/org/bus1/DBus/Name/") + ilen + 1) ;
 		auto_strings(path.s, "/org/bus1/DBus/Name/", fmt) ;

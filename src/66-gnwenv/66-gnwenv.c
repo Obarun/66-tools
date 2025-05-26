@@ -52,7 +52,7 @@ static inline void info_help (void)
 
 static void string_env(char *tmp,char const *s,size_t len)
 {
-    int pos = 0 ;
+    size_t pos = 0 ;
     ssize_t r = 0 ;
 
     while ((pos < len) && (r != -1))
@@ -64,7 +64,7 @@ static void string_env(char *tmp,char const *s,size_t len)
     }
 }
 
-int main (int argc, char const *const *argv, char const *const *envp)
+int main (int argc, char const *const *argv)
 {
     int r = 0 , pf, rm = 0, m = 0, fd[2], did = 0 ;
     ssize_t slen = 0 ;

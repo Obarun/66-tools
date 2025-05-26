@@ -100,7 +100,7 @@ It also synchronizes the available list of services between the launcher and the
 
 - If a *D-Bus* service file is removed, the launcher deactivates from the broker, executes `66 remove <service>`, and erases the corresponding *66* frontend file.
 - If a new *D-Bus* service is found, the launcher triggers the reading, parsing, translating and writting process, and activates the service in the broker.
-- For an existing service with the same name, the launcher executes `66 parse -f <service>` to ensure the latest *D-Bus* service declaration is used. Note that the service need to restarted for any changes to take effect.
+- For an existing service with the same name, the launcher executes `66 parse -f <service>` to ensure the latest *D-Bus* service declaration is used. Note that the service need to be restarted for any changes to take effect.
 
 *66-dbus-launch* reacts on D-Bus signals:
 

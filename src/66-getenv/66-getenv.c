@@ -207,7 +207,7 @@ void get_procs ()
     regfree(preg) ;
 }
 
-int main (int argc, char const *const *argv, char const *const *envp)
+int main (int argc, char const *const *argv)
 {
     PROG = "66-getenv" ;
     {

@@ -337,6 +337,7 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 {
 	log_flow() ;
 
+	(void)error ;
 	launcher_t *launcher = userdata ;
 
 	const char *obj_path ;
@@ -380,7 +381,7 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 int launcher_on_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error)
 {
 	log_flow() ;
-
+	(void)error ;
     launcher_t *launcher = userdata ;
 	log_info("config reload requested") ;
 	service_reload(launcher) ;
