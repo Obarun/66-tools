@@ -1,0 +1,31 @@
+/* Copyright (c) 2025 Eric Vidal <eric@obarun.org>
+ *
+ * All rights reserved.
+ *
+ * This file is part of Obarun. It is subject to the license terms in
+ * the LICENSE file found in the top-level directory of this
+ * distribution.
+ * This file may not be copied, modified, propagated, or distributed
+ * except according to the terms contained in the LICENSE file./
+ */
+
+#ifndef SS_TOOLS_CONFIG_H
+#define SS_TOOLS_CONFIG_H
+
+#define SS_TOOLS_VERSION @SS_TOOLS_VERSION@
+#define SS_TOOLS_NSRULE @SS_TOOLS_NSRULE@
+#define SS_TOOLS_DBS_SYSTEM_SERVICE @SS_TOOLS_DBS_SYSTEM_SERVICE@
+#define SS_TOOLS_DBS_SESSION_SERVICE @SS_TOOLS_DBS_SESSION_SERVICE@
+#define SS_TOOLS_DBS_SYSTEM_NAME @SS_TOOLS_DBS_SYSTEM_NAME@
+#define SS_TOOLS_DBS_SESSION_NAME @SS_TOOLS_DBS_SESSION_NAME@
+
+#define SS_TOOLS_BINPREFIX @SS_TOOLS_BINPREFIX@
+#define SS_TOOLS_EXTBINPREFIX @SS_TOOLS_EXTBINPREFIX@
+#define SS_TOOLS_LIBEXECPREFIX @SS_TOOLS_LIBEXECPREFIX@
+
+#undef SS_TOOLS_USE_BASU
+#undef SS_TOOLS_USE_ELOGIND
+
+@DEFINE_DBUS_LIB@
+
+#endif

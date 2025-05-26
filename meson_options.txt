@@ -1,0 +1,87 @@
+option('ns-rule-dir',
+type: 'string',
+value: '/usr/share/66/script/ns',
+description: '66-ns rules installation directory')
+
+option('enable-dbus',
+type: 'combo',
+choices: ['disabled', 'basu', 'elogind'],
+value: 'disabled',
+description: 'Enable 66-dbus-broker-launch with basu or elogind support (default: disabled)')
+
+option('dbus-system-service-dir',
+type: 'string',
+value: '/usr/share/dbus-1/system-services',
+description: 'Directory for DBus system service files')
+
+option('dbus-session-service-dir',
+type: 'string',
+value: '/usr/share/dbus-1/services',
+description: 'Directory for DBus session service files')
+
+option('dbus-system-name',
+type: 'string',
+value: 'system_bus_socket',
+description: 'Name of the DBus system socket')
+
+option('dbus-session-name',
+type: 'string',
+value: 'dbus',
+description: 'Name of the DBus session socket')
+
+option('with-doc',
+type: 'boolean',
+value: false,
+description: 'Build and install documentation in manpages and htlm format')
+
+option('test',
+type: 'boolean',
+value: false,
+description: 'Build and run tests')
+
+option('with-include-dir',
+type: 'array',
+value: [],
+description: 'Additional include directories')
+
+option('with-staticlib-dir',
+type: 'array',
+value: [],
+description: 'Additional static library directories')
+
+option('with-dynamiclib-dir',
+type: 'array',
+value: [],
+description: 'Additional shared library directories')
+
+option('enable-shared',
+type: 'boolean',
+value: true,
+description: 'Build shared libraries for dynamic linking')
+
+option('enable-static',
+type: 'boolean',
+value: false,
+description: 'Build static libraries for static linking')
+
+option('enable-static-deps',
+type: 'boolean',
+value: false,
+description: 'Prefer static linking for all dependencies (e.g., skalibs, s6), reducing runtime dependencies (requires enable-static=true)')
+
+option('enable-static-executable',
+type: 'boolean',
+value: false,
+description: 'Build fully static executables, including static libc, for maximum portability')
+
+option('enable-all-pic',
+type: 'boolean',
+value: false,
+description: 'Compile static libraries with position-independent code (PIC) for use in shared libraries or PIE executables')
+
+option('enable-pie',
+type: 'boolean',
+value: false,
+description: 'Build executables as position-independent (PIE) for enhanced security via ASLR')
+
+
