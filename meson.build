@@ -1,6 +1,6 @@
 project('66-tools',
         'c',
-        version: '0.1.1.0',
+        version: '0.1.2.0',
         meson_version: '>=1.1.0',
         license: 'ISC',
         default_options: [

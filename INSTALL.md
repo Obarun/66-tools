@@ -6,7 +6,7 @@
 - GNU make version 3.81 or later
 - skalibs version 2.14.3.0: http://skarnet.org/software/skalibs/
 - execline version 2.9.6.1: http://skarnet.org/software/execline/
-- oblibs version 0.3.1.0: https://git.obarun.org/Obarun/oblibs/
+- oblibs version 0.3.4.0: https://git.obarun.org/Obarun/oblibs/
 - 66 version 0.8.0.0: https://git.obarun.org/Obarun/66 (only for 66-dbus-launch tool)
 - lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
 - If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)

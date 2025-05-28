@@ -11,6 +11,26 @@ author: Eric Vidal <eric@obarun.org>
 
 ---
 
+# In 0.1.2.0
+
+- Adapt to `oblibs` 0.3.4.0
+
+## Overview
+
+This is a bug fix and enhancement release.
+
+## Bug Fixes
+
+- Fixed type behavior and adapted to `oblibs` for `hash.h` file (`0182864`).
+- Suppressed compiler warning (`0182864`).
+- Fixed typos in documentation (`0182864`, `a536fb9`).
+
+## Enhancements
+
+- Switched to Meson build system for improved cross-platform support and efficiency (`378e67f`). Traditional `configure` and `make` remain functional during the transition but consider it as deprecated. See `INSTALL_MESON.md` for details.
+
+---
+
 # In 0.1.1.0
 
 - Adapt to `oblibs` 0.3.1.0
