@@ -2,7 +2,7 @@ image: obarun/base:latest
 
 before_script:
   - pacman -Syu --noconfirm
-  - pacman -S base-devel meson git --noconfirm
+  - pacman -S base-devel meson git lowdown --noconfirm
 
 stages:
   - build
