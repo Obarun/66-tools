@@ -12,7 +12,7 @@ To build and install the 66-tools project, you need:
 
 - `skalibs` version `2.14.3.0` or later: [skarnet.org/software/skalibs](https://skarnet.org/software/skalibs/).
 
-- `execline` version `2.9.6.`1 or later: [skarnet.org/software/execline](https://skarnet.org/software/execline).
+- `execline` version `2.9.6.1` or later: [skarnet.org/software/execline](https://skarnet.org/software/execline).
 
 - `s6` version `2.13.1.0` or later: [skarnet.org/software/s6](https://skarnet.org/software/s6).
 
