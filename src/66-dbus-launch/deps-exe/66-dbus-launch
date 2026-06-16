@@ -1,5 +1,0 @@
-lib66dbusbroker.a.xyzzy
--l66
--loblibs
--lskarnet
-${DBUS_LIB}

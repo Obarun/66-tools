@@ -1,8 +1,0 @@
-dbus.o
-launcher.o
-policy.o
-service.o
-util.o
--l66
--loblibs
--lskarnet
