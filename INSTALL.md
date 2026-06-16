@@ -10,8 +10,6 @@ To build and install the 66-tools project, you need:
 
 - `Ninja` (typically installed with Meson).
 
-- `execline` version `2.9.6.1` or later: [skarnet.org/software/execline](https://skarnet.org/software/execline).
-
 - `oblibs` version `0.3.4.0` or later: [git.obarun.org/Obarun/oblibs](https://git.obarun.org/Obarun/oblibs).
 
 - `66` version `0.8.0.0` or later (required only when `enable-dbus` is not `disabled`): [git.obarun.org/Obarun/66](https://git.obarun.org/Obarun/66).
@@ -19,9 +17,6 @@ To build and install the 66-tools project, you need:
 - `lowdown` version `0.6.4` or later (optional, for generating man pages and HTML documentation): [kristaps.bsd.lv/lowdown](https://kristaps.bsd.lv/lowdown).
 
 - Linux API headers version 5.8 or later (required for Linux systems): [gnu.org/software/libc](https://gnu.org/software/libc).
-
-The 66-tools no longer use `skalibs` directly, but it remains a transitive
-dependency of `oblibs` and `execline` and must therefore be present on the system.
 
 The software is designed to install on any operating system implementing `POSIX.1-2008`.
 
@@ -76,7 +71,7 @@ meson install -C build
 - `dbus-session-name`: Specify the name of the DBus session socket (default: `dbus`).
 - `enable-shared`: Build shared libraries for dynamic linking (default: `true`).
 - `enable-static`: Build static libraries for static linking (default: `false`).
-- `enable-static-deps`: Prefer static linking for dependencies (e.g., `oblibs`, `execline`) to reduce runtime dependencies; requires `-D enable-static=true` (default: `false`).
+- `enable-static-deps`: Prefer static linking for dependencies (e.g., `oblibs`) to reduce runtime dependencies; requires `-D enable-static=true` (default: `false`).
 - `enable-static-executable`: Build fully static executables, including a static `libc`, for maximum portability; requires a static `libc` (e.g., `libc.a`) on the system (default: `false`).
 - `enable-all-pic`: Compile static libraries with position-independent code (`PIC`) for use in shared libraries or `PIE` executables (default: `false`).
 - `enable-pie`: Build executables as position-independent (`PIE`) for enhanced security via Address Space Layout Randomization (`ASLR`) (default: `false`).
@@ -125,7 +120,7 @@ By default, executables are linked dynamically with `libc` and other dependencie
 
 - Note: GNU `libc` produces larger static binaries compared to alternatives like `musl`. For smaller, portable binaries, consider using `musl`.
 
-To reduce runtime dependencies without fully static executables, use `enable-static-deps` with `enable-static=true` to link dependencies (e.g., `oblibs`, `execline`) statically.
+To reduce runtime dependencies without fully static executables, use `enable-static-deps` with `enable-static=true` to link dependencies (e.g., `oblibs`) statically.
 
 ## Cross-Compilation
 
@@ -133,7 +128,7 @@ To cross-compile:
 
 - Create a Meson cross file (e.g., `cross-file.ini`) specifying the target triplet (e.g., `arm-linux-gnueabihf`) and toolchain paths.
 - Ensure the cross-toolchain binaries (e.g., `arm-linux-gnueabihf-gcc`) are in your `PATH`.
-- Ensure the dependencies (`execline`, `oblibs`, and their own transitive dependencies) are built for the target platform.
+- Ensure the dependencies (`oblibs`, and their own transitive dependencies) are built for the target platform.
 - Customize include and library paths with `with-include-dir`, `with-staticlib-dir`, and `with-dynamiclib-dir` if needed.
 
 Example:

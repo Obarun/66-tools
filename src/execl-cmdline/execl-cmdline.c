@@ -12,6 +12,7 @@
  * except according to the terms contained in the LICENSE file./
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <oblibs/log.h>
@@ -21,8 +22,52 @@
 #include <oblibs/strbuf.h>
 #include <oblibs/opt.h>
 #include <oblibs/exec.h>
+#include <oblibs/types.h>
 
-#include <execline/execline.h>
+/*
+ * Native reimplementation of execline's el_semicolon()/el_getstrict(), the only
+ * two execline functions this tool relied on.
+ */
+
+static unsigned int ecl_getstrict (void)
+{
+    static uint32_t strict = 0 ;
+    static int first = 1 ;
+    if (first) {
+        char const *x = getenv("EXECLINE_STRICT") ;
+        first = 0 ;
+        if (x)
+            u32_scan_strict(x, &strict) ;
+    }
+
+    return strict ;
+}
+
+static int ecl_semicolon (char const **argv)
+{
+    static unsigned int nblock = 0 ;
+    unsigned int strict = ecl_getstrict() ;
+    nblock++ ;
+    unsigned int i = 0 ;
+
+    for (; argv[i] ; i++) {
+
+        if (!argv[i][0]) {
+            return i ;
+        } else if (argv[i][0] == ' ') {
+            argv[i]++ ;
+        } else if (strict) {
+
+            if (strict >= 2) {
+                flog_die(LOG_EXIT_USER, "unquoted argument %s at block %u position %u", argv[i], nblock, i) ;
+            } else {
+                flog_1_warn("unquoted argument %s at block %u position %u", argv[i], nblock, i) ;
+            }
+        }
+    }
+
+    return i + 1 ;
+}
 
 static opt_t const opts[] = {
     { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
@@ -134,7 +179,7 @@ int main(int argc, char const **argv, char const *const *envp)
         argc -= st.ind ; argv += st.ind ;
     }
     if (!argc) return opt_emit_usage(cmd.name, &cmd) ;
-    argc1 = el_semicolon(argv) ;
+    argc1 = ecl_semicolon(argv) ;
     if (argc1 >= argc) log_die(LOG_EXIT_USER, "unterminated block") ;
     argv[argc1] = 0 ;
 

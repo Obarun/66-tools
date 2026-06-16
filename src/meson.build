@@ -38,7 +38,7 @@ exe_configs = {
   },
   'execl-cmdline': {
     'sources': ['execl-cmdline.c'],
-    'deps': [oblibs_dep, execline_dep]
+    'deps': [oblibs_dep]
   },
   'execl-subuidgid': {
     'sources': ['execl-subuidgid.c'],

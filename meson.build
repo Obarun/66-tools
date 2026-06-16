@@ -25,7 +25,6 @@ message('See INSTALL.md for detailed configuration instructions and warnings.')
 fs = import('fs')
 
 # Versioning
-version_execline = '>=2.9.6.1'
 version_oblibs = '>=0.3.4.0'
 version_66 = '>=0.8.0.0'
 
@@ -61,7 +60,7 @@ dbus_session_name = get_option('dbus-session-name')
 
 # doc-only short-circuits the C dependency lookups entirely: build and
 # install only the documentation. Useful for the CI docbuild job where the
-# toolchain (oblibs, execline, lib66) is not installed.
+# toolchain (oblibs, lib66) is not installed.
 if get_option('doc-only')
   if not get_option('with-doc')
     error('doc-only=true requires with-doc=true')
@@ -69,17 +68,6 @@ if get_option('doc-only')
   subdir('doc')
   subdir_done()
 endif
-
-# Dependency: execline
-execline_lib = cc.find_library('execline', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
-execline_header = cc.has_header('execline.h', args: ['-I', include_dirs], required: false)
-if not execline_lib.found() or not execline_header
-  error('execline ' + version_execline + ' not found. Ensure libexecline and execline/execline.h are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
-endif
-dep_execline = declare_dependency(
-  dependencies: execline_lib,
-  include_directories: include_dirs
-)
 
 # Dependency: oblibs
 oblibs_lib = cc.find_library('oblibs', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
@@ -121,7 +109,6 @@ if get_option('enable-dbus') != 'disabled'
 endif
 
 # Define global dependencies
-execline_dep = dep_execline
 oblibs_dep = dep_oblibs
 lib66_dep = dep_lib66
 dbus_dep = dep_dbus

@@ -72,7 +72,7 @@ description: 'Build static libraries for static linking')
 option('enable-static-deps',
 type: 'boolean',
 value: false,
-description: 'Prefer static linking for all dependencies (e.g., oblibs, execline), reducing runtime dependencies (requires enable-static=true)')
+description: 'Prefer static linking for all dependencies (e.g., oblibs), reducing runtime dependencies (requires enable-static=true)')
 
 option('enable-static-executable',
 type: 'boolean',
