@@ -1,12 +1,3 @@
-title: The 66-tools Suite: 66-clock
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # 66-clock
 
 66-clock gets the system time and writes it with a specific format.

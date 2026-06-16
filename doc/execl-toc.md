@@ -1,12 +1,3 @@
-title: The 66-tools Suite: execl-toc
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # execl-toc
 
 Tests an element and creates it, if it does not exist yet, with the default or specified options, then executes a program by default. 

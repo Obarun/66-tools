@@ -1,12 +1,3 @@
-title: The 66-tools Suite: execl-cmdline
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # execl-cmdline
 
 This command parses a command line into an [execline](https://skarnet.org/software/execline) script. 

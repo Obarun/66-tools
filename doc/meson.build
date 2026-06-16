@@ -1,101 +1,89 @@
-fs = import('fs')
-
-ss_version = meson.project_version()
-
 if not get_option('with-doc')
   subdir_done()
 endif
 
-# Find lowdown program (required only if doc option is enabled)
-lowdown = find_program('lowdown', required: get_option('with-doc'))
+ss_version = meson.project_version()
+lowdown = find_program('lowdown', required: true)
 
-# Generate HTML files
-html_result = run_command('sh', 'make-html-meson.sh', ss_version, check: false)
-if html_result.returncode() != 0
-  warning('make-html.sh failed: ' + html_result.stderr())
-endif
+build_html = files('tools/build-html.sh')
+build_man = files('tools/build-man.sh')
+build_mkdocs = files('tools/build-mkdocs.sh')
+html_header = files('html-header.md.in')
 
-# Generate man pages
-man_result = run_command('sh', 'make-man-meson.sh', check: false)
-if man_result.returncode() != 0
-  warning('make-man.sh failed: ' + man_result.stderr())
-endif
+# Placeholder substitutions shared by all formats.
+sed_args = [
+  '-e', 's|%%dbus_system_service%%|@0@|g'.format(dbus_system_service_dir),
+  '-e', 's|%%dbus_session_service%%|@0@|g'.format(dbus_session_service_dir),
+  '-e', 's|%%dbus_system_name%%|@0@|g'.format(dbus_system_name),
+  '-e', 's|%%dbus_session_name%%|@0@|g'.format(dbus_session_name),
+  '-e', 's|%%ns_rule%%|@0@|g'.format(ns_rule_dir),
+  '-e', 's|%%datarootdir%%|@0@|g'.format(DATADIR),
+]
 
-# HTML
-html_path = join_paths('doc', ss_version, 'html')
-html_list = run_command('sh', '-c', 'find "$path" -maxdepth 1 -type f', env: ['path=' + html_path], check: false)
-if html_list.returncode() != 0
-  error('Failed to run find command for files in: ' + html_path + html_list.stderr())
-endif
+# Pages — HTML output (also used as the mkdocs page set).
+html_pages = [
+  '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
+  '66-olexec', '66-which', '66-writenv', '66-yeller', 'execl-cmdline',
+  'execl-subuidgid', 'execl-toc', 'index', 'upgrade', 'prototype',
+]
 
-# Process all documentation files
-foreach doc_html : html_list.stdout().strip().split('\n')
-  if not fs.is_file(doc_html)
-    warning('Documentation file ' + doc_html + ' not found')
-    continue
-  endif
+# Pages — man section 1.
+man1_pages = [
+  '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
+  '66-olexec', '66-which', '66-writenv', '66-yeller', 'execl-cmdline',
+  'execl-subuidgid', 'execl-toc',
+]
 
-  doc_output = doc_html.split('/').get(-1)
+# Mkdocs uses the same set as HTML.
+mkdocs_pages = html_pages
 
-  # Determine installation directory
-  install_dir = join_paths(get_option('datadir'), 'doc', '66-tools', ss_version, 'html')
+# Mkdocs needs all placeholder substitutions PLUS rewriting internal links
+# from (NAME.html) to (NAME.md). Build the extended sed args once.
+mkdocs_sed_args = sed_args
+foreach name : html_pages
+  mkdocs_sed_args += ['-e', 's|(@0@.html|(@0@.md|g'.format(name)]
+endforeach
 
-  # Perform sed replacements
-  configure_file(
-    input: doc_html,
-    output: doc_output,
+# Collected to build a single `doc` alias target. Use
+# `meson compile -C build doc` to build only the documentation (HTML,
+# man pages, mkdocs sources) without recompiling the C code — useful
+# for the CI docbuild job.
+doc_targets = []
+
+html_install_dir = get_option('datadir') / 'doc' / '66-tools' / ss_version / 'html'
+
+foreach page : html_pages
+  doc_targets += custom_target(
+    page + '.html',
+    input: page + '.md',
+    output: page + '.html',
     command: [
-      'sed',
-      '-e', 's|%%dbus_system_service%%|' + dbus_system_service_dir + '|g',
-      '-e', 's|%%dbus_session_service%%|' + dbus_session_service_dir + '|g',
-      '-e', 's|%%dbus_system_name%%|' + dbus_system_name + '|g',
-      '-e', 's|%%dbus_session_name%%|' + dbus_session_name + '|g',
-      '-e', 's|%%ns_rule%%|' + ns_rule_dir + '|g',
-      '-e', 's|%%datarootdir%%|' + DATADIR + '|g',
-      '@INPUT@'
-    ],
-    capture: true,
+      'sh', build_html, page, html_header, '@INPUT@', '@OUTPUT@',
+    ] + sed_args,
     install: true,
-    install_dir: install_dir,
-    install_mode: 'rw-r--r--',
-    install_tag: 'html'
+    install_dir: html_install_dir,
+    install_tag: 'html',
+    build_by_default: true,
   )
 endforeach
 
-# MAN1
-man1_path = join_paths('doc', 'man', 'man1')
-man1_list = run_command('sh', '-c', 'find "$path" -maxdepth 1 -type f', env: ['path=' + man1_path], check: false)
-if man1_list.returncode() != 0
-  error('Failed to run find command for files in: ' + man1_path + man1_list.stderr())
-endif
+man1_install_dir = get_option('mandir') / 'man1'
 
-foreach doc_man1 : man1_list.stdout().strip().split('\n')
-  if not fs.is_file(doc_man1)
-    warning('Documentation file ' + doc_man1 + ' not found')
-    continue
-  endif
-
-  doc_output = doc_man1.split('/').get(-1)
-
-  install_dir = join_paths(get_option('datadir'), 'man', 'man1')
-
-  configure_file(
-    input: doc_man1,
-    output: doc_output,
+foreach page : man1_pages
+  doc_targets += custom_target(
+    page + '.1',
+    input: page + '.md',
+    output: page + '.1',
     command: [
-      'sed',
-      '-e', 's|%%dbus_system_service%%|' + dbus_system_service_dir + '|g',
-      '-e', 's|%%dbus_session_service%%|' + dbus_session_service_dir + '|g',
-      '-e', 's|%%dbus_system_name%%|' + dbus_system_name + '|g',
-      '-e', 's|%%dbus_session_name%%|' + dbus_session_name + '|g',
-      '-e', 's|%%ns_rule%%|' + ns_rule_dir + '|g',
-      '-e', 's|%%datarootdir%%|' + DATADIR + '|g',
-      '@INPUT@'
-    ],
-    capture: true,
+      'sh', build_man, page, '1', ss_version, '@INPUT@', '@OUTPUT@',
+    ] + sed_args,
     install: true,
-    install_dir: install_dir,
-    install_mode: 'rw-r--r--',
-    install_tag: 'man1'
+    install_dir: man1_install_dir,
+    install_tag: 'man1',
+    build_by_default: true,
   )
 endforeach
+
+subdir('mkdocs')
+
+alias_target('doc', doc_targets)

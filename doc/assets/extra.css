@@ -1,0 +1,94 @@
+/* ----------------------------------------------------------------------
+ * Obarun brand colors + custom styling for mkdocs-material.
+ * Primary: #2494BE (light), #1B7AA0 (dark mode header)
+ * ---------------------------------------------------------------------- */
+
+/* Use the dark theme header blue everywhere, in both schemes,
+ * to override mkdocs-material's per-scheme defaults. */
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color:        #2494BE;
+    --md-primary-fg-color--light: #4DABCE;
+    --md-primary-fg-color--dark:  #1F7AA0;
+    --md-primary-bg-color:        #FFFFFF;
+    --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+    --md-accent-fg-color:         #2494BE;
+    --md-accent-fg-color--transparent: rgba(36, 148, 190, 0.1);
+    --md-typeset-a-color:         #2494BE;
+}
+
+[data-md-color-scheme="slate"] {
+    --md-typeset-a-color: #4DABCE;
+}
+
+/* ----------------------------------------------------------------------
+ * Logo: larger, no background; the darker header makes the SVG visible.
+ * ---------------------------------------------------------------------- */
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+    height: 2.4rem;
+    width: 2.4rem;
+}
+
+/* ----------------------------------------------------------------------
+ * Hide the (empty) primary sidebar on the home page. version-selector.js
+ * adds the `mdx-home` class on body when on the index.
+ * ---------------------------------------------------------------------- */
+
+.mdx-home .md-sidebar--primary {
+    display: none;
+}
+
+@media screen and (min-width: 76.25em) {
+    .mdx-home .md-content {
+        max-width: 60rem;
+        margin: 0 auto;
+    }
+}
+
+/* ----------------------------------------------------------------------
+ * Tabs: subtle hover and active state harmonized with brand color.
+ * ---------------------------------------------------------------------- */
+
+.md-tabs__link {
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link--active {
+    opacity: 1;
+}
+
+/* ----------------------------------------------------------------------
+ * Version selector dropdown injected by version-selector.js
+ * ---------------------------------------------------------------------- */
+
+.md-header__version-selector {
+    margin-left: 0.8rem;
+    display: flex;
+    align-items: center;
+}
+
+.md-header__version-selector select {
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.15s;
+}
+
+.md-header__version-selector select:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.md-header__version-selector select option {
+    color: #000000;
+    background: #FFFFFF;
+}

@@ -1,10 +1,3 @@
-title: The 66-tools Suite: index
-author: Eric Vidal <eric@obarun.org>
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # What is 66-tools
 
 Sixty-six-tools is a set of helper tools designed to simplify and automate various repetitive tasks commonly encountered in service script administration. These tools also provide additional functionalities to enhance service management.

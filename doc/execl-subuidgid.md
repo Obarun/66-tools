@@ -1,12 +1,3 @@
-title: The 66-tools Suite: execl-subuidgid
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # execl-subuidgid
 
 Substitutes a literal GID UID with the UID GID of the current owner of the process. 

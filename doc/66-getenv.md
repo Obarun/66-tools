@@ -1,12 +1,3 @@
-title: The 66-tools Suite: 66-getenv
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # 66-getenv
 
 66-getenv gets and displays the environment variables of a process name.

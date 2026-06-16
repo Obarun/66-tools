@@ -1,12 +1,3 @@
-title: The 66-tools Suite: 66-olexec
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # 66-olexec
 
 66-olexec (open,lock and execute) opens the active (or specified) *tty*, locks it and executes a program.

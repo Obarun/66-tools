@@ -1,12 +1,3 @@
-title: The 66-tools Suite: 66-dbus-launch
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # 66-dbus-launch
 
 *66-dbus-launch* is a tool for launching, supervising, and reacting to [dbus-broker](https://github.com/bus1/dbus-broker) events emitted by relevant D-Bus signals.

@@ -1,12 +1,3 @@
-title: The 66 Suite: upgrade
-author: Eric Vidal <eric@obarun.org>
-
-[66-tools](index.html)
-
-[Software](https://web.obarun.org/software)
-
-[obarun.org](https://web.obarun.org)
-
 # Changelog for 66-tools
 
 ---
