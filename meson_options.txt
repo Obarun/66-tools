@@ -34,6 +34,11 @@ type: 'boolean',
 value: false,
 description: 'Build and install documentation in manpages and htlm format')
 
+option('doc-only',
+type: 'boolean',
+value: false,
+description: 'Build only documentation, skip C sources and their dependencies (requires with-doc=true)')
+
 option('test',
 type: 'boolean',
 value: false,
@@ -67,7 +72,7 @@ description: 'Build static libraries for static linking')
 option('enable-static-deps',
 type: 'boolean',
 value: false,
-description: 'Prefer static linking for all dependencies (e.g., skalibs, s6), reducing runtime dependencies (requires enable-static=true)')
+description: 'Prefer static linking for all dependencies (e.g., oblibs, execline), reducing runtime dependencies (requires enable-static=true)')
 
 option('enable-static-executable',
 type: 'boolean',

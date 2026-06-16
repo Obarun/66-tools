@@ -20,17 +20,14 @@ project('66-tools',
           'default_library=shared'
         ])
 
-message('See INSTALL_MESON.md for detailed configuration instructions and warnings.')
+message('See INSTALL.md for detailed configuration instructions and warnings.')
 
 fs = import('fs')
 
 # Versioning
-version_skalibs = '>=2.14.3.0'
 version_execline = '>=2.9.6.1'
-version_s6 = '>=2.13.1.0'
 version_oblibs = '>=0.3.4.0'
 version_66 = '>=0.8.0.0'
-version_lowdown = '>=0.6.4'
 
 # Compiler setup
 cc = meson.get_compiler('c')
@@ -43,20 +40,35 @@ user_include_dirs = get_option('with-include-dir')
 user_staticlib_dirs = get_option('with-staticlib-dir')
 user_dynamiclib_dirs = get_option('with-dynamiclib-dir')
 
-# Combine default and user-provided paths
-include_dirs = default_include_dirs + user_include_dirs
-lib_dirs = default_lib_dirs + user_staticlib_dirs + user_dynamiclib_dirs
+# Combine default and user-provided paths.
+# User-provided paths come first so they take precedence over the system ones
+# (needed to build against an out-of-tree oblibs without touching the host).
+include_dirs = user_include_dirs + default_include_dirs
+lib_dirs = user_staticlib_dirs + user_dynamiclib_dirs + default_lib_dirs
 
-# Dependency: skalibs
-skalibs_lib = cc.find_library('skarnet', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
-skalibs_header = cc.has_header('skalibs.h', args: ['-I', include_dirs], required: false)
-if not skalibs_lib.found() # or not skalibs_header
-  error('skalibs ' + version_skalibs + ' not found. Ensure libskalibs and skalibs.h are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
+# Installation directories
+BINDIR = get_option('prefix') / get_option('bindir')
+LIBEXECDIR = get_option('prefix') / get_option('libexecdir')
+INCLUDEDIR = get_option('prefix') / get_option('includedir') / '66-tools'
+DATADIR = get_option('prefix') / get_option('datadir')
+
+# Final key value
+ns_rule_dir = get_option('ns-rule-dir')
+dbus_system_service_dir = get_option('dbus-system-service-dir')
+dbus_session_service_dir = get_option('dbus-session-service-dir')
+dbus_system_name = get_option('dbus-system-name')
+dbus_session_name = get_option('dbus-session-name')
+
+# doc-only short-circuits the C dependency lookups entirely: build and
+# install only the documentation. Useful for the CI docbuild job where the
+# toolchain (oblibs, execline, lib66) is not installed.
+if get_option('doc-only')
+  if not get_option('with-doc')
+    error('doc-only=true requires with-doc=true')
+  endif
+  subdir('doc')
+  subdir_done()
 endif
-dep_skalibs = declare_dependency(
-  dependencies: skalibs_lib,
-  include_directories: include_dirs
-)
 
 # Dependency: execline
 execline_lib = cc.find_library('execline', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
@@ -109,25 +121,10 @@ if get_option('enable-dbus') != 'disabled'
 endif
 
 # Define global dependencies
-skalibs_dep = dep_skalibs
 execline_dep = dep_execline
 oblibs_dep = dep_oblibs
 lib66_dep = dep_lib66
 dbus_dep = dep_dbus
-doc_dep = dependency('lowdown', version: version_lowdown, required: false, static: get_option('enable-static-deps'))
-
-# Special case for default_options
-BINDIR = get_option('prefix') / get_option('bindir')
-LIBEXECDIR = get_option('prefix') / get_option('libexecdir')
-INCLUDEDIR = get_option('prefix') / get_option('includedir') / '66-tools'
-DATADIR = get_option('prefix') / get_option('datadir')
-
-# Final key value
-ns_rule_dir = get_option('ns-rule-dir')
-dbus_system_service_dir = get_option('dbus-system-service-dir')
-dbus_session_service_dir = get_option('dbus-session-service-dir')
-dbus_system_name = get_option('dbus-system-name')
-dbus_session_name = get_option('dbus-session-name')
 
 # Common compiler flags
 base_c_args = [
