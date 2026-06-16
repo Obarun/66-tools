@@ -5,7 +5,6 @@ sources = run_command(
     check: false
 )
 
-message(dir)
 install_data(sources: sources.stdout().split(), install_dir: ns_rule_dir)
 
 
