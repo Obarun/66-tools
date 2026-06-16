@@ -2,69 +2,155 @@
 
 ## Requirements
 
-- A POSIX-compliant C development environment
-- GNU make version 3.81 or later
-- skalibs version 2.14.3.0: http://skarnet.org/software/skalibs/
-- execline version 2.9.6.1: http://skarnet.org/software/execline/
-- oblibs version 0.3.4.0: https://git.obarun.org/Obarun/oblibs/
-- 66 version 0.8.0.0: https://git.obarun.org/Obarun/66 (only for 66-dbus-launch tool)
-- lowdown version 0.6.4 or later for man and html pages: https://kristaps.bsd.lv/lowdown/
-- If cross-compiling: the sysdeps for your target architecture (see the [Cross-compilation](INSTALL.md#Cross-compilation) section below)
+To build and install the 66-tools project, you need:
 
-This software will install on any operating system that implements POSIX.1-2008, available at [opengroup](http://pubs.opengroup.org/onlinepubs/9699919799/)
+- A POSIX-compliant C development environment (conforming to POSIX.1-2008, available at Open Group).
 
-## Standard usage
+- `Meson` version `1.1.0` or later: [mesonbuild.com](https://mesonbuild.com).
 
-`./configure && make && sudo make install` will work for most users.
-It will install the static libraries in /usr/lib/66-tools, the shared libraries in /lib.
+- `Ninja` (typically installed with Meson).
 
-Please note that static libraries in /usr/lib/66-tools *will not* be found by a default linker invocation: you need -L/usr/lib/66-tools.
-Other [obarun](https://web.obarun.org) software automatically handles that case if the default configuration is used, but if you change the configuration, remember to use the appropriate *--with-lib* configure option.
+- `execline` version `2.9.6.1` or later: [skarnet.org/software/execline](https://skarnet.org/software/execline).
 
-You can strip the libraries of their extra symbols via `make strip` before the `make install` phase. It will shave a few bytes off them.
+- `oblibs` version `0.3.4.0` or later: [git.obarun.org/Obarun/oblibs](https://git.obarun.org/Obarun/oblibs).
 
-Note: the man and html documentation pages will always be generated if *lowdown* is installed on your system. However, if you don't ask to build the documentation the final `DESTDIR` directory will do not contains any documentation at all.
+- `66` version `0.8.0.0` or later (required only when `enable-dbus` is not `disabled`): [git.obarun.org/Obarun/66](https://git.obarun.org/Obarun/66).
+
+- `lowdown` version `0.6.4` or later (optional, for generating man pages and HTML documentation): [kristaps.bsd.lv/lowdown](https://kristaps.bsd.lv/lowdown).
+
+- Linux API headers version 5.8 or later (required for Linux systems): [gnu.org/software/libc](https://gnu.org/software/libc).
+
+The 66-tools no longer use `skalibs` directly, but it remains a transitive
+dependency of `oblibs` and `execline` and must therefore be present on the system.
+
+The software is designed to install on any operating system implementing `POSIX.1-2008`.
+
+## Standard Usage
+
+For most users, the following commands will configure, build, and install the 66-tools project with default settings:
+
+```bash
+meson setup build
+meson compile -C build
+meson install -C build
+```
+
+This installs:
+
+- Executables to `/usr/bin` or `/usr/libexec` (depending on the executable).
+- Header files to `/usr/include/66-tools`.
+- Documentation to `/usr/share/doc/66-tools` (HTML) and `/usr/share/man` (man pages).
+
+To reduce binary size, you can strip symbols before installation:
+
+```bash
+meson compile -C build --strip
+meson install -C build
+```
+
+Documentation (man pages and HTML) is generated and installed only if **lowdown is installed** and the `with-doc` option is enabled (default: `false`).
 
 ## Customization
 
-You can customize the installation process via flags given to configure. See `./configure --help` for a list of all available configure options.
+You can customize the build using Meson options. To see all available options, run:
 
-## Environment variables
+```bash
+meson configure build
+```
 
-Controlling a build process via environment variables is a big and dangerous hammer. You should try and pass flags to configure instead; nevertheless, a few standard environment variables are recognized.
+Example customization:
 
-If the CC environment variable is set, its value will override compiler detection by configure. The *--host=HOST* option will still add a HOST- prefix to the value of CC.
+```bash
+meson setup build -D prefix=/usr/local -D enable-shared=false -D enable-static=true -D enable-static-deps=true -D test=true
+meson compile -C build
+meson install -C build
+```
 
-The values of *CFLAGS*, *CPPFLAGS* and *LDFLAGS* will be appended to the default flags set by configure. To override those defaults instead of appending to them, use the *CPPFLAGS*, *CFLAGS* and *LDFLAGS* *make variables* instead of environment variables.
+## Key options include:
 
-## Make variables
+- `ns-rule-dir`: Set the installation directory for 66-ns rules (default: `/usr/share/66/script/ns`).
+- `enable-dbus`: Enable 66-dbus-launch with support for basu or elogind (choices: `disabled`, `basu`, `elogind`; default: `disabled`). Any value other than `disabled` requires `lib66`.
+- `dbus-system-service-dir`: Set the directory for DBus system service files (default: `/usr/share/dbus-1/system-services`).
+- `dbus-session-service-dir`: Set the directory for DBus session service files (default: `/usr/share/dbus-1/services`).
+- `dbus-system-name`: Specify the name of the DBus system socket (default: `system_bus_socket`).
+- `dbus-session-name`: Specify the name of the DBus session socket (default: `dbus`).
+- `enable-shared`: Build shared libraries for dynamic linking (default: `true`).
+- `enable-static`: Build static libraries for static linking (default: `false`).
+- `enable-static-deps`: Prefer static linking for dependencies (e.g., `oblibs`, `execline`) to reduce runtime dependencies; requires `-D enable-static=true` (default: `false`).
+- `enable-static-executable`: Build fully static executables, including a static `libc`, for maximum portability; requires a static `libc` (e.g., `libc.a`) on the system (default: `false`).
+- `enable-all-pic`: Compile static libraries with position-independent code (`PIC`) for use in shared libraries or `PIE` executables (default: `false`).
+- `enable-pie`: Build executables as position-independent (`PIE`) for enhanced security via Address Space Layout Randomization (`ASLR`) (default: `false`).
+- `with-doc`: Build and install man pages and HTML documentation (default: `false`).
+- `doc-only`: Build only the documentation, skipping the C sources and their dependencies; requires `with-doc=true` (default: `false`).
+- `test`: Build and run tests (default: `false`).
 
-You can invoke make with a few variables for more configuration.
+## Option Combinations
 
-*CC*, *CFLAGS*, *CPPFLAGS*, *LDFLAGS*, *LDLIBS*, *AR*, *RANLIB*, *STRIP*, *INSTALL* and *CROSS_COMPILE* can all be overridden on the make command line. This is an even bigger hammer than running `./configure` with environment variables, so it is advised to only do this when it is the only way of obtaining the behaviour you want.
+- You can enable both `enable-shared` and `enable-static` to build **both** shared and static libraries.
+- `enable-static-deps` requires `enable-static=true`.
+- `enable-static-executable` conflicts with `enable-shared` and requires a static `libc`.
+- `enable-static-deps` conflicts with `enable-shared` due to incompatible linking models.
+- `enable-pie` is compatible with most options but may not work with `enable-static-executable` on some systems due to toolchain limitations.
+- `enable-all-pic` applies only to static libraries and is compatible with all options.
+- `doc-only` requires `with-doc=true`.
 
-*DESTDIR* can be given on the `make install` command line in order to install to a staging directory.
+## Environment Variables
 
-## Static binaries
+Meson supports a few environment variables for build customization, but passing options directly to meson setup is preferred for clarity:
 
-By default, binaries are linked against static versions of all the libraries they depend on, except for the libc. You can enforce linking against the static libc with *--enable-static-libc*.
+- `CC`: Overrides the compiler (e.g., `CC=clang meson setup build`). When cross-compiling, the `--cross-file` option may prefix the compiler with the target triplet.
 
-If you are using a GNU/Linux system, be aware that the GNU libc behaves badly with static linking and produces huge executables, which is why it is not the default. Other libcs are better suited to static linking, for instance [musl](http://musl-libc.org/).
+- `CFLAGS`, `CPPFLAGS`, `LDFLAGS`: Appended to Meson’s default flags. To override defaults, use Meson options or build variables instead.
 
-## Cross-compilation
+## Build Variables
 
-skarnet.org packages centralize all the difficulty of cross-compilation in one place: skalibs. Once you have
-cross-compiled skalibs, the rest is easy.
+You can pass variables to meson compile or meson install for fine-grained control:
 
-- Use the *--host=HOST* option to configure, *HOST* being the triplet for your target.
-- Make sure your cross-toolchain binaries (i.e. prefixed with HOST-) are accessible via your *PATH* environment variable.
-- Make sure to use the correct version of skalibs for your target, and the correct sysdeps directory, making use of the *--with-include*, *--with-lib*, *--with-dynlib* and *--with-sysdeps*
-options as necessary.
+- `CC`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `LDLIBS`: Override compiler, flags, or libraries.
+- `AR`, `RANLIB`, `STRIP`, `INSTALL`: Customize archiver, ranlib, strip, or install tools.
+- `DESTDIR`: Specify a staging directory for installation.
 
-## Out-of-tree builds
+Example:
 
-obarun.org packages do not support out-of-tree builds. They are small, so it does not cost much to duplicate the entire source tree if parallel builds are needed.
+```bash
+CFLAGS="-O3 -march=native" meson compile -C build
+DESTDIR=/tmp/staging meson install -C build
+```
 
-## Dbus support
+# Static Binaries
 
-The *66-dbus-launch* tool is built if you give the `--enable-dbus=<implementation>` flag to configure. There are two supported values for `<implementation>: basu and elogind. You should install the relevant header and library files for your chosen implementation before building the *66-dbus-launch*.
+By default, executables are linked dynamically with `libc` and other dependencies, even if `enable-static` is used. To build fully static executables (including a static `libc`):
+
+- Use `enable-static-executable`. This requires a static `libc` (e.g., `libc.a`) on the system, such as `libc6-dev` (Debian/Ubuntu), `glibc-static` (Fedora), or `musl-dev` (Alpine Linux).
+
+- Note: GNU `libc` produces larger static binaries compared to alternatives like `musl`. For smaller, portable binaries, consider using `musl`.
+
+To reduce runtime dependencies without fully static executables, use `enable-static-deps` with `enable-static=true` to link dependencies (e.g., `oblibs`, `execline`) statically.
+
+## Cross-Compilation
+
+To cross-compile:
+
+- Create a Meson cross file (e.g., `cross-file.ini`) specifying the target triplet (e.g., `arm-linux-gnueabihf`) and toolchain paths.
+- Ensure the cross-toolchain binaries (e.g., `arm-linux-gnueabihf-gcc`) are in your `PATH`.
+- Ensure the dependencies (`execline`, `oblibs`, and their own transitive dependencies) are built for the target platform.
+- Customize include and library paths with `with-include-dir`, `with-staticlib-dir`, and `with-dynamiclib-dir` if needed.
+
+Example:
+
+```bash
+meson setup build --cross-file=cross-file.ini -D with-include-dir=/path/to/include
+meson compile -C build
+meson install -C build
+```
+
+## Notes
+
+- If `enable-static-executable` is enabled, the build will fail with a clear error if a static `libc` is not found. Ensure the appropriate development package is installed (e.g., `libc6-dev`, `musl-dev`).
+
+- If `enable-static-deps` is enabled without `enable-static`, the build will fail to ensure static libraries are available.
+
+- For security-sensitive systems, consider enabling `enable-pie` to benefit from `ASLR`.
+
+- Documentation requires `lowdown`. If unavailable or `with-doc=false`, no documentation will be installed.
+</content>
