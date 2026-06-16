@@ -3,47 +3,50 @@ fs = import('fs')
 exe_configs = {
   '66-clock': {
     'sources': ['66-clock.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-getenv': {
     'sources': ['66-getenv.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-gnwenv': {
     'sources': ['66-gnwenv.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-ns': {
-    'sources': ['66-ns.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'sources': [
+      'ns_cli.c', 'ns_dir.c', 'ns_elements.c', 'ns_mount.c', 'ns_net.c',
+      'ns_parse.c', 'ns_run.c', 'ns_session.c', 'ns_supervise.c', 'ns_userns.c',
+    ],
+    'deps': [oblibs_dep, lib66_dep]
   },
   '66-olexec': {
     'sources': ['66-olexec.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-which': {
     'sources': ['66-which.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-writenv': {
     'sources': ['66-writenv.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   '66-yeller': {
     'sources': ['66-yeller.c'],
-    'deps': [oblibs_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   'execl-cmdline': {
     'sources': ['execl-cmdline.c'],
-    'deps': [oblibs_dep, execline_dep, skalibs_dep]
+    'deps': [oblibs_dep, execline_dep]
   },
   'execl-subuidgid': {
     'sources': ['execl-subuidgid.c'],
-    'deps': [oblibs_dep, execline_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   },
   'execl-toc': {
     'sources': ['execl-toc.c'],
-    'deps': [oblibs_dep, execline_dep, skalibs_dep]
+    'deps': [oblibs_dep]
   }
 }
 
@@ -75,7 +78,7 @@ if get_option('enable-dbus') != 'disabled'
     '66dbusbroker',
     lib66dbusbroker_sources,
     include_directories: [incdir, include_directories('66-dbus-launch')],
-    dependencies: [lib66_dep, oblibs_dep, skalibs_dep],
+    dependencies: [lib66_dep, oblibs_dep],
     c_args: static_c_args,
     link_args: static_link_args,
     install: false
@@ -84,14 +87,14 @@ if get_option('enable-dbus') != 'disabled'
   lib66dbusbroker_dep = declare_dependency(
     link_with: lib66dbusbroker,
     include_directories: [incdir, include_directories('66-dbus-launch')],
-    dependencies: [lib66_dep, oblibs_dep, skalibs_dep]
+    dependencies: [lib66_dep, oblibs_dep]
   )
 
   # Add 66-dbus-launch to exe_configs
   exe_configs += {
     '66-dbus-launch': {
       'sources': ['66-dbus-launch.c'],
-      'deps': [lib66dbusbroker_dep, lib66_dep, oblibs_dep, skalibs_dep, dbus_dep]
+      'deps': [lib66dbusbroker_dep, lib66_dep, oblibs_dep, dbus_dep]
     }
   }
 endif
@@ -164,7 +167,7 @@ foreach dir : exe_dirs
           test_incdirs = incdir
           # For 66-dbus-launch tests, ensure lib66dbusbroker_dep is included
           if exe == '66-dbus-launch' and get_option('enable-dbus') != 'disabled'
-            test_deps = [lib66dbusbroker_dep, lib66_dep, oblibs_dep, skalibs_dep, dbus_dep]
+            test_deps = [lib66dbusbroker_dep, lib66_dep, oblibs_dep, dbus_dep]
             test_incdirs = [include_directories('66-dbus-launch'), incdir]
           endif
           test_exe = executable('test_@0@'.format(exe),
