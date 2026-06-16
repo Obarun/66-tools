@@ -25,14 +25,12 @@
 
 #include <oblibs/log.h>
 #include <oblibs/string.h>
-#include <oblibs/sastr.h>
-#include <oblibs/stack.h>
+#include <oblibs/sbl.h>
+#include <oblibs/strbuf.h>
 #include <oblibs/environ.h>
 #include <oblibs/files.h>
 #include <oblibs/types.h>
 #include <oblibs/hash.h>
-
-#include <skalibs/types.h>
 
 #include <66/utils.h>
 #include <66/config.h>
@@ -73,7 +71,7 @@ struct service_s *service_search_byid(struct service_s **hservice, int id)
 	return NULL ;
 }
 
-int service_get_list(stralloc *sa, launcher_t *launcher)
+int service_get_list(strbuf *sa, launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -86,7 +84,7 @@ int service_get_list(stralloc *sa, launcher_t *launcher)
 		path = SS_TOOLS_DBS_SYSTEM_SERVICE ;
 	}
 
-	if (!sastr_dir_get(sa, path, exclude, S_IFREG))
+	if (!sbl_dir_get(sa, path, exclude, S_IFREG))
         log_warnu_return(DBS_EXIT_FATAL, "get services from: ", path) ;
 
 	return 1 ;
@@ -148,12 +146,12 @@ int service_parse(struct service_s *service, const char *path)
 	 * Hack it commenting it. */
 	ssize_t len = file_get_size(path) ;
 	size_t pos = 0 ;
-	_alloc_stk_(file, len + 1) ;
-	_alloc_stk_(contents, len + 1) ;
+	_alloc_strbuf_(file, len + 1) ;
+	_alloc_strbuf_(contents, len + 1) ;
 
 	log_trace("parsing service: ", path) ;
 
-	if (!stack_read_file(&file, path))
+	if (!strbuf_read_file(&file, path))
 		log_warnu_return(DBS_EXIT_WARN, "read file: ", path) ;
 
 	int seclen = str_contain(file.s, DBS_SERVICE_SECTION) ;
@@ -165,12 +163,12 @@ int service_parse(struct service_s *service, const char *path)
 	if (!environ_trim(&contents, file.s + seclen))
 		log_warnu_return(DBS_EXIT_WARN, "trim environment file: ", path) ;
 
-	FOREACH_STK(&contents, pos) {
+	FOREACH_SBL(&contents, pos) {
 
 		char *line = contents.s + pos ;
 
-		_alloc_stk_(key, strlen(line) + 1) ;
-		_alloc_stk_(val, strlen(line) + 1) ;
+		_alloc_strbuf_(key, strlen(line) + 1) ;
+		_alloc_strbuf_(val, strlen(line) + 1) ;
 
 		if (!environ_get_key(&key, line))
 			log_warnu_return(DBS_EXIT_WARN, "get key from line: ", line, " at file: ", path) ;
@@ -227,7 +225,7 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 {
 	log_flow() ;
 
-	_alloc_sa_(sa) ;
+	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
 
 	char efile[SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + DBS_ENVIRONMENTFILE_LEN + 1] ;
 	const char *suid = 0 ;
@@ -241,7 +239,7 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 	if (!service_environ_file_name(efile, launcher))
 		log_warnu_return(DBS_EXIT_WARN, "get environment file path") ;
 
-	if (!auto_stra(&sa,
+	if (!auto_strbuf(&sa,
 		"[Main]\n",
 		"Type = classic\n",
 		"Description = \"", service->name, " dbus service\"\n",
@@ -254,11 +252,11 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 		"[Start]\n"))
 
 	if (*service->user) {
-		if (!auto_stra(&sa, "RunAs = ", service->user,"\n"))
+		if (!auto_strbuf(&sa, "RunAs = ", service->user,"\n"))
 			log_warnu_return(DBS_EXIT_FATAL, "stralloc") ;
 	}
 
-	if (!auto_stra(&sa, "Execute = (\n",
+	if (!auto_strbuf(&sa, "Execute = (\n",
 		"	", service->exec, "\n",
 		")\n\n",
 		"[Environment]\n",
@@ -269,7 +267,7 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 		log_warnu_return(DBS_EXIT_WARN, "get frontend service file of service: ", service->name) ;
 
 	log_trace("write frontend file: ", service->frontend) ;
-	if (!file_write_unsafe_g(service->frontend, sa.s))
+	if (!file_write(service->frontend, sa.s, sa.len))
 		log_warnu_return(DBS_EXIT_WARN, "write file: ", service->frontend) ;
 
 	return 1 ;
@@ -288,7 +286,7 @@ int service_translate(launcher_t *launcher, const char *name)
 		path = SS_TOOLS_DBS_SYSTEM_SERVICE ;
 	}
 
-	_alloc_stk_(file, strlen(path) + strlen(name) + 1) ;
+	_alloc_strbuf_(file, strlen(path) + strlen(name) + 1) ;
 	auto_strings(file.s, path, name) ;
 
 	struct service_s *service ;
@@ -320,12 +318,12 @@ int service_load(launcher_t *launcher)
 
 	int r ;
 	size_t pos = 0 ;
-	_alloc_sa_(sa) ;
+	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
 
 	if (service_get_list(&sa, launcher) < 0)
 		return DBS_EXIT_FATAL ;
 
-	FOREACH_SASTR(&sa, pos) {
+	FOREACH_SBL(&sa, pos) {
 
 		r = service_translate(launcher, sa.s + pos) ;
 		if (r == DBS_EXIT_FATAL)
@@ -335,7 +333,7 @@ int service_load(launcher_t *launcher)
 	return 1 ;
 }
 
-void service_handle_state(stralloc *list, launcher_t *launcher)
+void service_handle_state(strbuf *list, launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -344,10 +342,10 @@ void service_handle_state(stralloc *list, launcher_t *launcher)
 	struct service_s *c, *tmp ;
 
 	/** compare for service to add */
-	FOREACH_SASTR(list, pos) {
+	FOREACH_SBL(list, pos) {
 
 		size_t len = strlen(list->s + pos) ;
-		_alloc_stk_(name, len) ;
+		_alloc_strbuf_(name, len) ;
 		ssize_t r = get_rlen_until(list->s + pos, '.', len) ;
 
 		if (r < 0){
@@ -371,10 +369,10 @@ void service_handle_state(stralloc *list, launcher_t *launcher)
 	HASH_ITER(hh, *launcher->hservice, c, tmp) {
 
 		size_t len = strlen(c->name) ;
-		_alloc_stk_(name, len + 9) ;
+		_alloc_strbuf_(name, len + 9) ;
 		auto_strings(name.s, c->name, ".service") ;
 
-		if (sastr_cmp(list, name.s) < 0) {
+		if (sbl_search(list, name.s) < 0) {
 			c->state = 0 ;
 			FLAGS_SET(c->state, DBS_SERVICE_DELETE) ;
 		} else {
@@ -399,10 +397,10 @@ void service_sync_launcher_broker(launcher_t *launcher)
 			continue ;
 		}
 
-		char fmt[UINT_FMT] ;
-		size_t ilen = (size_t)uint_fmt(fmt, c->id) ;
+		char fmt[U32_FMT] ;
+		size_t ilen = (size_t)u32_fmt(fmt, c->id) ;
 		fmt[ilen] = 0 ;
-		_alloc_stk_(path, strlen("/org/bus1/DBus/Name/") + ilen + 1) ;
+		_alloc_strbuf_(path, strlen("/org/bus1/DBus/Name/") + ilen + 1) ;
 		auto_strings(path.s, "/org/bus1/DBus/Name/", fmt) ;
 
 		if (FLAGS_ISSET(c->state, DBS_SERVICE_INSERT)) {
@@ -437,8 +435,8 @@ void service_sync_launcher_broker(launcher_t *launcher)
 
 		} else {
 			/* unreachable */
-			char fmt[UINT_FMT] ;
-			fmt[uint_fmt(fmt, c->state)] = 0 ;
+			char fmt[U32_FMT] ;
+			fmt[u32_fmt(fmt, c->state)] = 0 ;
 			log_warn("bug: service ", c->name, " (", path.s, ") in invalid state ", fmt);
 		}
 	}
@@ -450,7 +448,7 @@ int service_reload(launcher_t *launcher)
 {
 	log_flow() ;
 
-	_alloc_sa_(sa) ;
+	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
 
 	service_get_list(&sa, launcher) ;
 
@@ -467,11 +465,11 @@ int service_activate(launcher_t *launcher, int id)
 
 	struct service_s *s = service_search_byid(launcher->hservice, id) ;
 
-	_alloc_stk_(name, strlen(s->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	_alloc_strbuf_(name, strlen(s->name) + DBS_SERVICE_SUFFIX_LEN) ;
 	auto_strings(name.s, s->name, DBS_SERVICE_SUFFIX) ;
 
-	char fmt[INT_FMT] ;
-	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+	char fmt[I32_FMT] ;
+	fmt[i32_fmt(fmt, VERBOSITY)] = 0 ;
 
 	log_info("activation requested for service: ", name.s) ;
 
@@ -495,11 +493,11 @@ int service_reactivate(struct service_s *service)
 {
 	log_flow() ;
 
-	_alloc_stk_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
 	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
 
-	char fmt[INT_FMT] ;
-	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+	char fmt[I32_FMT] ;
+	fmt[i32_fmt(fmt, VERBOSITY)] = 0 ;
 
 	log_info("reactivation requested for service: ", name.s) ;
 
@@ -520,11 +518,11 @@ int service_deactivate(struct service_s *service)
 {
 	log_flow() ;
 
-	_alloc_stk_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
 	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
 
-	char fmt[INT_FMT] ;
-	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+	char fmt[I32_FMT] ;
+	fmt[i32_fmt(fmt, VERBOSITY)] = 0 ;
 
 	log_info("deactivation requested for service: ", name.s) ;
 
@@ -555,8 +553,8 @@ void service_discard_tree(void)
 {
 	log_flow() ;
 
-	char fmt[INT_FMT] ;
-	fmt[int_fmt(fmt, VERBOSITY)] = 0 ;
+	char fmt[I32_FMT] ;
+	fmt[i32_fmt(fmt, VERBOSITY)] = 0 ;
 
 	char *nargv[] = {
 		"66",

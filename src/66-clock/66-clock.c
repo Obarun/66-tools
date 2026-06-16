@@ -1,7 +1,7 @@
 /*
  * 66-clock.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -10,75 +10,52 @@
  * distribution.
  * This file may not be copied, modified, propagated, or distributed
  * except according to the terms contained in the LICENSE file./
- *
- * This file is a strict copy of s6-linux-init-umountall.c file
- * coming from skarnet software at https://skarnet.org/software/s6-linux-init.
- * All credits goes to Laurent Bercot <ska-remove-this-if-you-are-not-a-bot@skarnet.org>
- * */
+ */
 
 #include <stdint.h>
+#include <string.h>
 
 #include <oblibs/log.h>
-#include <oblibs/string.h>
+#include <oblibs/clock.h>
+#include <oblibs/opt.h>
+#include <oblibs/stream.h>
 
-#include <skalibs/buffer.h>
-#include <skalibs/tai.h>
-#include <skalibs/djbtime.h>
-#include <skalibs/sgetopt.h>
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help",    .arg = OPT_NONE,                           .help = "print this help" },
+    { .id = 'n',         .shortname = 'n', .longname = "newline", .arg = OPT_NONE,                           .help = "output a trailing newline" },
+    { .id = 'm',         .shortname = 'm', .longname = "message", .arg = OPT_REQUIRED, .argname = "message", .help = "print message after the time system" },
+} ;
 
-#define USAGE "66-clock [ -n ] [ -m message ] tai|iso"
+static opt_cmd_t const cmd = {
+    .name = "66-clock",
+    .operands = "tai|iso",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
-static inline void info_help (void)
+void display_clock(unsigned int flags, uint8_t nl, char const *msg)
 {
-  static char const *help =
-"66-clock <options> tai|iso\n"
-"\n"
-"options :\n"
-"   -h: prints this help\n"
-"   -m: prints message after the time system\n"
-"   -n: output a trailing newline\n"
-;
+    size_t slen = !msg ? 0 : strlen(msg) ;
+    char stamp[CLOCK_LOCAL_LEN + 1 + slen + 1 + 1] ;
+    size_t len = 0 ;
+    struct timespec now ;
 
- if (buffer_putsflush(buffer_1, help) < 0)
-    log_dieusys(111,"write to stdout") ;
-}
-
-void display_clock(unsigned int flags,uint8_t nl,char const *msg)
-{
-    size_t hlen = 0 , slen = !msg ? 0 : strlen(msg)  ;
-    char hstamp[32 + slen + 1] ;
-    char tstamp[TIMESTAMP + slen + 1] ;
-    char *pstr = 0 ;
-    tain now ;
-    tain_wallclock_read(&now) ;
+    if (!clock_now(&now))
+        log_dieusys(LOG_EXIT_SYS, "get current time") ;
 
     if (flags & 1)
-    {
-        timestamp_fmt(tstamp, &now) ;
-        if (msg) {
-            tstamp[TIMESTAMP] = ' ' ;
-            memcpy(tstamp + TIMESTAMP + 1,msg,slen++) ;
-        }
-        if (nl) tstamp[TIMESTAMP + slen] = '\n' ;
-        else tstamp[TIMESTAMP + slen] = ' ' ;
-        tstamp[TIMESTAMP + slen + 1] = 0 ;
-        pstr = &tstamp[0] ;
+        len = clock_tai64n_fmt(stamp, &now) ;
+    else if (flags & 2)
+        len = clock_local_fmt(stamp, &now) ;
+
+    if (msg) {
+        stamp[len++] = ' ' ;
+        memcpy(stamp + len, msg, slen) ;
+        len += slen ;
     }
-    if (flags & 2)
-    {
-        localtmn l ;
-        localtmn_from_tain(&l, &now, 1) ;
-        hlen = localtmn_fmt(hstamp, &l) ;
-        if (msg) {
-            hstamp[hlen] = ' ' ;
-            memcpy(hstamp + hlen + 1,msg,slen++) ;
-        }
-        if (nl) hstamp[hlen + slen] = '\n' ;
-        else hstamp[hlen + slen] = ' ' ;
-        hstamp[hlen + slen + 1] = 0 ;
-        pstr = &hstamp[0] ;
-    }
-    if (buffer_putsflush(buffer_1, pstr) < 0)
+    stamp[len++] = nl ? '\n' : ' ' ;
+
+    if (!ostream_putflush(ostream_1, stamp, len))
         log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
@@ -90,38 +67,29 @@ int main (int argc, char const *const *argv)
 
     PROG = "66-clock" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hnm:", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
-            {
-                case 'h': info_help() ; return 0 ;
-                case 'm': msg = l.arg ; break ;
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o) {
+                case OPT_ID_HELP: return opt_emit_help(cmd.name, &cmd) ;
+                case 'm': msg = st.arg ; break ;
                 case 'n': nl = 1 ; break ;
-                default : log_usage(USAGE) ;
+                default : return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
 
-    if (!argc) log_usage(USAGE) ;
+    if (!argc) return opt_emit_usage(cmd.name, &cmd) ;
 
-    if (!strcmp(*argv,"tai")) {
-        flag |= 1 ;
-    }
-    else if (!strcmp(*argv,"iso")) {
-        flag |= 2 ;
-    }
-    else
-    {
-        log_die(LOG_EXIT_SYS,"invalid format -- must be tai or iso") ;
-    }
+    if (!strcmp(*argv,"tai")) flag |= 1 ;
+    else if (!strcmp(*argv,"iso")) flag |= 2 ;
+    else log_die(LOG_EXIT_USER, "invalid format -- must be tai or iso") ;
 
-    display_clock(flag,nl,msg) ;
+    display_clock(flag, nl, msg) ;
 
     return 0 ;
 }
-

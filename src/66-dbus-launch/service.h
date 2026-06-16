@@ -21,8 +21,7 @@
 #include "launcher.h"
 
 #include <oblibs/hash.h>
-
-#include <skalibs/stralloc.h>
+#include <oblibs/strbuf.h>
 
 #include <66/constants.h>
 #include <66/config.h>
@@ -54,7 +53,7 @@ struct service_s {
 extern void service_hash_free(struct service_s **hservice) ;
 extern struct service_s *service_search_byname(struct service_s **hservice, const char *name) ;
 extern struct service_s *service_search_byid(struct service_s **hservice, int id) ;
-extern int service_get_list(stralloc *sa, launcher_t *launcher) ;
+extern int service_get_list(strbuf *sa, launcher_t *launcher) ;
 extern void service_add_hash(launcher_t *launcher, struct service_s *service) ;
 extern void service_remove_hash(launcher_t *launcher, const char *name) ;
 extern int service_environ_owner_path(char *store, launcher_t *launcher) ;
@@ -65,7 +64,7 @@ extern int service_resolve_path(char *store, launcher_t *launcher, const char *s
 extern int service_write_frontend(launcher_t *launcher, struct service_s *service) ;
 extern int service_translate(launcher_t *launcher, const char *name) ;
 extern int service_load(launcher_t *launcher) ;
-extern void service_handle_state(stralloc *sa, launcher_t *launcher) ;
+extern void service_handle_state(strbuf *sa, launcher_t *launcher) ;
 extern void service_sync_launcher_broker(launcher_t *launcher) ;
 extern int service_reload(launcher_t *launcher) ;
 extern int service_activate(launcher_t *launcher, int id) ;

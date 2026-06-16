@@ -1,7 +1,7 @@
 /*
  * 66-olexec.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -18,19 +18,17 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <errno.h>
 
 #include <oblibs/string.h>
 #include <oblibs/files.h>
 #include <oblibs/log.h>
-
-#include <skalibs/sgetopt.h>
-#include <skalibs/buffer.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/cspawn.h>
-#include <skalibs/types.h>
-#include <skalibs/bytestr.h>
+#include <oblibs/opt.h>
+#include <oblibs/io.h>
+#include <oblibs/spawn.h>
+#include <oblibs/process.h>
 
 #define TTY_LEN 256
 #define PREFIX "/sys/class/tty/"
@@ -40,20 +38,17 @@
 
 static char current_tty[TTY_LEN] ;
 
-#define USAGE "66-olexec [ -h ] [ -d tty ] program"
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help", .arg = OPT_NONE,                      .help = "print this help" },
+    { .id = 'd',         .shortname = 'd', .longname = "tty",  .arg = OPT_REQUIRED, .argname = "tty", .help = "absolute path of tty to use" },
+} ;
 
-static inline void info_help (void)
-{
-  static char const *help =
-"66-olexec <options> program\n"
-"\n"
-"options :\n"
-"   -h: print this help\n"
-"   -d: absolute path of tty to use\n"
-;
-    if (buffer_putsflush(buffer_1, help) < 0)
-        log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
+static opt_cmd_t const cmd = {
+    .name = "66-olexec",
+    .operands = "program",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
 /** this function is largely inspired by jjk-jacky at
  * https://github.com/jjk-jacky/anopa/blob/master/src/utils/aa-tty.c */
@@ -62,21 +57,19 @@ void get_current_tty(void)
 {
     int r ;
     size_t skip, max ;
-    memcpy(current_tty, PREFIX, PREFIX_LEN) ;
-    memcpy(current_tty + PREFIX_LEN, "console", 7) ;
-    memcpy(current_tty + PREFIX_LEN + 7, NAME, NAME_LEN) ;
-    current_tty[PREFIX_LEN + 7 + NAME_LEN] = 0 ;
+    auto_strings(current_tty, PREFIX, "console", NAME) ;
 
     max = file_get_size(current_tty) ;
     char name[max] ;
 
-    r = openreadnclose (current_tty, name, max) ;
+    r = file_read (current_tty, name, max) ;
     if (r <= 0)
         log_dieusys(LOG_EXIT_SYS, "read: ", current_tty) ;
 
-    skip = byte_rchr (name, r, ' ') + 1 ;
-
-    if (skip > (size_t) r) skip = 0 ;
+    /** position right after the last space, or 0 if none */
+    skip = 0 ;
+    for (size_t k = r ; k ; k--)
+        if (name[k-1] == ' ') { skip = k ; break ; }
 
     for (;;)
     {
@@ -87,7 +80,7 @@ void get_current_tty(void)
         memcpy(current_tty + PREFIX_LEN + l - 1, NAME, NAME_LEN) ;
         current_tty[PREFIX_LEN + l - 1 + NAME_LEN] = 0 ;
 
-        r = openreadnclose (current_tty, name, max) ;
+        r = file_read (current_tty, name, max) ;
 
         if (r <= 0)
         {
@@ -110,27 +103,26 @@ int main(int argc, char const *const *argv,char const *const *envp)
     char const *dev = 0 ;
     int r, fd, wstat = 0 , i ;
     pid_t pid ;
-    char efmt[UINT_FMT] ;
 
     PROG = "66-olexec" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hd:", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o)
             {
-                case 'h': info_help() ; return 0 ;
-                case 'd': dev = l.arg ; break ;
-                default : log_usage(USAGE) ;
+                case OPT_ID_HELP : return opt_emit_help(cmd.name, &cmd) ;
+                case 'd' : dev = st.arg ; break ;
+                default :  return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
 
-    if (!argc) log_usage(USAGE) ;
+    if (!argc) return opt_emit_usage(cmd.name, &cmd) ;
 
     if (getuid() != 0) log_die(LOG_EXIT_SYS,"only superuser can run this program") ;
 
@@ -142,7 +134,7 @@ int main(int argc, char const *const *argv,char const *const *envp)
 
     close(0) ;
     close(1) ;
-    fd = open(dev, O_RDWR,0666) ;
+    fd = io_open(dev, O_RDWR) ;
     if (fd < 0) log_dieusys(LOG_EXIT_SYS,"open: ",dev) ;
     dup(fd) ;
     close(2) ;
@@ -155,22 +147,19 @@ int main(int argc, char const *const *argv,char const *const *envp)
     if ((r == -1) && (errno == EWOULDBLOCK))
         log_dieu(LOG_EXIT_SYS,"lock: ",dev," -- it locked by another process");
 
-    char const *cmd[argc+1] ;
+    char const *nargv[argc+1] ;
 
     for (i = 0 ; i < argc; i++)
-        cmd[i] = argv[i] ;
+        nargv[i] = argv[i] ;
 
-    cmd[i] = 0 ;
+    nargv[i] = 0 ;
 
-    pid = child_spawn0(cmd[0],cmd,envp) ;
-    if (waitpid_nointr(pid,&wstat, 0) < 0)
-        log_dieusys(LOG_EXIT_SYS,"wait for: ", cmd[0]) ;
+    pid = spawn_path(nargv[0],nargv,envp) ;
+    if (process_wait(pid,&wstat) < 0)
+        log_dieusys(LOG_EXIT_SYS,"wait for: ", nargv[0]) ;
 
     if (wstat)
-    {
-        efmt[uint_fmt(efmt, WIFSIGNALED(wstat) ? WTERMSIG(wstat) : WEXITSTATUS(wstat))] = 0 ;
-        log_die(LOG_EXIT_SYS,cmd[0],WIFSIGNALED(wstat) ? " failed " : " crashed ", "with exitcode: ",efmt) ;
-    }
+        flog_die(LOG_EXIT_SYS, "%s %s with exitcode: %d", nargv[0], WIFSIGNALED(wstat) ? " failed " : " crashed ", WIFSIGNALED(wstat) ? WTERMSIG(wstat) : WEXITSTATUS(wstat)) ;
 
     flock(fd,LOCK_UN) ;
     close(fd) ;

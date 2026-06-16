@@ -14,32 +14,18 @@
 
 #include <unistd.h>
 #include <errno.h>
-#include <spawn.h>
 #include <signal.h>
 #include <stddef.h>
+#include <sys/wait.h>
 
 #include "launcher.h"
 #include "service.h"
 
 #include <oblibs/log.h>
-
-#include <skalibs/selfpipe.h>
-#include <skalibs/djbunix.h>
+#include <oblibs/spawn.h>
+#include <oblibs/process.h>
 
 extern char **environ;
-
-int fdmove(int to, int from) {
-
-	log_flow() ;
-
-	int r ;
-	if (to == from) return 0 ;
-	do r = dup2(from, to) ;
-	while ((r == -1) && (errno == EINTR)) ;
-	if (r < 0) return r ;
-	close(from) ;
-	return 0 ;
-}
 
 /**
  * make a proper environment
@@ -49,22 +35,16 @@ int fdmove(int to, int from) {
 pid_t async_spawn(char **cmd)
 {
 	log_flow() ;
-	pid_t p ;
-	if ((errno = posix_spawnp(&p, cmd[0], NULL, NULL, cmd, environ)))
-		return 0 ;
-	return p ;
+	return spawn_path(cmd[0], (char const *const *)cmd, (char const *const *)environ) ;
 }
 
 int spawn_wait(pid_t p)
 {
 	log_flow() ;
 
-	int r, wstat ;
+	int wstat ;
 
-	do r = waitpid(p, &wstat, 0) ;
-	while (r < 0 && errno == EINTR) ;
-
-	if (r < 0)
+	if (process_wait(p, &wstat) < 0)
 		return DBS_EXIT_FATAL ;
 
 	if (WIFEXITED(wstat) && WEXITSTATUS(wstat) == 0)
@@ -95,46 +75,41 @@ static int compute_exit(int wstat)
     return WIFSIGNALED(wstat) ? 128 + WTERMSIG(wstat) : WEXITSTATUS(wstat) ;
 }
 
-int handle_signal(launcher_t *launcher, pid_t ppid)
+int handle_signal(launcher_t *launcher, int signo)
 {
-	int ok = DBS_EXIT_MAIN, wstat ;
+	int wstat ;
 	pid_t cpid ;
 
-    for (;;) {
-		int r = selfpipe_read() ;
+	switch (signo) {
 
-		switch (r) {
+		case SIGHUP:
+			log_info("caught SIGHUP signal, reloading services and configuration") ;
+			service_reload(launcher) ;
+			return DBS_EXIT_CHILD ;
+		case SIGTERM:
+		case SIGINT:
+		case SIGQUIT:
+			return DBS_EXIT_MAIN ;
+		case SIGCHLD:
+			/** We can have multiple pid as long as we spawn
+			 * a process to start a service. */
+			for (;;) {
 
-            case -1 : log_dieusys(LOG_EXIT_ZERO, "selfpipe_read") ;
-            case 0 : return DBS_EXIT_MAIN ;
-			case SIGHUP:
-				log_info("caught SIGHUP signal, reloading services and configuration") ;
-				service_reload(launcher) ;
-				return DBS_EXIT_CHILD ;
-			case SIGTERM:
-            case SIGINT:
-            case SIGQUIT:
-				return DBS_EXIT_MAIN ;
-            case SIGCHLD:
-				/** We can have multiple pid as long as we spawn
-				 * a process to start a service. */
-				for (;;) {
+				do cpid = waitpid(-1, &wstat, WNOHANG) ;
+				while (cpid < 0 && errno == EINTR) ;
 
-					cpid = wait_nohang(&wstat) ;
+				if (cpid < 0) {
+					if (errno == ECHILD) break ;
+					else log_warnusys_return(DBS_EXIT_FATAL,"wait for children") ;
+				} else if (!cpid) return DBS_EXIT_CHILD ;
 
-					if (cpid < 0) {
-						if (errno == ECHILD) break ;
-						else log_warnusys_return(DBS_EXIT_FATAL,"wait for children") ;
-					} else if (!cpid) return DBS_EXIT_CHILD ;
+				/** launcher */
+				if (cpid == launcher->bpid)
+					return compute_exit(wstat) ;
+			}
+			break ;
+		default : log_warn("unexpected signal") ; return DBS_EXIT_WARN ;
+	}
 
-					/** launcher */
-					if (cpid == ppid)
-						return compute_exit(wstat) ;
-				}
-                break ;
-			default : log_warn("unexpected data in selfpipe") ; return DBS_EXIT_WARN ;
-		}
-    }
-
-    return ok ;
+	return DBS_EXIT_MAIN ;
 }

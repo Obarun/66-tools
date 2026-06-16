@@ -1,7 +1,7 @@
 /*
  * 66-getenv.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -13,20 +13,21 @@
  */
 
 #include <string.h>
-#include <unistd.h>//read
+#include <unistd.h>//getpid
 #include <stdlib.h>//malloc
-#include <fcntl.h>
+#include <fcntl.h>//O_RDONLY
 #include <sys/stat.h>
-#include <errno.h>
 #include <regex.h>
 
-#include <oblibs/sastr.h>
+#include <oblibs/sbl.h>
 #include <oblibs/log.h>
-
-#include <skalibs/sgetopt.h>
-#include <skalibs/stralloc.h>
-#include <skalibs/buffer.h>
-#include <skalibs/types.h>
+#include <oblibs/opt.h>
+#include <oblibs/strbuf.h>
+#include <oblibs/stream.h>
+#include <oblibs/types.h>
+#include <oblibs/io.h>
+#include <oblibs/fd.h>
+#include <oblibs/string.h>
 
 #define MAXBUF 1024*64*2
 
@@ -34,51 +35,28 @@ static char const *delim = "\n" ;
 static char const *pattern = 0 ;
 static unsigned int EXACT = 0 ;
 
-#define USAGE "66-getenv [ -h ] [ -x ] [ -d delim ] process"
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help",  .arg = OPT_NONE,                         .help = "print this help" },
+    { .id = 'x',         .shortname = 'x', .longname = "exact", .arg = OPT_NONE,                         .help = "match exactly with the process name" },
+    { .id = 'd',         .shortname = 'd', .longname = "delim", .arg = OPT_REQUIRED, .argname = "delim", .help = "specify output delimiter" },
+} ;
 
-static inline void info_help (void)
-{
-  static char const *help =
-"66-getenv <options> process\n"
-"\n"
-"options :\n"
-"   -h: print this help\n"
-"   -d: specify output delimiter\n"
-"   -x: match exactly with the process name\n"
-;
+static opt_cmd_t const cmd = {
+    .name = "66-getenv",
+    .operands = "process",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
- if (buffer_putsflush(buffer_1, help) < 0)
-    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
-
-static int read_line(stralloc *dst, char const *line, char subdelim)
+static int read_line(strbuf *dst, char const *line, char subdelim)
 {
     char b[MAXBUF] ;
-    int fd ;
-    unsigned int n = 0, m = MAXBUF ;
 
-    fd = open(line, O_RDONLY) ;
+    int fd = io_open(line, O_RDONLY) ;
     if (fd == -1) return 0 ;
 
-    for(;;)
-    {
-        ssize_t r = read(fd,b+n,m-n);
-        if (r == -1)
-        {
-            if (errno == EINTR) continue ;
-            break ;
-        }
-        n += r ;
-        // buffer is full
-        if (n == m)
-        {
-            --n ;
-            break ;
-        }
-        // end of file
-        if (r == 0) break ;
-    }
-    close(fd) ;
+    unsigned int n = io_allread(fd, b, MAXBUF - 1) ;
+    close_fd(fd) ;
 
     if(n)
     {
@@ -93,8 +71,8 @@ static int read_line(stralloc *dst, char const *line, char subdelim)
     }
     b[n] = '\0';
 
-    if (!stralloc_cats(dst,b) ||
-        !stralloc_0(dst)) log_die_nomem("stralloc") ;
+    if (!strbuf_cats(dst,b) ||
+        !strbuf_terminate(dst)) log_die_nomem("strbuf") ;
     return n ;
 }
 
@@ -109,17 +87,9 @@ static regex_t *regex_cmp (void)
     preg = malloc (sizeof (regex_t)) ;
     if (!preg) log_dieusys(LOG_EXIT_SYS,"allocate preg") ;
     if (EXACT)
-    {
-        memcpy(re,"^(",2) ;
-        memcpy(re + 2,pattern,plen) ;
-        memcpy(re + 2 + plen,")$",2) ;
-        re[2 + plen + 2] = 0 ;
-    }
+        auto_strings(re, "^(", pattern, ")$") ;
     else
-    {
-        memcpy(re,pattern,plen) ;
-        re[plen] = 0 ;
-    }
+        auto_strings(re, pattern) ;
 
     r = regcomp (preg, re, REG_EXTENDED | REG_NOSUB) ;
     if (r)
@@ -138,14 +108,14 @@ void get_procs ()
     char *environ = "/environ" ;
     size_t proclen = 5, linelen = 8, i = 0, len ;
     char myself [PID_FMT] ;
-    myself[pid_fmt(myself,getpid())] = 0 ;
+    myself[pid_format(myself,getpid())] = 0 ;
     regex_t *preg ;
     preg = regex_cmp() ;
-    stralloc satmp = STRALLOC_ZERO ;
-    stralloc saproc = STRALLOC_ZERO ;
+    _cleanup_strbuf_ strbuf satmp = STRBUF_ZERO ;
+    _cleanup_strbuf_ strbuf saproc = STRBUF_ZERO ;
     char const *exclude[1] = { 0 } ;
 
-    if (!sastr_dir_get(&satmp,proc,exclude,S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
+    if (!sbl_dir_get(&satmp,proc,exclude,S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
 
     i = 0, len = satmp.len ;
     for (;i < len; i += strlen(satmp.s + i) + 1)
@@ -154,7 +124,7 @@ void get_procs ()
         char c = name[0] ;
         // keep only pid directories
         if ( c >= '0' && c <= '9' )
-            if (!stralloc_catb(&saproc,name,strlen(name) + 1)) log_dieusys(LOG_EXIT_SYS,"append stralloc") ;
+            if (!strbuf_catb(&saproc,name,strlen(name) + 1)) log_dieusys(LOG_EXIT_SYS,"append strbuf") ;
     }
 
     i = 0, len = saproc.len ;
@@ -167,27 +137,22 @@ void get_procs ()
         size_t namelen = strlen(name) ;
         if (!strcmp(name,myself)) continue ;
         char tmp[proclen + 1 + namelen + linelen + 1] ;
-        memcpy(tmp,proc,proclen) ;
-        tmp[proclen] = '/' ;
-        memcpy(tmp + proclen + 1,name,namelen) ;
-        memcpy(tmp + proclen + 1 + namelen,cmdline,linelen) ;
-        tmp[proclen + 1 + namelen + linelen] = 0 ;
+        auto_strings(tmp, proc, "/", name, cmdline) ;
         if (!read_line(&satmp,tmp,subdelim)) continue ;
 
         if (regexec (preg, satmp.s, 0, NULL, 0) != 0)
             found = 0 ;
 
         satmp.len = 0 ;
-        memcpy(tmp + proclen + 1 + namelen,environ,linelen) ;
-        tmp[proclen + 1 + namelen + linelen] = 0 ;
+        auto_strings(tmp, proc, "/", name, environ) ;
         subdelim = '\n' ;
         if (!read_line(&satmp,tmp,subdelim)) continue ;
 
         if (found)
         {
             /** ensure to have an empty end line */
-            if (!stralloc_catb(&satmp,"\n",1))
-                log_die_nomem("stralloc") ;
+            if (!strbuf_catb(&satmp,"\n",1))
+                log_die_nomem("strbuf") ;
 
             size_t j = 0 ;
             for(;j < satmp.len; j++)
@@ -195,39 +160,39 @@ void get_procs ()
                 char ch[2] = { satmp.s[j], 0 } ;
                 if (satmp.s[j] == '\n')
                 {
-                    if (buffer_putsflush(buffer_1, delim) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
+                    if (!ostream_putflush(ostream_1, delim, strlen(delim))) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
                 }
-                else if (buffer_puts(buffer_1, ch) < 0) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
+                else if (!ostream_puts(ostream_1, ch)) log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
             }
             break ;
         }
     }
-    stralloc_free(&satmp) ;
-    stralloc_free(&saproc) ;
+
     regfree(preg) ;
+    free(preg) ;
 }
 
 int main (int argc, char const *const *argv)
 {
     PROG = "66-getenv" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hxd:", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o)
             {
-                case 'h' :  info_help() ; return 0 ;
+                case OPT_ID_HELP : return opt_emit_help(cmd.name, &cmd) ;
                 case 'x' :  EXACT = 1 ; break ;
-                case 'd' :  delim = l.arg ; break ;
-                default :   log_usage(USAGE) ;
+                case 'd' :  delim = st.arg ; break ;
+                default :   return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
-    if (argc < 1) log_usage(USAGE) ;
+    if (argc < 1) return opt_emit_usage(cmd.name, &cmd) ;
     pattern = *argv ;
 
     get_procs() ;

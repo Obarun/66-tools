@@ -1,7 +1,7 @@
 /*
  * 66-gnwenv.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -12,43 +12,38 @@
  * except according to the terms contained in the LICENSE file./
  */
 
+#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <errno.h>
 #include <sys/wait.h>
 
 #include <oblibs/string.h>
 #include <oblibs/log.h>
-
-#include <skalibs/types.h>
-#include <skalibs/buffer.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/env.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/exec.h>
+#include <oblibs/types.h>
+#include <oblibs/opt.h>
+#include <oblibs/environ.h>
+#include <oblibs/exec.h>
+#include <oblibs/io.h>
+#include <oblibs/fd.h>
 
 #define MAX_ENV 4095
 static char const *pattern = 0 ;
 static unsigned int EXACT = 0 ;
 
-#define USAGE "66-gnwenv [ -h ] [ -x ] [ -m mode ] process dir file"
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help",  .arg = OPT_NONE,                        .help = "print this help" },
+    { .id = 'x',         .shortname = 'x', .longname = "exact", .arg = OPT_NONE,                        .help = "match exactly with the process name" },
+    { .id = 'm',         .shortname = 'm', .longname = "mode",  .arg = OPT_REQUIRED, .argname = "mode", .help = "create dir with given mode" },
+} ;
 
-static inline void info_help (void)
-{
-  static char const *help =
-"66-gnwenv <options> process dir file\n"
-"\n"
-"options :\n"
-"   -h: print this help\n"
-"   -m: create dir with given mode\n"
-"   -x: match exactly with the process name\n"
-;
-
- if (buffer_putsflush(buffer_1, help) < 0)
-    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
+static opt_cmd_t const cmd = {
+    .name = "66-gnwenv",
+    .operands = "process dir file",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
 static void string_env(char *tmp,char const *s,size_t len)
 {
@@ -64,39 +59,56 @@ static void string_env(char *tmp,char const *s,size_t len)
     }
 }
 
+static unsigned int get_nbline(char const *str, size_t len)
+{
+    unsigned int pos, loop ;
+    ssize_t r = 0 ;
+    pos = loop = 0 ;
+
+
+    while ((pos < len) && (r != -1))
+    {
+        r = get_len_until(str+pos,'\n') ;
+        pos = r+pos+1 ;//+1 to skip the \n character
+        loop++ ;
+    }
+
+    return loop ;
+}
+
 int main (int argc, char const *const *argv)
 {
     int r = 0 , pf, rm = 0, m = 0, fd[2], did = 0 ;
     ssize_t slen = 0 ;
 
-    unsigned int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH ;
+    uint32_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH ;
 
     char const *dir = 0 , *file = 0 ;
     char const *newargv[6+1] ;
     char const *newread[6+1] ;
-    char md[UINT32_FMT] ;
+    char md[U32_OFMT] ;
     char buf[MAX_ENV+1] ;
     char tmp[MAX_ENV+1] ;
 
     PROG = "66-gnwenv" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hxm:", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o)
             {
-                case 'h' :  info_help() ; return 0 ;
+                case OPT_ID_HELP : return opt_emit_help(cmd.name, &cmd) ;
                 case 'x' :  EXACT = 1 ; break ;
-                case 'm' :  if (!uint0_oscan(l.arg, &mode)) log_usage(USAGE) ; did = 1 ; break ;
-                default :   log_usage(USAGE) ;
+                case 'm' :  if (!u32_scan_strict_base(st.arg, &mode, 8)) return opt_emit_usage(cmd.name, &cmd) ; did = 1 ; break ;
+                default :   return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
-    if (argc < 3) log_usage(USAGE) ;
+    if (argc < 3) return opt_emit_usage(cmd.name, &cmd) ;
     pattern = argv[0] ;
     dir = argv[1] ;
     if (dir[0] != '/') log_die(LOG_EXIT_USER,dir," must be an absolute path") ;
@@ -116,12 +128,13 @@ int main (int argc, char const *const *argv)
     if (!pf)
     {
         dup2(fd[1],1) ;
-        mexec(newread) ;
+        exec_path(newread[0], newread, (char const *const *)environ) ;
     }
     else
     {
+        close_fd(fd[1]) ;
         wait(NULL) ;
-        slen = read(fd[0],buf,MAX_ENV) ;
+        slen = io_allread(fd[0],buf,MAX_ENV) ;
         if (!slen) return 0 ;
         buf[slen] = 0 ;
     }
@@ -129,7 +142,7 @@ int main (int argc, char const *const *argv)
 
     string_env(tmp,buf,slen) ;
 
-    md[uint32_fmt(md,mode)] = 0 ;
+    md[u32_ofmt(md,mode)] = 0 ;
 
     newargv[m++] = "66-writenv" ;
     if (did)
@@ -142,8 +155,8 @@ int main (int argc, char const *const *argv)
     newargv[m++] = 0 ;
 
     char const *v[r + 1] ;
-    if (!env_make (v, r ,tmp, slen)) log_dieusys(LOG_EXIT_SYS,"make environment") ;
+    if (!environ_make(v, r ,tmp, slen)) log_dieusys(LOG_EXIT_SYS,"make environment") ;
     v[r] = 0 ;
 
-    xmexec_f (newargv, v, r) ;
+    exec_path_die(newargv[0], newargv, v) ;
 }

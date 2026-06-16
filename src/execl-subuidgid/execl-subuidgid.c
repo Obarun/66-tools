@@ -1,7 +1,7 @@
 /*
  * execl-subuidgid.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -14,40 +14,30 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <stdio.h>
 #include <errno.h>
 #include <pwd.h>
 
 #include <oblibs/log.h>
 #include <oblibs/environ.h>
-#include <oblibs/sastr.h>
+#include <oblibs/sbl.h>
 #include <oblibs/string.h>
+#include <oblibs/strbuf.h>
+#include <oblibs/subst.h>
+#include <oblibs/opt.h>
+#include <oblibs/types.h>
+#include <oblibs/exec.h>
 
-#include <skalibs/types.h>
-#include <skalibs/buffer.h>
-#include <skalibs/stralloc.h>
-#include <skalibs/env.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/exec.h>
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
+    { .id = 'o',         .shortname = 'o', .arg = OPT_REQUIRED, .argname = "owner", .help = "owner to use" },
+} ;
 
-#include <execline/execline.h>
-
-#define USAGE "execl-subuidgid [ -h ] [ -o owner ] prog..."
-
-static inline void info_help (void)
-{
-  static char const *help =
-"execl-subuidgid <options> prog\n"
-"\n"
-"options :\n"
-"   -h: print this help\n"
-"   -o: owner to use\n"
-;
-
- if (buffer_putsflush(buffer_1, help) < 0)
-    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
+static opt_cmd_t const cmd = {
+    .name = "execl-subuidgid",
+    .operands = "prog...",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
 /** Implement again this function coming from
  * 66. This is avoid the dependency from it*/
@@ -89,28 +79,28 @@ int main (int argc, char const **argv, char const *const *envp)
     gid_t gid ;
     int r ;
     char const *owner = 0 ;
-    _alloc_sa_(sa) ;
-    _alloc_sa_(dst) ;
-    exlsn_t info = EXLSN_ZERO;
+    _cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
+    _cleanup_strbuf_ strbuf dst = STRBUF_ZERO ;
+    subst_t info = SUBST_ZERO ;
     char cuid[UID_FMT], cgid[GID_FMT] ;
 
     PROG = "execl-subuidgid" ;
 
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-          int opt = subgetopt_r(argc, argv, "ho:", &l) ;
-          if (opt == -1) break ;
-          switch (opt)
+          int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+          if (o == OPT_END) break ;
+          switch (o)
           {
-            case 'h' :  info_help(); return 0 ;
-            case 'o' :  owner = l.arg ; break ;
-            default :   log_usage(USAGE) ;
+            case OPT_ID_HELP :  return opt_emit_help(cmd.name, &cmd) ;
+            case 'o' :  owner = st.arg ; break ;
+            default :   return opt_emit_error(cmd.name, &cmd, o, &st) ;
           }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
     if (owner)
     {
@@ -119,17 +109,17 @@ int main (int argc, char const **argv, char const *const *envp)
     else uid = getuid() ;
 
     if (!yourgid(&gid,uid)) log_dieusys(LOG_EXIT_SYS,"get gid") ;
-    cuid[uid_fmt(cuid,uid)] = 0 ;
-    cgid[gid_fmt(cgid,gid)] = 0 ;
+    cuid[uid_format(cuid,uid)] = 0 ;
+    cgid[gid_format(cgid,gid)] = 0 ;
 
-    _alloc_stk_(ukey, 4 + strlen(cuid) + 1) ;
-    _alloc_stk_(gkey, 4 + strlen(cgid) + 1) ;
+    _alloc_strbuf_(ukey, 4 + strlen(cuid) + 1) ;
+    _alloc_strbuf_(gkey, 4 + strlen(cgid) + 1) ;
     auto_strings(ukey.s, "UID=", cuid) ;
     auto_strings(gkey.s, "GID=", cgid) ;
 
-    if (!sastr_add_string(&sa, ukey.s) ||
-        !sastr_add_string(&sa, gkey.s))
-            log_die_nomem("stralloc") ;
+    if (!sbl_add(&sa, ukey.s) ||
+        !sbl_add(&sa, gkey.s))
+            log_die_nomem("strbuf") ;
 
     if (!environ_substitute(&sa, &info))
         log_dieusys(LOG_EXIT_SYS, "substitue environment variables") ;
@@ -139,18 +129,17 @@ int main (int argc, char const **argv, char const *const *envp)
     if (!environ_import_arguments(&sa, argv, argc))
         log_dieusys(LOG_EXIT_SYS, "import arguments to environment") ;
 
-    r = el_substitute (&dst, sa.s, sa.len, info.vars.s, info.values.s,
-        genalloc_s (elsubst_t const, &info.data),genalloc_len (elsubst_t const, &info.data)) ;
-    if (r < 0) log_dieusys(LOG_EXIT_SYS,"el_substitute") ;
+    r = subst(&dst, sa.s, sa.len, &info) ;
+    if (r < 0) log_dieusys(LOG_EXIT_SYS,"subst") ;
     else if (!r) _exit(0) ;
 
-    stralloc_free(&sa) ;
+    strbuf_free(&sa) ;
 
     {
         char const *v[r + 1];
-        if (!env_make (v, r, dst.s, dst.len)) log_dieusys(LOG_EXIT_SYS, "env_make") ;
+        if (!environ_make (v, r, dst.s, dst.len)) log_dieusys(LOG_EXIT_SYS, "environ_make") ;
         v[r] = 0 ;
-        mexec_fm (v, envp, env_len (envp), info.modifs.s, info.modifs.len) ;
+        exec_path_merge (v[0], v, envp, info.modifs.s, info.modifs.len) ;
     }
 
     return 0 ;

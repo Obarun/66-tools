@@ -30,20 +30,22 @@
 #include "policy.h"
 #include "macro.h"
 
+#include <errno.h>
+
 #include <oblibs/log.h>
 #include <oblibs/string.h>
-#include <oblibs/stack.h>
-#include <oblibs/sastr.h>
+#include <oblibs/strbuf.h>
 #include <oblibs/files.h>
 #include <oblibs/io.h>
-
-#include <skalibs/iopause.h>
-#include <skalibs/selfpipe.h>
+#include <oblibs/types.h>
 
 #include <66-tools/config.h>
 
 #include <66/constants.h>
 #include <66/config.h>
+
+static void on_signal(sse_watcher_t *w, void *data, int event) ;
+static void on_bus(sse_watcher_t *w, void *data, int event) ;
 
 launcher_t *launcher_free(launcher_t *launcher)
 {
@@ -51,6 +53,7 @@ launcher_t *launcher_free(launcher_t *launcher)
 
 	if (!launcher)
 		return NULL ;
+	sse_free(&launcher->p) ;
 	close(launcher->fd_dbus) ;
     dbs_close_unref(launcher->bus_controller) ;
     dbs_close_unref(launcher->bus_regular) ;
@@ -61,7 +64,7 @@ launcher_t *launcher_free(launcher_t *launcher)
 	return NULL ;
 }
 
-int launcher_new(launcher_t_ref *plauncher, struct service_s **hservice, int socket, int sfpd)
+int launcher_new(launcher_t_ref *plauncher, struct service_s **hservice, int socket)
 {
 	log_flow() ;
 
@@ -71,16 +74,36 @@ int launcher_new(launcher_t_ref *plauncher, struct service_s **hservice, int soc
 	if (!launcher)
 		log_warn_return(DBS_EXIT_FATAL, "launcher") ;
 
+	/** the struct is calloc'd: make the event-loop fields safe to sse_free()
+	 * even if we fail before sse_new() (otherwise fd 0 would be closed). */
+	launcher->p.fd = -1 ;
+
 	launcher->fd_dbus = socket ;
-	launcher->spfd = sfpd ;
 	launcher->fd_controller_in= -1 ;
 	launcher->fd_controller_out= -1 ;
 	launcher->uid = getuid() ;
 	launcher->gid = getgid() ;
+	launcher->loopret = 1 ;
 	launcher->nservice = 1 ;
 	launcher_get_machine_id(launcher) ;
 
 	launcher->hservice = hservice ;
+
+	/** event loop + signal trapping (replaces selfpipe). The signalfd is set up
+	 * here, before the broker is forked, so no signal is missed. */
+	if (!sse_new(&launcher->p, 2))
+		log_warnusys_return(DBS_EXIT_FATAL, "create event loop") ;
+
+	if (!sse_start_signal(&launcher->p, &launcher->wsignal, on_signal, launcher, 10))
+		log_warnusys_return(DBS_EXIT_FATAL, "start signal watcher") ;
+
+	if (!sse_attach_signal(&launcher->wsignal, SIGCHLD) ||
+		!sse_attach_signal(&launcher->wsignal, SIGINT) ||
+		!sse_attach_signal(&launcher->wsignal, SIGQUIT) ||
+		!sse_attach_signal(&launcher->wsignal, SIGHUP) ||
+		!sse_attach_signal(&launcher->wsignal, SIGTERM) ||
+		!sse_ignore_signal(&launcher->wsignal, SIGPIPE))
+			log_warnusys_return(DBS_EXIT_FATAL, "trap signals") ;
 
 	*plauncher = launcher ;
 	launcher = NULL ;
@@ -122,7 +145,20 @@ int launcher_fork(launcher_t *launcher)
 	if (pid == 0) {
 
 		close(launcher->sync[0]) ;
-		selfpipe_finish() ;
+		/** drop the inherited event loop (epoll + signalfd) and restore a clean
+		 * signal mask for the broker (the mask is inherited across execve). */
+		sse_free(&launcher->p) ;
+		{
+			sigset_t set ;
+			sigemptyset(&set) ;
+			sigaddset(&set, SIGCHLD) ;
+			sigaddset(&set, SIGINT) ;
+			sigaddset(&set, SIGQUIT) ;
+			sigaddset(&set, SIGHUP) ;
+			sigaddset(&set, SIGTERM) ;
+			sigaddset(&set, SIGPIPE) ;
+			sigprocmask(SIG_UNBLOCK, &set, NULL) ;
+		}
 		close(launcher->fd_controller_in) ;
 
 		launcher_run_broker(launcher) ;
@@ -201,8 +237,8 @@ int launcher_run_broker(launcher_t *launcher)
 	log_flow() ;
 
 	int r, flags ;
-	char fd[INT_FMT] ;
-	fd[int_fmt(fd, launcher->fd_controller_out)] = 0 ;
+	char fd[I32_FMT] ;
+	fd[i32_fmt(fd, launcher->fd_controller_out)] = 0 ;
 
 	const char *const nargv[] = {
 		"/usr/bin/dbus-broker",
@@ -286,50 +322,59 @@ int launcher_add_listener(launcher_t *launcher)
 	return 1 ;
 }
 
-int launcher_loop(launcher_t *launcher)
+static void on_signal(sse_watcher_t *w, void *data, int event)
 {
+	(void)event ;
+	launcher_t *launcher = data ;
+	sse_signal_t *sig = (sse_signal_t *)w->sdata ;
+
+	int r = handle_signal(launcher, sig->si.ssi_signo) ;
+
+	if (r == DBS_EXIT_FATAL) {
+		launcher->loopret = DBS_EXIT_FATAL ;
+		w->p->running = false ;
+	} else if (r == DBS_EXIT_MAIN) {
+		w->p->running = false ;
+	}
+	/* DBS_EXIT_CHILD (reload, transient child reaped) or broker death by signal:
+	 * keep the loop running, exactly like the former iopause loop. */
+}
+
+static void on_bus(sse_watcher_t *w, void *data, int event)
+{
+	launcher_t *launcher = data ;
 	int r ;
-	tain deadline = tain_infinite_relative ;
 
-	iopause_fd x[2] = {
-		{ .fd = launcher->spfd, .events = IOPAUSE_READ, .revents = 0 },
-		{ .fd = launcher->fd_controller_in, .events = IOPAUSE_READ, .revents = 0 }
-	} ;
-
-	tain_now_set_stopwatch_g() ;
-    tain_add_g(&deadline, &deadline) ;
-
-	for (;;) {
-
-		r = iopause_g(x, 2, &deadline) ;
-        if (r < 0)
-            log_warnusys_return(DBS_EXIT_FATAL, "iopause") ;
-        if (!r)
-			// never reached
-            log_warnusys_return(DBS_EXIT_FATAL, "timeout") ;
-
-		if (x[1].revents & IOPAUSE_READ) {
-
-			do r = sd_bus_process(launcher->bus_controller, NULL) ;
-			while (r < 0 && errno == EINTR) ;
-			if (r < 0)
-				log_warnusys_return(DBS_EXIT_FATAL, "process bus");
-			if (r > 0) /* we processed a request, try to process another one, right-away */
-				continue ;
-		}
-
-		if (x[0].revents & IOPAUSE_READ) {
-
-			r = handle_signal(launcher, launcher->bpid) ;
-			if (r == DBS_EXIT_MAIN)
-				break ;
-			if (r == DBS_EXIT_FATAL)
-				return DBS_EXIT_FATAL ;
-			continue ;
-        }
+	if (event & (SSE_ERROR | SSE_HUP)) {
+		launcher->loopret = DBS_EXIT_FATAL ;
+		w->p->running = false ;
+		return ;
 	}
 
-	return 1 ;
+	/* drain the controller bus: process requests until none is left */
+	do {
+		do r = sd_bus_process(launcher->bus_controller, NULL) ;
+		while (r < 0 && errno == EINTR) ;
+		if (r < 0) {
+			log_warnusys("process bus") ;
+			launcher->loopret = DBS_EXIT_FATAL ;
+			w->p->running = false ;
+			return ;
+		}
+	} while (r > 0) ;
+}
+
+int launcher_loop(launcher_t *launcher)
+{
+	launcher->loopret = 1 ;
+
+	if (!sse_start_io(&launcher->p, &launcher->wbus, on_bus, launcher, launcher->fd_controller_in, SSE_READ, 0))
+		log_warnusys_return(DBS_EXIT_FATAL, "start controller bus watcher") ;
+
+	if (!sse_poll(&launcher->p, SSE_TIMEOUT_INFINITE))
+		log_warnusys_return(DBS_EXIT_FATAL, "event loop") ;
+
+	return launcher->loopret ;
 }
 
 // https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L491
@@ -357,7 +402,7 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 			uint64_t serial;
 			int r = sd_bus_message_read(m, "t", &serial);
 
-			_alloc_stk_(stk, strlen(obj_path) + 1) ;
+			_alloc_strbuf_(stk, strlen(obj_path) + 1) ;
 
 			if (!ob_basename(stk.s, obj_path))
 				log_warnu_return(DBS_EXIT_WARN, "get basename of: ", obj_path) ;
@@ -394,7 +439,7 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 	log_flow() ;
 
 	char home[SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + 9] ;
-	_alloc_sa_(sa) ;
+	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
 
 	memset(home, 0, sizeof(char) * SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + 9) ;
 
@@ -416,7 +461,7 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 			goto exit ;
 		}
 
-		if (!auto_stra(&sa, key, "=", value, "\n")) {
+		if (!auto_strbuf(&sa, key, "=", value, "\n")) {
 			log_warnusys("stralloc") ;
 			goto exit ;
 		}
@@ -426,7 +471,7 @@ void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
 		goto exit ;
 
 	log_trace("write environment file: ", home) ;
-	if (!file_write_unsafe_g(home, sa.s))
+	if (!file_write(home, sa.s, sa.len))
 		log_warnusys("write file: ", home) ;
 
 	exit:
@@ -445,7 +490,7 @@ void launcher_get_machine_id(launcher_t *launcher)
         goto exit ;
     }
 
-    int r = io_read(launcher->machineid, fd, 32) ;
+    int r = io_read(fd, launcher->machineid, 32) ;
     if (r < 0)
         memcpy(launcher->machineid, "00000000000000000000000000000001", 32) ;
 

@@ -1,7 +1,7 @@
 /*
  * 66-yeller.c
  *
- * Copyright (c) 2020-2023 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2020 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -13,95 +13,71 @@
  */
 
 #include <string.h> //strcmp
+#include <stdlib.h> //getenv
 #include <sys/types.h> //ssize_t
 #include <errno.h>
-#include <fcntl.h> //open
-#include <unistd.h> //close, read
+#include <fcntl.h> //O_RDONLY
+#include <unistd.h> //getppid, isatty
 
 #include <oblibs/log.h>
-#include <oblibs/sastr.h>
 #include <oblibs/string.h>
-
-#include <skalibs/buffer.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/stralloc.h>
-#include <skalibs/env.h>//env_get2
-#include <skalibs/types.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/bytestr.h>//byte_chr
+#include <oblibs/strbuf.h>
+#include <oblibs/opt.h>
+#include <oblibs/types.h>
+#include <oblibs/io.h>
+#include <oblibs/fd.h>
 
 #define MAXBUF 4096
 
-#define USAGE "66-yeller [ -h ] [ -d ] [ -s|S ] [ -1 file ] [ -2 file ] [ -z ] [ -n ] [ -c ] [ -p prog ] [ -v verbosity ] [ -i|w|W|t|T|f|F ] msg..."
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .help = "prints this help" },
+    { .id = 'd', .shortname = 'd', .help = "sets double output" },
+    { .id = 's', .shortname = 's', .help = "switch stdout and stderr" },
+    { .id = 'S', .shortname = 'S', .help = "read from stdin" },
+    { .id = '1', .shortname = '1', .arg = OPT_REQUIRED, .argname = "file", .help = "redirect stdout to file" },
+    { .id = '2', .shortname = '2', .arg = OPT_REQUIRED, .argname = "file", .help = "redirect stderr to file" },
+    { .id = 'z', .shortname = 'z', .help = "enable color" },
+    { .id = 'n', .shortname = 'n', .help = "disable trailing new line" },
+    { .id = 'c', .shortname = 'c', .help = "disable time display" },
+    { .id = 'p', .shortname = 'p', .arg = OPT_REQUIRED, .argname = "prog", .help = "specifies name of the program" },
+    { .id = 'v', .shortname = 'v', .arg = OPT_REQUIRED, .argname = "verbosity", .help = "increase/decrease verbosity level" },
+    { .id = 'i', .shortname = 'i', .help = "do not print information before msg" },
+    { .id = 'w', .shortname = 'w', .help = "prints a warning message" },
+    { .id = 'W', .shortname = 'W', .help = "prints a warning message regardless the VERBOSITY level" },
+    { .id = 't', .shortname = 't', .help = "prints a tracing message" },
+    { .id = 'T', .shortname = 'T', .help = "prints a tracing message regardless the VERBOSITY level" },
+    { .id = 'f', .shortname = 'f', .help = "prints a fatal message and die" },
+    { .id = 'F', .shortname = 'F', .help = "prints a fatal message without dying" },
+} ;
 
-static inline void info_help (void)
-{
-    set_clock_enable(0) ;
-    static char const *help =
-"66-yeller <options> msg...\n"
+static char const yeller_epilog[] =
 "\n"
-"options:\n"
-"   -h: prints this help\n"
-"   -d: sets double output\n"
-"   -s: switch stdout and stderr\n"
-"   -S: read from stdin\n"
-"   -1: redirect stdout to file\n"
-"   -2: redirect stderr to file\n"
-"   -z: enable color\n"
-"   -n: disable trailing new line\n"
-"   -c: disable time display\n"
-"   -p: specifies name of the program\n"
-"   -v: increase/decrease verbosity level\n"
-"   -i: do not print information before msg\n"
-"   -w: prints a warning message\n"
-"   -W: prints a warning message regarless the VERBOSITY level\n"
-"   -t: prints a tracing message\n"
-"   -T: prints a tracing message regarless the VERBOSITY level\n"
-"   -f: prints a fatal message and die\n"
-"   -F: prints a fatal message without dying\n"
-"\n"
-"msg color options: \n"
+"msg color options:\n"
 "   %w: set color to white\n"
 "   %b: set color to blue\n"
 "   %g: set color to green\n"
 "   %y: set color to yellow\n"
 "   %r: set color to red\n"
 "   %l: enable blinking\n"
-"   %n: reset color to normal\n"
-"\n"
-;
-    if (buffer_putsflush(buffer_1, help) < 0)
-        log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
+"   %n: reset color to normal" ;
 
-static int read_line(stralloc *dst, char const *line)
+static opt_cmd_t const cmd = {
+    .name = "66-yeller",
+    .operands = "msg...",
+    .epilog = yeller_epilog,
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
+
+static int read_line(strbuf *dst, char const *line)
 {
     char b[MAXBUF] ;
-    int fd ;
-    unsigned int n = 0, m = MAXBUF ;
 
-    fd = open(line, O_RDONLY) ;
+    int fd = io_open(line, O_RDONLY) ;
     if (fd == -1) return 0 ;
 
-    for(;;)
-    {
-        ssize_t r = read(fd,b+n,m-n);
-        if (r == -1)
-        {
-            if (errno == EINTR) continue ;
-            break ;
-        }
-        n += r ;
-        // buffer is full
-        if (n == m)
-        {
-            --n ;
-            break ;
-        }
-        // end of file
-        if (r == 0) break ;
-    }
-    close(fd) ;
+    unsigned int n = io_allread(fd, b, MAXBUF - 1) ;
+    close_fd(fd) ;
 
     if(n)
     {
@@ -115,39 +91,39 @@ static int read_line(stralloc *dst, char const *line)
     }
     b[n] = '\0';
 
-    if (!stralloc_cats(dst,b) ||
-        !stralloc_0(dst)) log_die_nomem("stralloc") ;
+    if (!strbuf_cats(dst,b) ||
+        !strbuf_terminate(dst)) log_die_nomem("strbuf") ;
     return n ;
 }
 
-static void build_msg(stralloc *list, int argc,char const *const *argv)
+static void build_msg(strbuf *list, int argc,char const *const *argv)
 {
     int el = 0, first = 0 ;
     for ( ; el < argc ; el++)
     {
         if (!first) {
-            if (!auto_stra(list,argv[el]))
-                log_die_nomem("stralloc") ;
+            if (!auto_strbuf(list,argv[el]))
+                log_die_nomem("strbuf") ;
         }
         else {
-            if (!auto_stra(list," ",argv[el]))
-                log_die_nomem("stralloc") ;
+            if (!auto_strbuf(list," ",argv[el]))
+                log_die_nomem("strbuf") ;
         }
         first++ ;
     }
 }
 
-static void rebuild_without_escape(stralloc *list)
+static void rebuild_without_escape(strbuf *list)
 {
     size_t pos = 0 ;
-    stralloc t = STRALLOC_ZERO ;
+    _cleanup_strbuf_ strbuf t = STRBUF_ZERO ;
 
     for (;pos < list->len;pos++)
     {
         char c = 0 ;
         if (list->s[pos] == '\\') {
-            c = 7 + byte_chr("abtnvfr", 7, list->s[pos+1]) ;
-            if (!stralloc_catb(&t,&c,1)) log_die_nomem("stralloc") ;
+            c = 7 + str_search("abtnvfr", list->s[pos+1]) ;
+            if (!strbuf_catb(&t,&c,1)) log_die_nomem("strbuf") ;
             if (((pos + 2) >= list->len) || ((pos + 1) >= list->len) ) break ;
             if (list->s[pos+2] == ' ') pos += 2 ;
             else pos++ ;
@@ -155,48 +131,47 @@ static void rebuild_without_escape(stralloc *list)
         else if (list->s[pos] == '%') {
             if (list->s[pos+1] == 'w')
             {
-                if (!stralloc_cats(&t,log_color->info)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->info)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'b')
             {
-                if (!stralloc_cats(&t,log_color->blue)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->blue)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'g')
             {
-                if (!stralloc_cats(&t,log_color->valid)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->valid)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'y')
             {
-                if (!stralloc_cats(&t,log_color->warning)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->warning)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'r')
             {
-                if (!stralloc_cats(&t,log_color->error)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->error)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'l')
             {
-                if (!stralloc_cats(&t,log_color->ablink)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->ablink)) log_die_nomem("strbuf") ;
             }
             else if (list->s[pos+1] == 'n')
             {
-                if (!stralloc_cats(&t,log_color->off)) log_die_nomem("stralloc") ;
+                if (!strbuf_cats(&t,log_color->off)) log_die_nomem("strbuf") ;
             }
             if ((pos + 1) >= list->len) break ;
             else pos++ ;
         }
         else {
             c = list->s[pos] ;
-            if (!stralloc_catb(&t,&c,1)) log_die_nomem("stralloc") ;
+            if (!strbuf_catb(&t,&c,1)) log_die_nomem("strbuf") ;
         }
     }
-    if (!stralloc_0(&t)) log_die_nomem("stralloc") ;
+    if (!strbuf_terminate(&t)) log_die_nomem("strbuf") ;
     t.len-- ;
-    if (!stralloc_copy(list,&t)) log_die_nomem("stralloc") ;
+    if (!strbuf_copy(list,&t)) log_die_nomem("strbuf") ;
 
-    stralloc_free(&t) ;
 }
 
-static void display_list(stralloc *list, uint8_t level)
+static void display_list(strbuf *list, uint8_t level)
 {
     if (level == 1) log_info(list->s) ;
     else if (level == 2) log_warn(list->s) ;
@@ -207,7 +182,7 @@ static void display_list(stralloc *list, uint8_t level)
     else if (level == 7) log_fatal(list->s) ;
 }
 
-int main(int argc, char const *const *argv, char const *const *envp)
+int main(int argc, char const *const *argv)
 {
     uint8_t level = 0, newline = 1, read_stdin = 0 ;
     int iverbo = -1 ;
@@ -215,8 +190,8 @@ int main(int argc, char const *const *argv, char const *const *envp)
     char const *prog = 0, *verbo = 0, *redir1 = 0, *redir2 = 0, *clock = 0, *dble = 0, *timestamp = 0, *color = 0 ;
     char proc[4096] ;
 
-    stralloc list = STRALLOC_ZERO ;
-    stralloc saproc = STRALLOC_ZERO ;
+    _cleanup_strbuf_ strbuf list = STRBUF_ZERO ;
+    _cleanup_strbuf_ strbuf saproc = STRBUF_ZERO ;
 
     log_color = &log_color_disable ;
 
@@ -228,95 +203,93 @@ int main(int argc, char const *const *argv, char const *const *envp)
 
     PROG = "66-yeller" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hv:dsS1:2:znip:cwWtTfF", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o)
             {
-                case 'h' :  info_help() ; return 0 ;
-                case 'v' :  if (!uint0_scan(l.arg,(uint32_t *)&iverbo))
-                                log_usage(USAGE) ;
-                            break ;
+                case OPT_ID_HELP :  return opt_emit_help(cmd.name, &cmd) ;
+                case 'v' :  { uint32_t v ; if (!u32_scan_strict(st.arg, &v)) return opt_emit_usage(cmd.name, &cmd) ; iverbo = (int)v ; } break ;
                 case 'd' :  idble = 1 ; break ;
                 case 's' :  set_switch_stream(0) ; break ;
                 case 'S' :  read_stdin = 1 ; break ;
-                case '1' :  redir1 = l.arg ; break ;
-                case '2' :  redir2 = l.arg ; break ;
+                case '1' :  redir1 = st.arg ; break ;
+                case '2' :  redir2 = st.arg ; break ;
                 case 'z' :  icolor = 1 ; break ;
                 case 'n' :  newline = 0 ; set_trailing_newline(0) ; break ;
                 case 'i' :  set_default_msg(0) ; break ;
-                case 'p' :  prog = l.arg ; break ;
+                case 'p' :  prog = st.arg ; break ;
                 case 'c' :  iclock = 0 ; break ;
-                case 'w' :  if (level) log_usage(USAGE) ; level = 2 ; break ;
-                case 'W' :  if (level) log_usage(USAGE) ; level = 3 ; break ;
-                case 't' :  if (level) log_usage(USAGE) ; level = 4 ; break ;
-                case 'T' :  if (level) log_usage(USAGE) ; level = 5 ; break ;
-                case 'f' :  if (level) log_usage(USAGE) ; level = 6 ; break ;
-                case 'F' :  if (level) log_usage(USAGE) ; level = 7 ; break ;
-                default :   log_usage(USAGE) ;
+                case 'w' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 2 ; break ;
+                case 'W' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 3 ; break ;
+                case 't' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 4 ; break ;
+                case 'T' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 5 ; break ;
+                case 'f' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 6 ; break ;
+                case 'F' :  if (level) return opt_emit_usage(cmd.name, &cmd) ; level = 7 ; break ;
+                default :   return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
-    if (!argc && !read_stdin) log_usage(USAGE) ;
+    if (!argc && !read_stdin) return opt_emit_usage(cmd.name, &cmd) ;
 
     if (!color)
     {
-        color = env_get2(envp,"COLOR_ENABLED") ;
+        color = getenv("COLOR_ENABLED") ;
         if (color)
-            if (!uint0_scan(color,&icolor))
+            if (!u32_scan_strict(color,&icolor))
                 log_die(LOG_EXIT_SYS,"invalid format of COLOR_ENABLED environment variable") ;
     }
     if (icolor) log_color = !isatty(1) ? &log_color_disable : &log_color_enable ;
 
     if (!idble)
     {
-        dble = env_get2(envp,"DOUBLE_OUTPUT") ;
+        dble = getenv("DOUBLE_OUTPUT") ;
         if (dble)
-            if (!uint0_scan(dble,&idble))
+            if (!u32_scan_strict(dble,&idble))
                 log_die(LOG_EXIT_SYS,"invalid format of DOUBLE_OUTPUT environment variable") ;
     }
     set_double_output(idble) ;
 
     if (iclock)
     {
-        clock = env_get2(envp,"CLOCK_ENABLED") ;
+        clock = getenv("CLOCK_ENABLED") ;
         if (clock)
-            if (!uint0_scan(clock,&iclock))
+            if (!u32_scan_strict(clock,&iclock))
                 log_die(LOG_EXIT_SYS,"invalid format of CLOCK_ENABLED environment variable") ;
     }
     set_clock_enable(iclock) ;
 
-    timestamp = env_get2(envp,"CLOCK_TIMESTAMP") ;
+    timestamp = getenv("CLOCK_TIMESTAMP") ;
     if (timestamp) {
-        if (!uint0_scan(timestamp,&itimestamp))
+        if (!u32_scan_strict(timestamp,&itimestamp))
                 log_die(LOG_EXIT_SYS,"invalid format of CLOCK_TIMESTAMP environment variable") ;
         set_clock_timestamp(itimestamp) ;
     }
 
     if (!level) level = 1 ;
 
-    char fmt[UINT_FMT] ;
-    fmt[uint_fmt(fmt, getppid())] = 0 ;
+    char fmt[PID_FMT] ;
+    fmt[pid_format(fmt, getppid())] = 0 ;
 
     auto_string_from(proc,6,fmt,"/comm") ;
 
     read_line(&saproc,proc) ;
 
     if (!prog){
-        PROG = env_get2(envp,"PROG") ;
+        PROG = getenv("PROG") ;
         if (!PROG) PROG = saproc.s ;
     }
     else PROG = prog ;
 
     if (iverbo == -1)
     {
-        verbo = env_get2(envp,"VERBOSITY") ;
+        verbo = getenv("VERBOSITY") ;
         if (verbo){
-            if (!uint0_scan(verbo, &VERBOSITY))
+            if (!u32_scan_strict(verbo, &VERBOSITY))
                 log_die(LOG_EXIT_SYS,"invalid format of VERBOSITY environment variable") ;
             if (VERBOSITY >= 3) VERBOSITY = 3 ;
         }
@@ -324,66 +297,59 @@ int main(int argc, char const *const *argv, char const *const *envp)
     else VERBOSITY=iverbo ;
 
     if (!redir1) {
-        redir1 = env_get2(envp,"REDIRFD_1") ;
+        redir1 = getenv("REDIRFD_1") ;
         if (redir1) set_redirfd_1(redir1) ;
     }
     else set_redirfd_1(redir1) ;
 
     if (!redir2) {
-        redir2 = env_get2(envp,"REDIRFD_2") ;
+        redir2 = getenv("REDIRFD_2") ;
         if (redir2) set_redirfd_2(redir2) ;
     }
     else set_redirfd_2(redir2) ;
 
     if (read_stdin)
     {
-        stralloc tmp = STRALLOC_ZERO ;
+        _cleanup_strbuf_ strbuf tmp = STRBUF_ZERO ;
         if (argc) {
             build_msg(&tmp,argc,argv) ;
-            if (!auto_stra(&tmp," ")) log_die_nomem("stralloc") ;
+            if (!auto_strbuf(&tmp," ")) log_die_nomem("strbuf") ;
             rebuild_without_escape(&tmp) ;
         }
 
-        char buf[2] ;
+        char buf[2] = {0} ;
         ssize_t r = 1 ;
         while(r > 0)
         {
-            r = read(0,buf,1) ;
-            if (r == -1) {
-                if (errno == EINTR) continue ;
-                break ;
-            }
+            r = io_read(0,buf,1) ;
             if (r <= 0) break ;
             if (buf[0] !='\n')
             {
-                if (!auto_stra(&list,buf)) log_die_nomem("stralloc") ;
+                if (!auto_strbuf(&list,buf)) log_die_nomem("strbuf") ;
             }
             else
             {
                 if (tmp.len){
-                    if (!stralloc_insert(&list,0,&tmp)) log_die_nomem("stralloc") ;
+                    if (!strbuf_insert(&list,0,&tmp)) log_die_nomem("strbuf") ;
                     if (!newline)
-                        if (!auto_stra(&list," ")) log_die_nomem("stralloc") ;
-                    if (!stralloc_0(&list)) log_die_nomem("stralloc") ;
+                        if (!auto_strbuf(&list," ")) log_die_nomem("strbuf") ;
+                    if (!strbuf_terminate(&list)) log_die_nomem("strbuf") ;
                 }
                 display_list(&list,level) ;
                 list.len = 0 ;
             }
         }
-        stralloc_free(&tmp) ;
     }
     else
     {
         build_msg(&list,argc,argv) ;
         if (!newline)
-            if (!stralloc_cats(&list," ")) log_die_nomem("stralloc") ;
+            if (!strbuf_cats(&list," ")) log_die_nomem("strbuf") ;
 
-        if (!stralloc_0(&list)) log_die_nomem("stralloc") ;
+        if (!strbuf_terminate(&list)) log_die_nomem("strbuf") ;
         rebuild_without_escape(&list) ;
         display_list(&list,level) ;
     }
 
-    stralloc_free(&list) ;
-    stralloc_free(&saproc) ;
     return 0 ;
 }

@@ -19,11 +19,10 @@
 
 #include "launcher.h"
 
-extern int fdmove(int to, int from) ;
 extern pid_t async_spawn(char **cmd) ;
 extern int spawn_wait(pid_t p) ;
 extern int sync_spawn(char **cmd) ;
-extern int handle_signal(launcher_t *launcher, pid_t ppid) ;
+extern int handle_signal(launcher_t *launcher, int signo) ;
 
 #endif
 

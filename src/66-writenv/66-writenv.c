@@ -1,7 +1,7 @@
 /*
  * 66-writenv.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -14,60 +14,57 @@
 
 #include <string.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>//fsync,close
 #include <errno.h>
 
 #include <oblibs/log.h>
-
-#include <skalibs/types.h>
-#include <skalibs/bytestr.h>
-#include <skalibs/buffer.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/djbunix.h>
+#include <oblibs/string.h>
+#include <oblibs/types.h>
+#include <oblibs/opt.h>
+#include <oblibs/stream.h>
+#include <oblibs/io.h>
 
 #define MAX_ENV 4095
-#define USAGE "66-writenv [ - h ] [ -m mode ] dir file"
 
-static inline void info_help (void)
-{
-  static char const *help =
-"66-writenv <options> dir file\n"
-"\n"
-"options :\n"
-"   -h: print this help\n"
-"   -m: create dir with given mode\n"
-;
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help", .arg = OPT_NONE,                       .help = "print this help" },
+    { .id = 'm',         .shortname = 'm', .longname = "mode", .arg = OPT_REQUIRED, .argname = "mode", .help = "create dir with given mode" },
+} ;
 
- if (buffer_putsflush(buffer_1, help) < 0)
-    log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
-}
+static opt_cmd_t const cmd = {
+    .name = "66-writenv",
+    .operands = "dir file",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-    unsigned int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH ;
+    uint32_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH ;
     size_t dirlen, filen ;
-    buffer b ;
+    ostream b ;
     int fd ;
     char const *dir = 0 , *file = 0 ;
     char buf[MAX_ENV+1] ;
     PROG = "66-writenv" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc, argv, "hm:", &l) ;
-            if (opt == -1) break ;
-            switch (opt)
+            int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+            if (o == OPT_END) break ;
+            switch (o)
             {
-                case 'h' :  info_help() ; return 0 ;
-                case 'm' :  if (!uint0_oscan(l.arg, &mode)) log_usage(USAGE) ; break ;
-                default :   log_usage(USAGE) ;
+                case OPT_ID_HELP :  return opt_emit_help(cmd.name, &cmd) ;
+                case 'm' :  if (!u32_scan_strict_base(st.arg, &mode, 8)) return opt_emit_usage(cmd.name, &cmd) ; break ;
+                default :   return opt_emit_error(cmd.name, &cmd, o, &st) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
-    if (argc < 2) log_usage(USAGE) ;
+    if (argc < 2) return opt_emit_usage(cmd.name, &cmd) ;
     dir = argv[0] ;
     if (dir[0] != '/') log_die(LOG_EXIT_USER,dir," must be an absolute path") ;
     file = argv[1] ;
@@ -87,19 +84,16 @@ int main (int argc, char const *const *argv, char const *const *envp)
     dirlen = strlen(dir) ;
     filen = strlen(file) ;
     char fn[dirlen + 1 + filen + 1] ;
-    memcpy(fn,dir,dirlen) ;
-    fn[dirlen] = '/' ;
-    memcpy(fn + dirlen + 1, file ,filen) ;
-    fn[dirlen + 1 + filen] = 0 ;
-    fd = open_trunc(fn) ;
+    auto_strings(fn, dir, "/", file) ;
+    fd = io_open_mode(fn, O_WRONLY | O_NONBLOCK | O_TRUNC | O_CREAT, 0666) ;
     if (fd < 0) log_dieusys(LOG_EXIT_SYS,"open trunc: ",fn) ;
-    buffer_init(&b,&buffer_write,fd,buf,MAX_ENV) ;
+    ostream_init(&b,fd,buf,MAX_ENV) ;
     for (; *envp ; envp++)
     {
-        if ((buffer_put(&b, *envp,strlen(*envp)) < 0) ||
-        (buffer_put(&b, "\n",1) < 0)) { close(fd) ; log_dieusys(LOG_EXIT_SYS,"write buffer") ; }
+        if ((!ostream_put(&b, *envp,strlen(*envp))) ||
+        (!ostream_put(&b, "\n",1))) { close(fd) ; log_dieusys(LOG_EXIT_SYS,"write buffer") ; }
     }
-    if(!buffer_flush(&b)){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"flush") ; }
+    if(!ostream_flush(&b)){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"flush") ; }
     if (fsync(fd) < 0){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"sync") ; }
     close(fd) ;
     return 0 ;

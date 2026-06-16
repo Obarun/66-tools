@@ -26,10 +26,9 @@
 #include <oblibs/log.h>
 #include <oblibs/io.h>
 #include <oblibs/string.h>
-#include <oblibs/stack.h>
+#include <oblibs/strbuf.h>
 #include <oblibs/socket.h>
-
-#include <skalibs/types.h>
+#include <oblibs/types.h>
 
 #include <66/config.h>
 
@@ -71,20 +70,16 @@ void dbs_get_socket_path(char *path)
 		auto_strings(path, "/run/dbus/", SS_TOOLS_DBS_SYSTEM_NAME) ;
 	} else {
 		char ustr[UID_FMT] ;
-		ustr[uid_fmt(ustr, uid)] = 0 ;
+		ustr[uid_format(ustr, uid)] = 0 ;
 		auto_strings(path, "/run/user/", ustr, "/", SS_TOOLS_DBS_SESSION_NAME) ;
 	}
 }
 
 int dbs_get_socket_unix_path(char *path)
 {
-	_alloc_stk_(s, SS_MAX_PATH) ;
+	_alloc_strbuf_(s, SS_MAX_PATH) ;
 	dbs_get_socket_path(s.s) ;
-	s.len = strlen(s.s) ;
-	if (!stack_insert(&s, 0, "unix:path="))
-		log_warnusys_return(DBS_EXIT_FATAL, "stack insert") ;
-
-	auto_strings(path, s.s) ;
+	auto_strings(path, "unix:path=", s.s) ;
 
 	return 1 ;
 }
@@ -93,24 +88,24 @@ int dbs_socket_bind(void)
 {
 	log_flow() ;
 
-	_alloc_stk_(path, SS_MAX_PATH) ;
+	_alloc_strbuf_(path, SS_MAX_PATH) ;
 	dbs_get_socket_path(path.s) ;
 
 	unlink(path.s) ;
 
 	close(0) ;
-	int fd = socket_open(SOCK_NONBLOCK|SOCK_CLOEXEC) ;
+	int fd = socketunix_create(O_NONBLOCK|O_CLOEXEC) ;
 	if (fd < 0)
 		log_dieusys(LOG_EXIT_SYS, "create socket") ;
 
 	mode_t m = umask(0000) ;
-	if (socket_bind(fd, path.s) < 0) {
+	if (socketunix_bind(fd, path.s) < 0) {
 		close(fd) ;
 		log_dieusys(LOG_EXIT_SYS, "bind socket: ", path.s) ;
 	}
 	umask(m) ;
 
-	if (socket_listen(fd, SOCK_BACKLOG) < 0) {
+	if (socketunix_listen(fd, SOCKETUNIX_BACKLOG) < 0) {
 		close(fd) ;
 		log_dieusys(LOG_EXIT_SYS, "listen socket: ", path.s) ;
 	}
@@ -125,7 +120,7 @@ int dbs_setenv_dbus_address(void)
 
 	uid_t uid = getuid() ;
 	char *path = 0 ;
-	_alloc_stk_(stk, SS_MAX_PATH) ;
+	_alloc_strbuf_(stk, SS_MAX_PATH) ;
 
 	if (!uid) {
 

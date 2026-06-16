@@ -1,7 +1,7 @@
 /*
  * execl-toc.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -22,22 +22,23 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>//getenv
-#include <stdio.h>//getenv
+#include <fcntl.h>//O_NONBLOCK
 #include <sys/mount.h>
 
 #include <oblibs/log.h>
 #include <oblibs/directory.h>
 #include <oblibs/types.h>
-#include <oblibs/sastr.h>
+#include <oblibs/sbl.h>
 #include <oblibs/string.h>
-
-#include <skalibs/buffer.h>
-#include <skalibs/types.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/cspawn.h>
-#include <skalibs/socket.h>
-#include <skalibs/exec.h>
+#include <oblibs/strbuf.h>
+#include <oblibs/opt.h>
+#include <oblibs/stream.h>
+#include <oblibs/account.h>
+#include <oblibs/files.h>
+#include <oblibs/spawn.h>
+#include <oblibs/process.h>
+#include <oblibs/socket.h>
+#include <oblibs/exec.h>
 
 #define USAGE "execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -M mode ] [ -s|D|B|b ] [ -b backlog ] prog..."
 
@@ -98,7 +99,7 @@ static inline void info_help (void)
 "   -b: set a maximum of backlog connections on the element.\n"
 ;
 
- if (buffer_putsflush(buffer_1, help) < 0)
+ if (!ostream_putflush(ostream_1, help, strlen(help)))
     log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
 }
 
@@ -190,6 +191,20 @@ execl_func_t execl_mountpoint ;
 execl_func_t execl_symlink ;
 execl_func_t execl_common ;
 
+static opt_t const create_opts[] = {
+    { .id = 'o', .shortname = 'o', .arg = OPT_REQUIRED, .argname = "opts" },
+    { .id = 't', .shortname = 't', .arg = OPT_REQUIRED, .argname = "type" },
+    { .id = 'd', .shortname = 'd', .arg = OPT_REQUIRED, .argname = "device" },
+    { .id = 'u', .shortname = 'u', .arg = OPT_REQUIRED, .argname = "uid" },
+    { .id = 'g', .shortname = 'g', .arg = OPT_REQUIRED, .argname = "gid" },
+    { .id = 'm', .shortname = 'm', .arg = OPT_REQUIRED, .argname = "mode" },
+    { .id = 'M', .shortname = 'M', .arg = OPT_REQUIRED, .argname = "mode" },
+    { .id = 's', .shortname = 's' },
+    { .id = 'D', .shortname = 'D' },
+    { .id = 'B', .shortname = 'B' },
+    { .id = 'b', .shortname = 'b', .arg = OPT_REQUIRED, .argname = "backlog" },
+} ;
+
 void parse(opts_common_t *arguments,char **nargv)
 {
     int n = 0, i = 0 ;
@@ -197,55 +212,54 @@ void parse(opts_common_t *arguments,char **nargv)
     char **argv = arguments->argv ;
 
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(argc,(char const *const *)argv, "o:t:d:u:g:m:M:sDBb:", &l) ;
-            if (opt == -1) break ;
+            int opt = opt_scan(argc,(char const *const *)argv, create_opts, OPT_COUNT(create_opts), &st) ;
+            if (opt == OPT_END) break ;
             switch (opt)
             {
-                case 'o' :  arguments->minus_o = l.arg ; break ;
-                case 't' :  arguments->minus_t = l.arg ; break ;
-                case 'd' :  arguments->minus_d = l.arg ; break ;
-                case 'u' :  if (!uid0_scan(l.arg, &arguments->minus_u))
-                                if (get_uidbyname(l.arg,&arguments->minus_u) == -1)
-                                    log_dieusys(LOG_EXIT_SYS,"get uid of: ",l.arg) ;
+                case 'o' :  arguments->minus_o = st.arg ; break ;
+                case 't' :  arguments->minus_t = st.arg ; break ;
+                case 'd' :  arguments->minus_d = st.arg ; break ;
+                case 'u' :  if (!uid_parse_strict(st.arg, &arguments->minus_u))
+                                if (get_uidbyname(st.arg,&arguments->minus_u) == -1)
+                                    log_dieusys(LOG_EXIT_SYS,"get uid of: ",st.arg) ;
                             break ;
                 case 'g' :
                             {
-                                if (!gid0_scan(l.arg, &arguments->minus_g))
+                                if (!gid_parse_strict(st.arg, &arguments->minus_g))
                                 {
-                                    if (get_gidbyname(l.arg,&arguments->minus_g) == 1)
+                                    if (get_gidbyname(st.arg,&arguments->minus_g) == 1)
                                     {
-                                        stralloc ngid = STRALLOC_ZERO ;
+                                        _cleanup_strbuf_ strbuf ngid = STRBUF_ZERO ;
                                         if (get_groupbygid(arguments->minus_g,&ngid) == -1)
-                                            log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+                                            log_dieusys(LOG_EXIT_SYS,"get gid of: ",st.arg) ;
                                         if (ngid.len)
                                         {
-                                            if (!stralloc_0(&ngid)) log_die_nomem("stralloc") ;
+                                            if (!strbuf_terminate(&ngid)) log_die_nomem("strbuf") ;
                                             if (get_gidbygroup(ngid.s,&arguments->minus_g) == -1)
-                                                log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
-                                        }else if (get_gidbygroup(l.arg,&arguments->minus_g) == -1)
-                                            log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
-                                        stralloc_free(&ngid) ;
+                                                log_dieusys(LOG_EXIT_SYS,"get gid of: ",st.arg) ;
+                                        }else if (get_gidbygroup(st.arg,&arguments->minus_g) == -1)
+                                            log_dieusys(LOG_EXIT_SYS,"get gid of: ",st.arg) ;
                                     }
-                                    else if (get_gidbygroup(l.arg,&arguments->minus_g) == -1)
-                                        log_dieusys(LOG_EXIT_SYS,"get gid of: ",l.arg) ;
+                                    else if (get_gidbygroup(st.arg,&arguments->minus_g) == -1)
+                                        log_dieusys(LOG_EXIT_SYS,"get gid of: ",st.arg) ;
                                 }
                                 break ;
                             }
-                case 'm' :  if (!uint0_oscan(l.arg, &arguments->minus_m)) log_usage(USAGE) ; break ;
-                case 'M' :  if (!uint0_oscan(l.arg, &arguments->minus_M)) log_usage(USAGE) ; break ;
+                case 'm' :  if (!u32_scan_strict_base(st.arg, &arguments->minus_m, 8)) log_usage(USAGE) ; break ;
+                case 'M' :  if (!u32_scan_strict_base(st.arg, &arguments->minus_M, 8)) log_usage(USAGE) ; break ;
                 // socket special case
                 case 's' :  arguments->minus_s = 1 ; break ;
                 case 'D' :  arguments->minus_D = 1 ; break ;
                 case 'B' :  arguments->minus_B = 0 ; break ;
-                case 'b' :  if (!uint0_scan(l.arg,(unsigned int *)&arguments->minus_b)) log_usage(USAGE) ; break ;
+                case 'b' :  { uint32_t v ; if (!u32_scan_strict(st.arg, &v)) log_usage(USAGE) ; arguments->minus_b = v ; } break ;
                 default :   log_usage(USAGE) ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
 
     for (; i < argc ; i++)
@@ -299,9 +313,7 @@ static int is_mnt(char const *str)
     {
         dev_t st_dev = st.st_dev ; ino_t st_ino = st.st_ino ;
         char p[slen+4] ;
-        memcpy(p,str,slen) ;
-        memcpy(p + slen,"/..",3) ;
-        p[slen+3] = 0 ;
+        auto_strings(p, str, "/..") ;
         if (!stat(p,&st))
             is_not_mnt = (st_dev == st.st_dev) && (st_ino != st.st_ino) ;
     }else return 0 ;
@@ -417,9 +429,9 @@ int execl_mountpoint(opts_common_t *arguments,char **nargv)
     newargv[m++] = 0 ;
 
 
-    pid = child_spawn0(newargv[0],newargv,arguments->envp) ;
+    pid = spawn_path(newargv[0],newargv,arguments->envp) ;
 
-    if (waitpid_nointr(pid,&wstat, 0) < 0)
+    if (process_wait(pid,&wstat) < 0)
             log_dieusys(LOG_EXIT_SYS,"wait for mount") ;
 
     if (wstat) log_dieu(LOG_EXIT_SYS,"mount: ",arguments->test_on) ;
@@ -451,16 +463,18 @@ int execl_socket(opts_common_t *arguments,char **nargv)
             log_diesys(LOG_EXIT_SYS,"conflicting format in parent directories of: ",arguments->test_on) ;
         }
 
-        if (flagdgram ? ipc_datagram_internal(flag) : ipc_stream_internal(flag))
+        int s = socket_private(AF_UNIX, flagdgram ? SOCK_DGRAM : SOCK_STREAM, 0, flag) ;
+        if (s < 0)
             log_dieusys(LOG_EXIT_SYS, "create socket") ;
 
         {
+            int fdlock ;
             mode_t m = umask(~mode & 0777) ;
-            if ((flagreuse ? ipc_bind_reuse(0, arguments->test_on) : ipc_bind(0, arguments->test_on)) < 0)
+            if ((flagreuse ? socketunix_bind_reuse(s, arguments->test_on, &fdlock) : socketunix_bind(s, arguments->test_on)) < 0)
                 log_dieusys(LOG_EXIT_SYS,"bind to: ", arguments->test_on) ;
             umask(m) ;
         }
-        if (backlog && ipc_listen(0, backlog) < 0)
+        if (backlog && socketunix_listen(s, backlog) < 0)
             log_dieusys(LOG_EXIT_SYS, "listen to: ", arguments->test_on) ;
 
         return 1 ;
@@ -660,7 +674,7 @@ int execl_common(opts_common_t *arguments, char **nargv)
         case T_TERM :
                         {
                             unsigned int fd ;
-                            if (!uint0_scan(test, &fd)) {
+                            if (!u32_scan_strict(test, &fd)) {
                                 log_warnusys("scan: ",test) ;
                                 e = 0 ;
                                 break ;
@@ -683,9 +697,9 @@ int execl_common(opts_common_t *arguments, char **nargv)
 
         case T_EMPTY :
                         {
-                            stralloc satree = STRALLOC_ZERO ;
+                            _cleanup_strbuf_ strbuf satree = STRBUF_ZERO ;
                             char const *exclude[1] = { 0 } ;
-                            if (!sastr_dir_get(&satree,test,exclude,S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK)) {
+                            if (!sbl_dir_get(&satree,test,exclude,S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK)) {
                                 log_warnusys("get contain of directory: ",test) ;
                                 e = 0 ;
                                 break ;
@@ -710,6 +724,42 @@ int execl_common(opts_common_t *arguments, char **nargv)
     return e ;
 }
 
+static opt_t const main_opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h' },
+    { .id = 'v', .shortname = 'v', .arg = OPT_REQUIRED },
+    { .id = 'n', .shortname = 'n' },
+    { .id = 't', .shortname = 't' },
+    { .id = 'D', .shortname = 'D' },
+    { .id = 'X', .shortname = 'X' },
+} ;
+
+static opt_t const selector_opts[] = {
+    { .id = 'd', .shortname = 'd', .arg = OPT_REQUIRED },
+    { .id = 'p', .shortname = 'p', .arg = OPT_REQUIRED },
+    { .id = 'S', .shortname = 'S', .arg = OPT_REQUIRED },
+    { .id = 'm', .shortname = 'm', .arg = OPT_REQUIRED },
+    { .id = 'L', .shortname = 'L', .arg = OPT_REQUIRED },
+    { .id = 'b', .shortname = 'b', .arg = OPT_REQUIRED },
+    { .id = 'c', .shortname = 'c', .arg = OPT_REQUIRED },
+    { .id = 'k', .shortname = 'k', .arg = OPT_REQUIRED },
+    { .id = 'n', .shortname = 'n', .arg = OPT_REQUIRED },
+    { .id = 'g', .shortname = 'g', .arg = OPT_REQUIRED },
+    { .id = 'r', .shortname = 'r', .arg = OPT_REQUIRED },
+    { .id = 's', .shortname = 's', .arg = OPT_REQUIRED },
+    { .id = 't', .shortname = 't', .arg = OPT_REQUIRED },
+    { .id = 'u', .shortname = 'u', .arg = OPT_REQUIRED },
+    { .id = 'w', .shortname = 'w', .arg = OPT_REQUIRED },
+    { .id = 'x', .shortname = 'x', .arg = OPT_REQUIRED },
+    { .id = 'e', .shortname = 'e', .arg = OPT_REQUIRED },
+    { .id = 'f', .shortname = 'f', .arg = OPT_REQUIRED },
+    { .id = 'z', .shortname = 'z', .arg = OPT_REQUIRED },
+    { .id = 'O', .shortname = 'O', .arg = OPT_REQUIRED },
+    { .id = 'U', .shortname = 'U', .arg = OPT_REQUIRED },
+    { .id = 'N', .shortname = 'N', .arg = OPT_REQUIRED },
+    { .id = 'V', .shortname = 'V', .arg = OPT_REQUIRED },
+    { .id = 'E', .shortname = 'E', .arg = OPT_REQUIRED },
+} ;
+
 int main(int argc,char const *const *argv, char const *const *envp)
 {
     int r, f = 0, n = 0 ;
@@ -724,16 +774,16 @@ int main(int argc,char const *const *argv, char const *const *envp)
 
     PROG = "execl-toc" ;
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-          int opt = subgetopt_r(argc, argv, "hv:ntDX", &l) ;
-          if (opt == -1) break ;
+          int opt = opt_scan(argc, argv, main_opts, OPT_COUNT(main_opts), &st) ;
+          if (opt == OPT_END) break ;
           switch (opt)
           {
-            case 'h' :  info_help(); return 0 ;
-            case 'v' :  if (!uint0_scan(l.arg, &VERBOSITY))
+            case OPT_ID_HELP :  info_help(); return 0 ;
+            case 'v' :  if (!u32_scan_strict(st.arg, &VERBOSITY))
                             log_usage(USAGE) ;
                         break ;
             case 'n' :  negat = 1 ; break ;
@@ -743,7 +793,7 @@ int main(int argc,char const *const *argv, char const *const *envp)
             default :   break ;
           }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
     argc++ ; argv-- ;
     nargv[n++] = "fake_opts" ;
@@ -753,142 +803,142 @@ int main(int argc,char const *const *argv, char const *const *envp)
     nargv[n] = 0 ;
 
     {
-        subgetopt l = SUBGETOPT_ZERO ;
+        opt_scan_t st = OPT_SCAN_ZERO ;
 
         for (;;)
         {
-            int opt = subgetopt_r(3,(char const *const *)nargv, "d:p:S:m:L:b:c:k:n:g:r:s:t:u:w:x:e:f:z:O:U:N:V:E:", &l) ;
-            if (opt == -1) break ;
+            int opt = opt_scan(3,(char const *const *)nargv, selector_opts, OPT_COUNT(selector_opts), &st) ;
+            if (opt == OPT_END) break ;
             switch (opt)
             {
                 case 'd' :  func = &execl_directory ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_directory" ;
                             break ;
                 case 'p' :  func = &execl_fifo ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_fifo" ;
                             break ;
                 case 'S' :  func = &execl_socket ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_socket" ;
                             break ;
                 case 'm' :  func = &execl_mountpoint ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_mountpoint" ;
                             break ;
                 case 'L' :  func = &execl_symlink ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_symlink" ;
                             break ;
                 // only test
                 case 'b' :  arguments.test = T_BLOCK ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'c' :  arguments.test = T_CHAR ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'k' :  arguments.test = T_STICKY ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'n' :  arguments.test = T_NONZERO ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'g' :  arguments.test = T_SGID ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'r' :  arguments.test = T_READABLE ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 's' :  arguments.test = T_NONZEROFILE ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 't' :  arguments.test = T_TERM ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'u' :  arguments.test = T_SUID ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'w' :  arguments.test = T_WRITABLE ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'x' :  arguments.test = T_EXECUTABLE ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'e' :  arguments.test = T_EXIST ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'f' :  arguments.test = T_REGULAR ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'z' :  arguments.test = T_ZERO ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'O' :  arguments.test = T_EUID ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'U' :  arguments.test = T_EGID ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'N' :  arguments.test = T_MODIFIED ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'V' :  arguments.test = T_ENV ;
                             func = &execl_common ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 case 'E' :  func = &execl_common ;
                             arguments.test = T_EMPTY ;
-                            arguments.test_on = l.arg ;
+                            arguments.test_on = st.arg ;
                             arguments.func_name = "execl_common" ;
                             break ;
                 default :   for (int i = 0 ; i < n ; i++)
                             {
-                                if (!argv[l.ind]) log_usage(USAGE) ;
-                                if (!strcmp(nargv[i],argv[l.ind]))
+                                if (!argv[st.ind]) log_usage(USAGE) ;
+                                if (!strcmp(nargv[i],argv[st.ind]))
                                     f = 1 ;
                             }
-                            if (!f) nargv[n++] = (char *)argv[l.ind] ;
+                            if (!f) nargv[n++] = (char *)argv[st.ind] ;
                             f = 0 ;
                             break ;
             }
         }
-        argc -= l.ind ; argv += l.ind ;
+        argc -= st.ind ; argv += st.ind ;
     }
     if (argc <= 0 && !arguments.noprog) log_usage(USAGE) ;
     n = 0 ;
@@ -910,5 +960,5 @@ int main(int argc,char const *const *argv, char const *const *envp)
     if (negat == r) return treat_zero ? LOG_EXIT_ZERO : LOG_EXIT_SYS ;
     if (arguments.noprog) return LOG_EXIT_ZERO ;
 
-    xexec_ae(arguments.argv[0],(char const *const *)arguments.argv,arguments.envp) ;
+    exec_path_die(arguments.argv[0],(char const *const *)arguments.argv,arguments.envp) ;
 }

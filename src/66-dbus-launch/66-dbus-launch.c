@@ -1,7 +1,7 @@
 /*
  * 66-dbus-broker-launch.c
  *
- * Copyright (c) 2018-2024 Eric Vidal <eric@obarun.org>
+ * Copyright (c) 2018 Eric Vidal <eric@obarun.org>
  *
  * All rights reserved.
  *
@@ -13,10 +13,9 @@
  */
 
 #include <sys/types.h>
-#include <sys/signal.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "service.h"
 #include "launcher.h"
@@ -25,41 +24,48 @@
 
 #include <oblibs/log.h>
 #include <oblibs/io.h>
+#include <oblibs/fd.h>
+#include <oblibs/opt.h>
+#include <oblibs/types.h>
 
-#include <skalibs/tai.h>
-#include <skalibs/iopause.h>
-#include <skalibs/djbunix.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/types.h>
-#include <skalibs/selfpipe.h>
-#include <skalibs/buffer.h>
-#include <skalibs/sig.h>
+static opt_t const opts[] = {
+    { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
+    { .id = 'z', .shortname = 'z', .help = "use color" },
+    { .id = 'v', .shortname = 'v', .arg = OPT_REQUIRED, .argname = "verbosity", .help = "increase/decrease verbosity" },
+    { .id = 'd', .shortname = 'd', .arg = OPT_REQUIRED, .argname = "notif", .help = "notify readiness on file descriptor notif" },
+} ;
 
-#define USAGE "66-dbus-launch [ -h ] [ -z ] [ -v verbosity ] [ -d notif ]"
+static opt_cmd_t const cmd = {
+    .name = "66-dbus-launch",
+    .opts = opts,
+    .nopts = OPT_COUNT(opts),
+} ;
 
-static inline void info_help (void)
+/** Ensure @fd is open, opening /dev/null (write if @w, else read) when it is
+ * not. Replaces skalibs fd_ensure_open. */
+static int dbs_fd_ensure_open(int fd, int w)
 {
-    static char const *help =
-        "66-dbus-launch <options> prog\n"
-        "\n"
-        "options:\n"
-        "   -h: print this help\n"
-        "   -z: use color\n"
-        "   -v: increase/decrease verbosity\n"
-		"   -d: notify readiness on file descriptor notif\n"
-        "\n"
-        ;
-
-    if (buffer_putsflush(buffer_1, help) < 0)
-        log_dieusys(LOG_EXIT_SYS, "write to stdout") ;
+	int dummy ;
+	if (fcntl(fd, F_GETFD, &dummy) == -1) {
+		if (errno != EBADF)
+			return 0 ;
+		int newfd = io_open("/dev/null", w ? O_WRONLY : O_RDONLY) ;
+		if (newfd == -1)
+			return 0 ;
+		if (move_fd(fd, newfd) == -1) {
+			close_fd(newfd) ;
+			return 0 ;
+		}
+	}
+	return 1 ;
 }
 
 static int notifier_isvalid(const char *str)
 {
-	unsigned int u ;
+	uint32_t u ;
 
-	if (!uint0_scan(str, &u))
-		log_usage(USAGE) ;
+	if (!u32_scan_strict(str, &u))
+		log_die(LOG_EXIT_USER, "invalid notification file descriptor: ", str) ;
 
 	if (u < 3)
 		log_die(LOG_EXIT_USER, "file descriptor must be 3 or more") ;
@@ -84,33 +90,32 @@ int main(int argc, char const *const *argv)
 
 	PROG = "66-dbus-launch" ;
 	{
-		subgetopt l = SUBGETOPT_ZERO ;
+		opt_scan_t st = OPT_SCAN_ZERO ;
 		for (;;) {
-			int opt = subgetopt_r(argc, argv, "hzv:d:", &l) ;
-            if (opt == -1)
+			int o = opt_scan(argc, argv, opts, OPT_COUNT(opts), &st) ;
+			if (o == OPT_END)
 				break ;
-            switch (opt) {
-				case 'h':
-                    info_help() ;
-					return 0 ;
+			switch (o) {
+				case OPT_ID_HELP:
+					return opt_emit_help(cmd.name, &cmd) ;
 				case 'z':
-                    log_color = !istty ? &log_color_disable : &log_color_enable ;
-                    break ;
-                case 'v':
-                    if (!uint0_scan(l.arg, &VERBOSITY))
-                        log_usage(USAGE) ;
-                    break ;
+					log_color = !istty ? &log_color_disable : &log_color_enable ;
+					break ;
+				case 'v':
+					if (!u32_scan_strict(st.arg, &VERBOSITY))
+						return opt_emit_usage(cmd.name, &cmd) ;
+					break ;
 				case 'd':
-                    notif = notifier_isvalid(l.arg) ;
+					notif = notifier_isvalid(st.arg) ;
 					break ;
 				default:
-                    log_usage(USAGE) ;
+					return opt_emit_error(cmd.name, &cmd, o, &st) ;
 			}
 		}
-		argc -= l.ind ; argv += l.ind ;
+		argc -= st.ind ; argv += st.ind ;
 	}
 
-	if (!fd_sanitize())
+	if (!ensure_stdfds())
 		log_dieusys(LOG_EXIT_SYS, "sanitize standards I/O") ;
 
 	/** bind and listen dbus socket */
@@ -119,23 +124,12 @@ int main(int argc, char const *const *argv)
 	if (dbs_setenv_dbus_address() < 0)
 		log_dieusys(LOG_EXIT_SYS, "set ", !getuid() ? "DBUS_SYSTEM_BUS_ADDRESS" : "DBUS_SESSION_BUS_ADDRESS") ;
 
-	if (!fd_ensure_open(notif, notif))
+	if (!dbs_fd_ensure_open(notif, notif))
 		log_dieusys(LOG_EXIT_SYS, "reverse fd for notification") ;
 
-	int spfd = selfpipe_init() ;
-	if (spfd < 0)
-        log_dieusys(LOG_EXIT_SYS, "selfpipe_init") ;
-
-	if (!selfpipe_trap(SIGCHLD) ||
-        !selfpipe_trap(SIGINT) ||
-		!selfpipe_trap(SIGQUIT) ||
-        !selfpipe_trap(SIGHUP) ||
-        !selfpipe_trap(SIGTERM) ||
-        !sig_altignore(SIGPIPE))
-            log_dieusys(LOG_EXIT_SYS, "selfpipe_trap") ;
-
-	/** populate launcher struct */
-	r = launcher_new(&launcher, &hservice, socket, spfd) ;
+	/** populate launcher struct ; this also sets up the event loop and signal
+	 * trapping (before the broker is forked). */
+	r = launcher_new(&launcher, &hservice, socket) ;
 	if (r < 0)
 		log_dieu(LOG_EXIT_SYS, "make new launcher") ;
 
@@ -157,7 +151,6 @@ int main(int argc, char const *const *argv)
 	if (r < 0)
 		log_dieu(LOG_EXIT_SYS, "loop launcher") ;
 
-	selfpipe_finish() ;
 	/** tear down all services from tree dbus */
 	service_discard_tree() ;
 
