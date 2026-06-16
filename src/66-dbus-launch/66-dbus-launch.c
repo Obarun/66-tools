@@ -41,8 +41,7 @@ static opt_cmd_t const cmd = {
     .nopts = OPT_COUNT(opts),
 } ;
 
-/** Ensure @fd is open, opening /dev/null (write if @w, else read) when it is
- * not. Replaces skalibs fd_ensure_open. */
+// Ensure @fd is open, opening /dev/null (write if @w, else read) when it is not.
 static int dbs_fd_ensure_open(int fd, int w)
 {
 	int dummy ;

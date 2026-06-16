@@ -12,7 +12,7 @@
  * except according to the terms contained in the LICENSE file.
  *
  * Parsing of -o (namespace options), -e (element) and -r (rule files). Built
- * on the oblibs opt_fields/lexer layer; no skalibs, no hand-rolled indexing.
+ * on the oblibs opt_fields/lexer layer.
  */
 
 #include <string.h>
