@@ -1,4 +1,7 @@
 TODO
+STATE.md
+tests/
+tools/test/
 .vscode/
 src/include/66-tools/config.h
 builddir/
