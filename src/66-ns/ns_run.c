@@ -114,15 +114,22 @@ static int ns_child(ns_t *ns)
 
     if (ns->want_pid1) {
 
+        // private procfs to enumerate our children when the main double-forks
+        ns->proc_dirfd = ns_proc_open() ;
+        if (ns->proc_dirfd < 0)
+            log_dieusys(LOG_EXIT_SYS, "open private procfs") ;
+
         pid_t g = fork() ;
 
         if (g == -1)
             log_dieusys(LOG_EXIT_SYS, "fork pid 1") ;
 
         if (g)
-            return ns_pid1(g) ;
+            return ns_pid1(g, ns->proc_dirfd, ns->pidfile >= 0 ? ns->sb.s + ns->pidfile : 0) ;
 
         // grandchild falls through to exec
+        close(ns->proc_dirfd) ;
+        ns->proc_dirfd = -1 ;
     }
 
     // late, in order: no-new-privs, then new session
@@ -163,6 +170,9 @@ int ns_run(ns_t *ns)
         errno = EPERM ;
         log_diesys(LOG_EXIT_USER, "you must be root, or request a user namespace with -o unshare=user") ;
     }
+
+    if (ns->pidfile >= 0 && !ns->want_pid1)
+        log_die(LOG_EXIT_USER, "--pidfile requires -o unshare=pid") ;
 
     if (ns->notif_fd >= 0 && fcntl(ns->notif_fd, F_GETFD) < 0)
         log_diesys(LOG_EXIT_USER, "invalid notification fd") ;

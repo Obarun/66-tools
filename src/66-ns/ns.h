@@ -107,6 +107,7 @@ struct ns_s {
     strbuf         paths ;             // stable storage for the 3 paths above
     char const    *rule_dir ;          // default dir for named .rule files
     ssize_t        hostname ;          // offset in sb, -1 if unset
+    ssize_t        pidfile ;           // offset in sb of --pidfile path, -1 if unset
     int            notif_fd ;          // readiness fd (-d), -1 if none
 
     genbuf         entries ;           // ns_entry_t[]
@@ -121,6 +122,7 @@ struct ns_s {
     int            ef_ready_p2c ;      // invoker -> child gate
     int            ef_exit_c2p ;       // child/pid1 -> invoker exit status
     int            ef_userns_c2p ;     // child -> invoker "write my maps"
+    int            proc_dirfd ;        // pid1: dirfd of the private procfs, -1 if none
 
     genbuf         mntinfo ;           // mntinfo_t[] snapshot of mounts
     strbuf         mntsb ;             // arena for the mounts snapshot
@@ -134,10 +136,10 @@ struct ns_s {
       .no_new_privs = 0, .new_session = 0, .take_ctty = 0, \
       .map_inner_uid = 0, .map_inner_gid = 0, \
       .base_dir = 0, .nstmp = 0, .nshidden = 0, .paths = STRBUF_ZERO, .rule_dir = 0, \
-      .hostname = -1, .notif_fd = -1, \
+      .hostname = -1, .pidfile = -1, .notif_fd = -1, \
       .entries = GENBUF_ZERO, .sb = STRBUF_ZERO, \
       .euid = 0, .egid = 0, .child_pid = 0, .gchild_pid = 0, \
-      .ef_ready_p2c = -1, .ef_exit_c2p = -1, .ef_userns_c2p = -1, \
+      .ef_ready_p2c = -1, .ef_exit_c2p = -1, .ef_userns_c2p = -1, .proc_dirfd = -1, \
       .mntinfo = GENBUF_ZERO, .mntsb = STRBUF_ZERO, \
       .prog = 0, .envp = 0 }
 

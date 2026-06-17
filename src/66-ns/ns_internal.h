@@ -113,9 +113,22 @@ extern int ns_compute_exit(int wstat) ;
  *  SIGTERM/SIGINT/SIGQUIT/SIGHUP. Returns @child's exit code. */
 extern int ns_supervise(pid_t child) ;
 
-/** @brief PID1 of a new pid namespace: reap until ECHILD, return @grandchild's
- *  exit code. */
-extern int ns_pid1(pid_t grandchild) ;
+/** @brief Create a private, detached procfs bound to the caller's pid namespace
+ *  and return a dirfd to its root (O_DIRECTORY, CLOEXEC), or -1 on failure.
+ *  No mountpoint, never visible in the namespace tree. Call from pid 1. */
+extern int ns_proc_open(void) ;
+
+/** @brief Mini-init of a new pid namespace: reap every child, forward signals to
+ *  the tracked main (starting at @mainpid) and mirror its exit code, tearing the
+ *  namespace down when the service is gone. @proc_dirfd is a procfs root (see
+ *  ns_proc_open) used to inspect live children. Two modes:
+ *  - @pidfile == NULL (heuristic): when the tracked main dies, adopt the sole
+ *    surviving child (a double-fork continuation), otherwise tear down.
+ *  - @pidfile != NULL (authoritative): the pidfile names the real main; when the
+ *    tracked main dies, follow the live child named by the pidfile, otherwise tear
+ *    down -- never chase an unnamed survivor.
+ *  Returns the tracked main's exit code. */
+extern int ns_pid1(pid_t mainpid, int proc_dirfd, char const *pidfile) ;
 
 // ns_userns.c
 

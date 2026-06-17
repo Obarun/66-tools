@@ -40,6 +40,7 @@ static opt_t const ns_opts[] = {
     { .id = 'o',         .shortname = 'o', .longname = "options",   .arg = OPT_REQUIRED, .argname = "ns_options", .help = "comma-separated namespace options (repeatable)" },
     { .id = 'e',         .shortname = 'e', .longname = "element",   .arg = OPT_REQUIRED, .argname = "element",    .help = "colon-separated element to handle (repeatable)" },
     { .id = 'r',         .shortname = 'r', .longname = "rule",      .arg = OPT_REQUIRED, .argname = "path",       .help = "rule file to apply (repeatable)" },
+    { .id = 'p',         .shortname = 'p', .longname = "pidfile",   .arg = OPT_REQUIRED, .argname = "path",       .help = "authoritative in-ns pidfile naming the daemon's main process (needs unshare=pid)" },
 } ;
 
 static opt_cmd_t const ns_cmd = {
@@ -63,7 +64,13 @@ static opt_cmd_t const ns_cmd = {
         "    type=type           tmpfs|hidden|recursive|clone|proc|dev|sys (default: bind)\n"
         "    options=options     mount options (kernel flags folded in, rest passed as data)\n"
         "    ignore=yes|no       skip the element if its source is missing (default no)\n"
-        "    create=yes|no       create the target if missing (default yes)",
+        "    create=yes|no       create the target if missing (default yes)\n"
+        "\n"
+        "supervision (with unshare=pid, 66-ns is pid 1 of the namespace):\n"
+        "    foreground and self-backgrounding daemons are supervised automatically,\n"
+        "    no option needed; when the main exits, the namespace is torn down.\n"
+        "    --pidfile is optional: if the daemon can write one, it makes supervision\n"
+        "    authoritative (the named pid is the main); it never breaks anything.",
 } ;
 
 int ns_main(int argc, char const *const *argv, void *data)
@@ -124,6 +131,10 @@ int ns_main(int argc, char const *const *argv, void *data)
             case 'r' :
                 if (!sbl_add(&rules, st.arg))
                     log_die_nomem("rules") ;
+                break ;
+
+            case 'p' :
+                ns.pidfile = (ssize_t)ns_arena_add(&ns, st.arg) ;
                 break ;
 
             default :
