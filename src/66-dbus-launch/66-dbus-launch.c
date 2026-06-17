@@ -29,10 +29,10 @@
 #include <oblibs/types.h>
 
 static opt_t const opts[] = {
-    { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
-    { .id = 'z', .shortname = 'z', .help = "use color" },
-    { .id = 'v', .shortname = 'v', .arg = OPT_REQUIRED, .argname = "verbosity", .help = "increase/decrease verbosity" },
-    { .id = 'd', .shortname = 'd', .arg = OPT_REQUIRED, .argname = "notif", .help = "notify readiness on file descriptor notif" },
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help", .help = "print this help" },
+    { .id = 'z', .shortname = 'z', .longname = "color", .help = "use color" },
+    { .id = 'v', .shortname = 'v', .longname = "verbosity", .arg = OPT_REQUIRED, .argname = "verbosity", .help = "increase/decrease verbosity" },
+    { .id = 'd', .shortname = 'd', .longname = "notify", .arg = OPT_REQUIRED, .argname = "notif", .help = "notify readiness on file descriptor notif" },
 } ;
 
 static opt_cmd_t const cmd = {

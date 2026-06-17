@@ -28,8 +28,8 @@
 #include <oblibs/exec.h>
 
 static opt_t const opts[] = {
-    { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
-    { .id = 'o',         .shortname = 'o', .arg = OPT_REQUIRED, .argname = "owner", .help = "owner to use" },
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help",  .help = "print this help" },
+    { .id = 'o',         .shortname = 'o', .longname = "owner", .arg = OPT_REQUIRED, .argname = "owner", .help = "owner to use" },
 } ;
 
 static opt_cmd_t const cmd = {

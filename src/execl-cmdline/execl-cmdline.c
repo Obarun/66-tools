@@ -70,8 +70,8 @@ static int ecl_semicolon (char const **argv)
 }
 
 static opt_t const opts[] = {
-    { .id = OPT_ID_HELP, .shortname = 'h', .help = "print this help" },
-    { .id = 's',         .shortname = 's', .help = "split command" },
+    { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help",  .help = "print this help" },
+    { .id = 's',         .shortname = 's', .longname = "split", .help = "split command" },
 } ;
 
 static opt_cmd_t const cmd = {
