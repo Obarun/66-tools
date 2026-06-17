@@ -148,7 +148,7 @@ int handle_path(char const* path, int quiet) {
     if (!ob_basename(base, path))
         log_dieusys(LOG_EXIT_SYS, "get basename") ;
 
-        if (!ob_dirname(dir, path))
+    if (!ob_dirname(dir, path))
         log_dieusys(LOG_EXIT_SYS, "get dirname") ;
 
     if (!quiet)
