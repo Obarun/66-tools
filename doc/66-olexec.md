@@ -35,9 +35,9 @@ This tool opens the active tty or the one specified by the **-d** modifier, lock
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-d** *tty* : specifies the *tty* to use in place of the active one. An absolute path is expected.
+- **-d**, **--tty** *tty* : specifies the *tty* to use in place of the active one. An absolute path is expected.
 
 ## Usage example
 

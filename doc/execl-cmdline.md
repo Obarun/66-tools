@@ -16,7 +16,9 @@ As [execlineb](https://www.skarnet.org/software/execline/execlineb.html) script:
 
 ## Options
 
-- **-s** : splits a command considered by execline scripting language as one word into separate words. 
+- **-h**, **--help** : prints this help.
+
+- **-s**, **--split** : splits a command considered by execline scripting language as one word into separate words. 
 
 ## Note and usage examples
 

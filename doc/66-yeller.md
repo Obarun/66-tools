@@ -18,27 +18,27 @@
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-d** : double-output. It writes on *stream_1* and *stream_2*.
+- **-d**, **--double** : double-output. It writes on *stream_1* and *stream_2*.
 
-- **-s** : switches streams. *Stream_1* becomes *stream_2* and *stream_2* becomes *stream_1*.
+- **-s**, **--switch** : switches streams. *Stream_1* becomes *stream_2* and *stream_2* becomes *stream_1*.
 
-- **-S** : reads *msg* from stdin.
+- **-S**, **--stdin** : reads *msg* from stdin.
 
-- **-1** *file* : redirects *stream_1* to *file*. The file is opened for appending and created if it doesn't exist.
+- **-1**, **--out** *file* : redirects *stream_1* to *file*. The file is opened for appending and created if it doesn't exist.
 
-- **-2** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist.
+- **-2**, **--err** *file* : redirects *stream_2* to *file*. The file is opened for appending and created if it doesn't exist.
 
-- **-z** : enable color. If the *stream_1* does not point to a terminal, the color is automatically disabled and the option has no effects.
+- **-z**, **--color** : enable color. If the *stream_1* does not point to a terminal, the color is automatically disabled and the option has no effects.
 
-- **-n** : does not output a trailing newline.
+- **-n**, **--no-newline** : does not output a trailing newline.
 
-- **-c** : does not write the current sytem time. By default the current system time as an *ISO* timestamp. It can be set to a *TAIN64*(see [Environment variable](66-yeller.html#Environment variables)).
+- **-c**, **--no-time** : does not write the current sytem time. By default the current system time as an *ISO* timestamp. It can be set to a *TAIN64*(see [Environment variable](66-yeller.html#Environment variables)).
 
-- **-p** *prog* : use *prog* as the program name to display. By default *66-yeller* tries to find the name of the calling process by reading and parsing the `/proc/<pid>/comm` file. This option tells to *66-yeller* to use *prog* as the default program name to display.
+- **-p**, **--program** *prog* : use *prog* as the program name to display. By default *66-yeller* tries to find the name of the calling process by reading and parsing the `/proc/<pid>/comm` file. This option tells to *66-yeller* to use *prog* as the default program name to display.
 
-- **-v** *verbosity*: increases/decreases the verbosity of the command.
+- **-v**, **--verbosity** *verbosity*: increases/decreases the verbosity of the command.
     * *0*: only print error messages.
     * *1*: also, print informative messages. This is the default.
     * *2*: also, print warning messages.
@@ -46,19 +46,19 @@
     * *4*: also, print function name and line code of the messages.
     * *5*: also, display the sequence of the current process function by function.
 
-- **-i** : does not write the informative message.
+- **-i**, **--no-info** : does not write the informative message.
 
-- **-w** : prints a warning message.
+- **-w**, **--warning** : prints a warning message.
 
-- **-W** : prints a warning message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `1` will not write a warning message. This option forces *66-yeller* to write a warning message even if the *verbosity* is less than `2`.
+- **-W**, **--warning-force** : prints a warning message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `1` will not write a warning message. This option forces *66-yeller* to write a warning message even if the *verbosity* is less than `2`.
 
-- **-t** : prints a tracing message.
+- **-t**, **--trace** : prints a tracing message.
 
-- **-T** : prints a tracing message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `2` will not write a tracing message. This option forces *66-yeller* to write a tracing message even if the *verbosity* is less than `3`.
+- **-T**, **--trace-force** : prints a tracing message regardless the verbosity level. *66-yeller* follows the exact same verbosity rule as any other 66 tools. A *verbosity* set to `2` will not write a tracing message. This option forces *66-yeller* to write a tracing message even if the *verbosity* is less than `3`.
 
-- **-f** : prints a fatal message and dies with an `111` as exit code.
+- **-f**, **--fatal** : prints a fatal message and dies with an `111` as exit code.
 
-- **-F** : prints a fatal message without dying.
+- **-F**, **--fatal-force** : prints a fatal message without dying.
 
 ## msg color options
 

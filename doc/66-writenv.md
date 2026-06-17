@@ -18,6 +18,6 @@
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-m** *mode* : create dir with mode *mode* if it doesn't exist yet. Default is `0755`.
+- **-m**, **--mode** *mode* : create dir with mode *mode* if it doesn't exist yet. Default is `0755`.

@@ -20,11 +20,11 @@
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-x** : match exactly with the process name. It can be a complete command line, in such case its must be double-quoted.
+- **-x**, **--exact** : match exactly with the process name. It can be a complete command line, in such case its must be double-quoted.
 
-- **-d** *delim* : specify output delimiter. The default is `\n` character.
+- **-d**, **--delim** *delim* : specify output delimiter. The default is `\n` character.
 
 ## Usage example
 

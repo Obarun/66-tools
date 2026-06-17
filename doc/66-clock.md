@@ -18,6 +18,6 @@
 
 ## Options
 
-- **-h** : prints this help.
-- **-m** *message* : prints *message* after the system time.
-- **-n** : output a trailing newline.
+- **-h**, **--help** : prints this help.
+- **-m**, **--message** *message* : prints *message* after the system time.
+- **-n**, **--newline** : output a trailing newline.

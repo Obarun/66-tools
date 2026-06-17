@@ -25,11 +25,11 @@ This tool expect to find valid command name or path, it will check if they exist
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-a** : prints all. Search and print the command using all the `PATH` entries, even after the command has already been found.
+- **-a**, **--all** : prints all. Search and print the command using all the `PATH` entries, even after the command has already been found.
 
-- **-q** : quiet. Do not print anything on `stdout`.
+- **-q**, **--quiet** : quiet. Do not print anything on `stdout`.
 
 ## Usage examples
 

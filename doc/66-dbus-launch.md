@@ -27,11 +27,11 @@ This tool is inspired by the [dbus-controllers](https://github.com/st3r4g/dbus-c
 
 ## Options
 
-- **-h** : prints this help.
+- **-h**, **--help** : prints this help.
 
-- **-z** : enable color. If *66-dbus-launch* is not launched from a terminal, the color is automatically disabled and the option has no effect.
+- **-z**, **--color** : enable color. If *66-dbus-launch* is not launched from a terminal, the color is automatically disabled and the option has no effect.
 
-- **-v** *verbosity*: increases/decreases the verbosity of the command.
+- **-v**, **--verbosity** *verbosity*: increases/decreases the verbosity of the command.
     * *0*: only print error messages.
     * *1*: also, print informative messages. This is the default.
     * *2*: also, print warning messages.
@@ -40,7 +40,7 @@ This tool is inspired by the [dbus-controllers](https://github.com/st3r4g/dbus-c
     * *5*: also, display the sequence of the current process function by function.
     *verbosity* are also propagated to the *66* command invocation to activate or desactivate a service.
 
-- **-d** *notif* : notify readiness on file descriptor *notif*. Has no effect when launched from a terminal. Notification occurs before entering the [loop](#running-time), ensuring that both the broker and launcher are fully synchronized.
+- **-d**, **--notify** *notif* : notify readiness on file descriptor *notif*. Has no effect when launched from a terminal. Notification occurs before entering the [loop](#running-time), ensuring that both the broker and launcher are fully synchronized.
 
 ## Execution Tasks
 

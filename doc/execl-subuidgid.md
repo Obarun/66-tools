@@ -18,7 +18,9 @@ Substitutes a literal GID UID with the UID GID of the current owner of the proce
 
 ## Options
 
-- **-o** *owner* : set `UID` `GID` of *owner* instead of the current one.
+- **-h**, **--help** : prints this help.
+
+- **-o**, **--owner** *owner* : set `UID` `GID` of *owner* instead of the current one.
 
 ## Usage examples
 
