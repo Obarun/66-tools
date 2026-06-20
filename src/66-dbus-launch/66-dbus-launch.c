@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h> // INT_MAX
 
 #include "service.h"
 #include "launcher.h"
@@ -31,8 +32,8 @@
 static opt_t const opts[] = {
     { .id = OPT_ID_HELP, .shortname = 'h', .longname = "help", .help = "print this help" },
     { .id = 'z', .shortname = 'z', .longname = "color", .help = "use color" },
-    { .id = 'v', .shortname = 'v', .longname = "verbosity", .arg = OPT_REQUIRED, .argname = "verbosity", .help = "increase/decrease verbosity" },
-    { .id = 'd', .shortname = 'd', .longname = "notify", .arg = OPT_REQUIRED, .argname = "notif", .help = "notify readiness on file descriptor notif" },
+    { .id = 'v', .shortname = 'v', .longname = "verbosity", .arg = OPT_REQUIRED, .argname = "number", .help = "increase/decrease verbosity" },
+    { .id = 'd', .shortname = 'd', .longname = "notify", .arg = OPT_REQUIRED, .argname = "number", .help = "notify readiness on file descriptor notif" },
 } ;
 
 static opt_cmd_t const cmd = {
@@ -63,7 +64,7 @@ static int notifier_isvalid(const char *str)
 {
 	uint32_t u ;
 
-	if (!u32_scan_strict(str, &u))
+	if (!u32_scan_strict(str, &u) || u > INT_MAX)
 		log_die(LOG_EXIT_USER, "invalid notification file descriptor: ", str) ;
 
 	if (u < 3)
@@ -74,6 +75,7 @@ static int notifier_isvalid(const char *str)
 
 	return u ;
 }
+
 
 int main(int argc, char const *const *argv)
 {
