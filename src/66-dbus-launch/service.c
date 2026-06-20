@@ -38,33 +38,31 @@
 
 #include <66-tools/config.h>
 
-void service_hash_free(struct service_s **hservice)
+void service_hash_free(hash_t *hservice)
 {
 	log_flow() ;
 
 	struct service_s *c, *tmp ;
-	HASH_ITER(hh, *hservice, c, tmp) {
-		HASH_DEL(*hservice, c) ;
+	HASH_FOREACH(hservice, c, tmp)
 		free(c) ;
-	}
+
+	hash_free(hservice) ;
 }
 
-struct service_s *service_search_byname(struct service_s **hservice, const char *name)
+struct service_s *service_search_byname(hash_t *hservice, const char *name)
 {
 	log_flow() ;
 
-	struct service_s *h ;
-	HASH_FIND_STR(*hservice, name, h) ;
-	return h ;
+	return hash_find(hservice, name, strlen(name)) ;
 }
 
-struct service_s *service_search_byid(struct service_s **hservice, int id)
+struct service_s *service_search_byid(hash_t *hservice, int id)
 {
 	log_flow() ;
 
 	struct service_s *c, *tmp ;
 
-	HASH_ITER(hh, *hservice, c, tmp)
+	HASH_FOREACH(hservice, c, tmp)
 		if (c->id == id)
 			return c ;
 
@@ -96,13 +94,14 @@ void service_add_hash(launcher_t *launcher, struct service_s *service)
 
 	struct service_s *h = service_search_byname(launcher->hservice, service->name) ;
 
-	char *name __attribute__((unused)) = service->name ;
-
 	if (h == NULL) {
 		service->state = 0 ;
 		FLAGS_SET(service->state, DBS_SERVICE_INSERT) ;
 		service->id = launcher->nservice++ ;
-		HASH_ADD_STR(*launcher->hservice, name, service) ;
+		if (!hash_add(launcher->hservice, service->name, strlen(service->name), service)) {
+			log_warnusys("add service to hash") ;
+			free(service) ;
+		}
 	}
 }
 
@@ -113,7 +112,7 @@ void service_remove_hash(launcher_t *launcher, const char *name)
 	struct service_s *h = service_search_byname(launcher->hservice, name) ;
 
 	if (h != NULL) {
-		HASH_DEL(*launcher->hservice, h) ;
+		hash_del(launcher->hservice, h) ;
 		free(h) ;
 	}
 }
@@ -366,7 +365,7 @@ void service_handle_state(strbuf *list, launcher_t *launcher)
 	}
 
 	/** compare for service to remove */
-	HASH_ITER(hh, *launcher->hservice, c, tmp) {
+	HASH_FOREACH(launcher->hservice, c, tmp) {
 
 		size_t len = strlen(c->name) ;
 		_alloc_strbuf_(name, len + 9) ;
@@ -388,7 +387,7 @@ void service_sync_launcher_broker(launcher_t *launcher)
 	int r;
 	struct service_s *c, *tmp ;
 
-	HASH_ITER(hh, *launcher->hservice, c, tmp) {
+	HASH_FOREACH(launcher->hservice, c, tmp) {
 
 		if (FLAGS_ISSET(c->state, DBS_SERVICE_OK)) {
 

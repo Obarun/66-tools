@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <oblibs/sse.h>
+#include <oblibs/hash.h>
 
 #include "dbus.h"
 #include "macro.h"
@@ -44,14 +45,14 @@ struct launcher_s
 	sse_watcher_t wbus ; // controller bus io watcher
 	int loopret ; // return code carried out of the event loop
 	uint32_t nservice ; // counter for struct service_s -> id, never reset
-	struct service_s **hservice ;
+	hash_t *hservice ;
 } ;
 
 extern launcher_t *launcher_free(launcher_t *launcher) ;
 
 DBS_DEFINE_CLEANUP(launcher_t *, launcher_free) ;
 
-extern int launcher_new(launcher_t_ref *launcher, struct service_s **hservice, int socket) ;
+extern int launcher_new(launcher_t_ref *launcher, hash_t *hservice, int socket) ;
 extern int launcher_setup(launcher_t *launcher) ;
 extern int launcher_run_broker(launcher_t *launcher) ;
 extern int launcher_add_listener(launcher_t *launcher) ;

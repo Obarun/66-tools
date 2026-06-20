@@ -81,7 +81,7 @@ int main(int argc, char const *const *argv)
 {
 	unsigned int notif = 0 ;
 	int r, istty ;
-	struct service_s *hservice = NULL ;
+	hash_t hservice = HASH_ZERO ;
 	dbs_cleanup_(launcher_freep) launcher_t *launcher = 0 ;
 
 	log_color = &log_color_disable ;

@@ -45,14 +45,14 @@ struct service_s {
 	char frontend[SS_MAX_PATH_LEN + 1] ;
 	int id ;
 	uint8_t state ;
-	UT_hash_handle hh ;
+	hash_node_t node ;
 } ;
 
-#define SERVICE_ZERO { {0}, {0}, {0}, {0}, 0, 0, NULL }
+#define SERVICE_ZERO { {0}, {0}, {0}, {0}, 0, 0, HASH_NODE_ZERO }
 
-extern void service_hash_free(struct service_s **hservice) ;
-extern struct service_s *service_search_byname(struct service_s **hservice, const char *name) ;
-extern struct service_s *service_search_byid(struct service_s **hservice, int id) ;
+extern void service_hash_free(hash_t *hservice) ;
+extern struct service_s *service_search_byname(hash_t *hservice, const char *name) ;
+extern struct service_s *service_search_byid(hash_t *hservice, int id) ;
 extern int service_get_list(strbuf *sa, launcher_t *launcher) ;
 extern void service_add_hash(launcher_t *launcher, struct service_s *service) ;
 extern void service_remove_hash(launcher_t *launcher, const char *name) ;

@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <grp.h>
@@ -64,7 +65,7 @@ launcher_t *launcher_free(launcher_t *launcher)
 	return NULL ;
 }
 
-int launcher_new(launcher_t_ref *plauncher, struct service_s **hservice, int socket)
+int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
 {
 	log_flow() ;
 
@@ -88,6 +89,11 @@ int launcher_new(launcher_t_ref *plauncher, struct service_s **hservice, int soc
 	launcher_get_machine_id(launcher) ;
 
 	launcher->hservice = hservice ;
+
+	/** init the service table before any failure path: launcher_free ->
+	 * service_hash_free -> hash_free then releases the buckets on rollback. */
+	if (!hash_init(hservice, 0, offsetof(struct service_s, node)))
+		log_warnusys_return(DBS_EXIT_FATAL, "init service hash") ;
 
 	/** event loop + signal trapping (replaces selfpipe). The signalfd is set up
 	 * here, before the broker is forked, so no signal is missed. */
