@@ -234,7 +234,7 @@ void parse(opts_common_t *arguments,char **nargv)
                                     if (get_gidbyname(st.arg,&arguments->minus_g) == 1)
                                     {
                                         _cleanup_strbuf_ strbuf ngid = STRBUF_ZERO ;
-                                        if (get_groupbygid(arguments->minus_g,&ngid) == -1)
+                                        if (get_groupbygid(arguments->minus_g,&ngid) != 1)
                                             log_dieusys(LOG_EXIT_SYS,"get gid of: ",st.arg) ;
                                         if (ngid.len)
                                         {
