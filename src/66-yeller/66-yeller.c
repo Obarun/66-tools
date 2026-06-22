@@ -165,9 +165,8 @@ static void rebuild_without_escape(strbuf *list)
             if (!strbuf_catb(&t,&c,1)) log_die_nomem("strbuf") ;
         }
     }
-    if (!strbuf_terminate(&t)) log_die_nomem("strbuf") ;
-    t.len-- ;
-    if (!strbuf_copy(list,&t)) log_die_nomem("strbuf") ;
+    if (!strbuf_uncounted(&t) || !strbuf_copy(list,&t))
+        log_die_nomem("strbuf") ;
 
 }
 
