@@ -91,15 +91,14 @@ int dbs_socket_bind(void)
 	_alloc_strbuf_(path, SS_MAX_PATH) ;
 	dbs_get_socket_path(path.s) ;
 
-	unlink(path.s) ;
-
 	close(0) ;
 	int fd = socketunix_create(O_NONBLOCK|O_CLOEXEC) ;
 	if (fd < 0)
 		log_dieusys(LOG_EXIT_SYS, "create socket") ;
 
+	int fdlock ;
 	mode_t m = umask(0000) ;
-	if (socketunix_bind(fd, path.s) < 0) {
+	if (socketunix_bind_reuse(fd, path.s, &fdlock) < 0) {
 		close(fd) ;
 		log_dieusys(LOG_EXIT_SYS, "bind socket: ", path.s) ;
 	}
