@@ -30,7 +30,7 @@ html_pages = [
   '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
   '66-olexec', '66-userctl', '66-userd', '66-which', '66-writenv',
   '66-yeller', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
-  'pam_userd', 'index', 'upgrade', 'prototype',
+  'pam_userd', 'index', 'upgrade',
 ]
 
 # Pages — man section 1.
