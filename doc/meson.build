@@ -17,21 +17,31 @@ sed_args = [
   '-e', 's|%%dbus_system_name%%|@0@|g'.format(dbus_system_name),
   '-e', 's|%%dbus_session_name%%|@0@|g'.format(dbus_session_name),
   '-e', 's|%%ns_rule%%|@0@|g'.format(ns_rule_dir),
+  '-e', 's|%%userd_pam_dir%%|@0@|g'.format(userd_pam_dir),
+  '-e', 's|%%userd_runtime_base%%|@0@|g'.format(userd_runtime_base),
+  '-e', 's|%%userd_runtime_size%%|@0@|g'.format(userd_runtime_size),
+  '-e', 's|%%userd_dbus_addr_prefix%%|@0@|g'.format(userd_dbus_addr_prefix),
+  '-e', 's|%%userd_default_path%%|@0@|g'.format(userd_default_path),
   '-e', 's|%%datarootdir%%|@0@|g'.format(DATADIR),
 ]
 
 # Pages — HTML output (also used as the mkdocs page set).
 html_pages = [
   '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
-  '66-olexec', '66-which', '66-writenv', '66-yeller', 'execl-cmdline',
-  'execl-subuidgid', 'execl-toc', 'index', 'upgrade', 'prototype',
+  '66-olexec', '66-userctl', '66-userd', '66-which', '66-writenv',
+  '66-yeller', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
+  'pam_userd', 'index', 'upgrade', 'prototype',
 ]
 
 # Pages — man section 1.
 man1_pages = [
   '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
-  '66-olexec', '66-which', '66-writenv', '66-yeller', 'execl-cmdline',
-  'execl-subuidgid', 'execl-toc',
+  '66-olexec', '66-userctl', '66-userd', '66-which', '66-writenv',
+  '66-yeller', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
+]
+
+man8_pages = [
+  'pam_userd',
 ]
 
 # Mkdocs uses the same set as HTML.
@@ -80,6 +90,24 @@ foreach page : man1_pages
     install: true,
     install_dir: man1_install_dir,
     install_tag: 'man1',
+    build_by_default: true,
+  )
+endforeach
+
+# Pages — man section 8: pam_userd.so is a PAM module, not a command.
+man8_install_dir = get_option('mandir') / 'man8'
+
+foreach page : man8_pages
+  doc_targets += custom_target(
+    page + '.8',
+    input: page + '.md',
+    output: page + '.8',
+    command: [
+      'sh', build_man, page, '8', ss_version, '@INPUT@', '@OUTPUT@',
+    ] + sed_args,
+    install: true,
+    install_dir: man8_install_dir,
+    install_tag: 'man8',
     build_by_default: true,
   )
 endforeach

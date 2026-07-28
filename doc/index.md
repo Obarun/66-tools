@@ -43,3 +43,9 @@ See [changes](upgrade.html) between version.
 - [66-yeller](66-yeller.html)
 
 - [66-dbus-launch](66-dbus-launch.html)
+
+- [66-userd](66-userd.html)
+
+- [66-userctl](66-userctl.html)
+
+- [pam_userd](pam_userd.html)
