@@ -9,6 +9,5 @@ builddir-asan/
 installdir/
 hidden/
 
-src/66-userd/
 builddir-dbus/
 builddir-dbus-asan/

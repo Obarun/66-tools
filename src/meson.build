@@ -99,6 +99,85 @@ if get_option('enable-dbus') != 'disabled'
   }
 endif
 
+# Special handling for 66-userd
+# The directory holds three artifacts sharing the same model: the daemon
+# (66-userd), the query CLI (66-userctl) and the PAM module (pam_userd.so).
+# The shared code is gathered in a temporary static library (not installed);
+# the PAM module compiles the two units it needs itself, since it must be
+# position independent and never links the whole model.
+userd_dir = meson.current_source_dir() / '66-userd'
+
+lib66userd = static_library(
+  '66userd',
+  files(
+    userd_dir / 'common.c',
+    userd_dir / 'driver.c',
+    userd_dir / 'leader.c',
+    userd_dir / 'power.c',
+    userd_dir / 'runtimedir.c',
+    userd_dir / 'session.c',
+    userd_dir / 'state.c',
+    userd_dir / 'user.c',
+    userd_dir / 'userenv.c',
+  ),
+  include_directories: [incdir, include_directories('66-userd')],
+  dependencies: [lib66_dep, oblibs_dep],
+  c_args: static_c_args,
+  link_args: static_link_args,
+  install: false
+)
+
+lib66userd_dep = declare_dependency(
+  link_with: lib66userd,
+  include_directories: [incdir, include_directories('66-userd')],
+  dependencies: [lib66_dep, oblibs_dep]
+)
+
+# Add 66-userd and 66-userctl to exe_configs
+exe_configs += {
+  '66-userd': {
+    'sources': ['66-userd.c'],
+    'deps': [lib66userd_dep, lib66_dep, oblibs_dep]
+  },
+  '66-userctl': {
+    'sources': ['66-userctl.c'],
+    'deps': [lib66userd_dep, lib66_dep, oblibs_dep]
+  }
+}
+
+# pam_userd.so is dlopen'd by libpam: it is neither an executable nor a
+# library of this project, so it stays out of the executable loop below.
+# It lands in libpam's compiled SECUREDIR, fixed by libpam and NOT relative
+# to this project prefix, hence the absolute userd-pam-dir option.
+# Every symbol must resolve at load time: fail the build (not silently at
+# dlopen) if a source providing one is missing.
+if get_option('enable-static-deps')
+  warning('enable-static-deps: pam_userd.so is a shared module, so the static libraries it links must have been built as position independent code, otherwise the link of the module fails.')
+endif
+
+pam_link_args = ['-Wl,--no-undefined']
+foreach lib : get_option('with-staticlib-dir') + get_option('with-dynamiclib-dir')
+  if lib != '' and fs.is_dir(lib)
+    pam_link_args += ['-L' + lib]
+  endif
+endforeach
+
+shared_module(
+  'pam_userd',
+  files(
+    userd_dir / 'pam_userd.c',
+    userd_dir / 'common.c',
+    userd_dir / 'user.c',
+  ),
+  name_prefix: '',
+  include_directories: [incdir, include_directories('66-userd')],
+  dependencies: [oblibs_dep, pam_dep],
+  c_args: shared_c_args,
+  link_args: pam_link_args,
+  install: true,
+  install_dir: get_option('userd-pam-dir')
+)
+
 bin_dir = meson.current_source_dir()
 find_dirs_cmd = run_command('sh', '-c', 'find "@0@" -maxdepth 1 -type d ! -path "@0@"'.format(bin_dir), check: false)
 if find_dirs_cmd.returncode() != 0

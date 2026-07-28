@@ -12,6 +12,11 @@ project('66-tools',
           'dbus-session-service-dir=/usr/share/dbus-1/services',
           'dbus-system-name=system_bus_socket',
           'dbus-session-name=dbus',
+          'userd-pam-dir=/usr/lib/security',
+          'userd-runtime-base=/run/user',
+          'userd-runtime-size=10%',
+          'userd-dbus-addr-prefix=unix:path=',
+          'userd-default-path=/usr/bin:/sbin:/bin',
           'enable-shared=true',
           'with-doc=false',
           'warning_level=2',
@@ -26,7 +31,7 @@ fs = import('fs')
 
 # Versioning
 version_oblibs = '>=0.3.4.0'
-version_66 = '>=0.8.0.0'
+version_66 = '>=0.9.0.0'
 
 # Compiler setup
 cc = meson.get_compiler('c')
@@ -57,6 +62,11 @@ dbus_system_service_dir = get_option('dbus-system-service-dir')
 dbus_session_service_dir = get_option('dbus-session-service-dir')
 dbus_system_name = get_option('dbus-system-name')
 dbus_session_name = get_option('dbus-session-name')
+userd_pam_dir = get_option('userd-pam-dir')
+userd_runtime_base = get_option('userd-runtime-base')
+userd_runtime_size = get_option('userd-runtime-size')
+userd_dbus_addr_prefix = get_option('userd-dbus-addr-prefix')
+userd_default_path = get_option('userd-default-path')
 
 # doc-only short-circuits the C dependency lookups entirely: build and
 # install only the documentation. Useful for the CI docbuild job where the
@@ -91,6 +101,18 @@ dep_lib66 = declare_dependency(
   include_directories: include_dirs
 )
 
+# Dependency: libpam
+# Required by pam_userd.so, the PAM module of 66-userd.
+pam_lib = cc.find_library('pam', dirs: lib_dirs, required: false)
+pam_header = cc.has_header('security/pam_modules.h', args: ['-I', include_dirs], required: false)
+if not pam_lib.found() or not pam_header
+  error('libpam not found. Ensure libpam and its development headers (security/pam_modules.h) are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
+endif
+dep_pam = declare_dependency(
+  dependencies: pam_lib,
+  include_directories: include_dirs
+)
+
 # Dependency: dbus
 dep_dbus = []
 if get_option('enable-dbus') != 'disabled'
@@ -112,6 +134,7 @@ endif
 oblibs_dep = dep_oblibs
 lib66_dep = dep_lib66
 dbus_dep = dep_dbus
+pam_dep = dep_pam
 
 # Common compiler flags
 base_c_args = [
@@ -205,11 +228,11 @@ if get_option('enable-static-deps') and not get_option('enable-static')
   error('enable-static-deps requires enable-static to build *.a')
 endif
 
-# Validate DBus service directories
-foreach opt : ['dbus-system-service-dir', 'dbus-session-service-dir']
+# Validate DBus service directories and the 66-userd directories
+foreach opt : ['dbus-system-service-dir', 'dbus-session-service-dir', 'userd-pam-dir', 'userd-runtime-base']
   dir = get_option(opt)
   if not dir.startswith('/')
-    error(dir + ' must be absolute path e.g., /usr/share/dbus-1/system-services.')
+    error(opt + ' must be an absolute path e.g., /usr/share/dbus-1/system-services.')
   endif
 endforeach
 

@@ -12,7 +12,9 @@ To build and install the 66-tools project, you need:
 
 - `oblibs` version `0.3.4.0` or later: [git.obarun.org/Obarun/oblibs](https://git.obarun.org/Obarun/oblibs).
 
-- `66` version `0.8.0.0` or later (required only when `enable-dbus` is not `disabled`): [git.obarun.org/Obarun/66](https://git.obarun.org/Obarun/66).
+- `66` version `0.9.0.0` or later: [git.obarun.org/Obarun/66](https://git.obarun.org/Obarun/66).
+
+- `libpam`, with its development headers (`security/pam_modules.h`), required to build the `pam_userd.so` module of `66-userd`: [github.com/linux-pam/linux-pam](https://github.com/linux-pam/linux-pam).
 
 - `lowdown` version `0.6.4` or later (optional, for generating man pages and HTML documentation): [kristaps.bsd.lv/lowdown](https://kristaps.bsd.lv/lowdown).
 
@@ -34,7 +36,10 @@ This installs:
 
 - Executables to `/usr/bin` or `/usr/libexec` (depending on the executable).
 - Header files to `/usr/include/66-tools`.
+- The `pam_userd.so` PAM module to `/usr/lib/security` (see `userd-pam-dir`).
 - Documentation to `/usr/share/doc/66-tools` (HTML) and `/usr/share/man` (man pages).
+
+Installing `pam_userd.so` is not enough to make `66-userd` track anything: the module must be referenced from the PAM login stack of the system, which this package never edits. See the `pam_userd` documentation.
 
 To reduce binary size, you can strip symbols before installation:
 
@@ -69,6 +74,11 @@ meson install -C build
 - `dbus-session-service-dir`: Set the directory for DBus session service files (default: `/usr/share/dbus-1/services`).
 - `dbus-system-name`: Specify the name of the DBus system socket (default: `system_bus_socket`).
 - `dbus-session-name`: Specify the name of the DBus session socket (default: `dbus`).
+- `userd-pam-dir`: Set the installation directory of `pam_userd.so`; this is the `SECUREDIR` of `libpam`, fixed by the host and independent of `prefix` (default: `/usr/lib/security`).
+- `userd-runtime-base`: Set the base directory of the per-user runtime directory managed by `66-userd` (default: `/run/user`).
+- `userd-runtime-size`: Set the `size=` option of the per-user runtime tmpfs (default: `10%`).
+- `userd-dbus-addr-prefix`: Set the prefix of the `DBUS_SESSION_BUS_ADDRESS` exported by `66-userd` (default: `unix:path=`).
+- `userd-default-path`: Set the fallback `PATH` for the services of a user when none is inherited from PID 1 (default: `/usr/bin:/sbin:/bin`).
 - `enable-shared`: Build shared libraries for dynamic linking (default: `true`).
 - `enable-static`: Build static libraries for static linking (default: `false`).
 - `enable-static-deps`: Prefer static linking for dependencies (e.g., `oblibs`) to reduce runtime dependencies; requires `-D enable-static=true` (default: `false`).

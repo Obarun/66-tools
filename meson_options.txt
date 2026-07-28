@@ -29,6 +29,31 @@ type: 'string',
 value: 'dbus',
 description: 'Name of the DBus session socket')
 
+option('userd-pam-dir',
+type: 'string',
+value: '/usr/lib/security',
+description: 'Installation directory of pam_userd.so: libpam SECUREDIR, host-fixed and independent of prefix')
+
+option('userd-runtime-base',
+type: 'string',
+value: '/run/user',
+description: 'Base directory of each user runtime directory handled by 66-userd')
+
+option('userd-runtime-size',
+type: 'string',
+value: '10%',
+description: 'size= option of the per-user runtime tmpfs mounted by 66-userd')
+
+option('userd-dbus-addr-prefix',
+type: 'string',
+value: 'unix:path=',
+description: 'Prefix of DBUS_SESSION_BUS_ADDRESS exported by 66-userd; full value is unix:path=/run/user/<uid>/bus')
+
+option('userd-default-path',
+type: 'string',
+value: '/usr/bin:/sbin:/bin',
+description: 'Fallback PATH for the 66 services of a user when none is inherited from PID1')
+
 option('with-doc',
 type: 'boolean',
 value: false,
