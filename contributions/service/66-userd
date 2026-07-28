@@ -1,0 +1,14 @@
+[Main]
+Type = classic
+Description = "66-userd session and user tracker daemon"
+Depends = ( seatd )
+
+[Start]
+Notify = 3
+Execute = ( /usr/bin/66-userd -d 3 )
+
+[Event]
+EventType = service
+From = ( seatd )
+On = ( up )
+Do = restart

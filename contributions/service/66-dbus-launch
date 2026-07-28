@@ -1,0 +1,12 @@
+[Main]
+Type=classic
+Description="Dbus-broker launcher for @U account"
+
+[Start]
+Timeout=3000
+MaxDeath=5
+Notify=3
+Execute=( 66-dbus-launch -d3 -v${Verbosity} )
+
+[Environment]
+Verbosity=!3
