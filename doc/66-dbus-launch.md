@@ -5,7 +5,7 @@
 ## Interface
 
 ```
-    66-dbus-launch [ -h ] [ -z ] [ -v verbosity ] [ -d notif ]
+66-dbus-launch [ -h ] [ -z ] [ -v verbosity ] [ -d notif ]
 ```
 
 *66-dbus-launch* acts as a launcher for the [dbus-broker](https://github.com/bus1/dbus-broker), spawning and managing a D-Bus Message Bus.
@@ -108,21 +108,18 @@ As the frontend file of each service declare `InTree=dbus`, stopping the launche
 
 ## Example of 66-dbus-launch frontend file for 66
 
-The following frontend file can be used to start a 66-dbus-launch daemon, either as root or as a regular user, by setting `User=(root)` or `User=(user)` in the example below:
+The following frontend file, also provided in `contributions/service/66-dbus-launch`, can be used to start a 66-dbus-launch daemon, either as root or as a regular user. There is nothing to change in it for that: the owner of the daemon is decided by the directory the frontend file is installed in—see below.
 
 ```
 [Main]
 Type=classic
 Description="Dbus-broker launcher for @U account"
-User=(root)
-Version=0.0.1
-TimeoutStart=3000
-TimeoutStop=3000
-MaxDeath=5
-Notify=3
 
 [Start]
-Execute=(66-dbus-launch -d3 -v${Verbosity})
+Timeout=3000
+MaxDeath=5
+Notify=3
+Execute=( 66-dbus-launch -d3 -v${Verbosity} )
 
 [Environment]
 Verbosity=!3
