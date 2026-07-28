@@ -5,7 +5,7 @@
 ## Interface
 
 ```
-	66-olexec [ -h ] [ -d tty ] program
+66-olexec [ -h ] [ -d tty ] program
 ```
 
 This tool opens the active tty or the one specified by the **-d** modifier, locks it, and executes a program as a child process of that *tty*.
@@ -42,5 +42,5 @@ This tool opens the active tty or the one specified by the **-d** modifier, lock
 ## Usage example
 
 ```
-	66-olexec -d /dev/tty3 cryptsetup open /dev/sda1 cryptroot
-``` 
+66-olexec -d /dev/tty3 cryptsetup open /dev/sda1 cryptroot
+```

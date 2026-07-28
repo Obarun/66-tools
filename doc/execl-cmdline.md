@@ -1,16 +1,16 @@
 # execl-cmdline
 
-This command parses a command line into an [execline](https://skarnet.org/software/execline) script. 
+This command parses a command line into an [execline](https://skarnet.org/software/execline) script.
 
 ## Interface
 
 As [execlineb](https://www.skarnet.org/software/execline/execlineb.html) script:
 
 ```
-	execl-cmdline -s { command }
+execl-cmdline -s { command }
 ```
 
-- It reads the command and removes all whitespace or `no word` before executing. 
+- It reads the command and removes all whitespace or `no word` before executing.
 
 - It exits with the exit code of the command
 
@@ -18,7 +18,7 @@ As [execlineb](https://www.skarnet.org/software/execline/execlineb.html) script:
 
 - **-h**, **--help** : prints this help.
 
-- **-s**, **--split** : splits a command considered by execline scripting language as one word into separate words. 
+- **-s**, **--split** : splits a command considered by execline scripting language as one word into separate words.
 
 ## Note and usage examples
 
@@ -27,29 +27,29 @@ As [execlineb](https://www.skarnet.org/software/execline/execlineb.html) script:
 The following command:
 
 ```
-	execl-cmdline { /usr/bin/ntpd -d "" -S }
+execl-cmdline { /usr/bin/ntpd -d "" -S }
 ```
 
 will result in:
 
 ```
-	/usr/bin/ntpd "-d" "-S"
+/usr/bin/ntpd "-d" "-S"
 ```
 
 This command:
 
 ```
-	execl-cmdline -s { /usr/bin/ntpd "-d -S" }
-```	
+execl-cmdline -s { /usr/bin/ntpd "-d -S" }
+```
 
 will result in:
 
 ```
-	/usr/bin/ntpd "-d" "-S"
+/usr/bin/ntpd "-d" "-S"
 ```
 
 To run another program after the call of *execl-cmdline* program:
 
 ```
-	foreground { execl-cmdline { /usr/bin/ntpd -d "" -S } }
+foreground { execl-cmdline { /usr/bin/ntpd -d "" -S } }
 ```

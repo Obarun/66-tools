@@ -1,15 +1,15 @@
 # execl-toc
 
-Tests an element and creates it, if it does not exist yet, with the default or specified options, then executes a program by default. 
+Tests an element and creates it, if it does not exist yet, with the default or specified options, then executes a program by default.
 
 ## Interface
 
 ```
-	execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -M mode ] [ -s|D|B ] [ -b backlog ] prog...
+execl-toc [ -h ] [ -v verbosity ] [ -n ] [ -t ] [ -D ] [ -X ] [ -d|p|S|m|L|e|b|c|k|n|g|r|s|t|u|w|x|f|z|O|U|N|V|E element ] [ -o opts ] [ -t type ] [ -d device ] [ -g gid ] [ -u uid ] [ -m mode ] [ -M mode ] [ -s|D|B ] [ -b backlog ] prog...
 ```
 
 *Execl-toc* (Test Or Create) tests an *element* and creates it, if it does not exist yet, where an *element* can be a directory, a fifo, a socket, a mountpoint or a symlink, for testing and creation, and additionally a file and a string for testing only. Then it execs into the rest of its command line.
-The options are separated in three parts: 
+The options are separated in three parts:
 
 - (1) main_options
 
@@ -19,7 +19,7 @@ The options are separated in three parts:
 
 and must be ordered at the command line in that sequence.
 
-The creation of an *element* can be controlled with the help of `create_options` options. Some of these `create_options` are specific for a particular *element*, where others are general. 
+The creation of an *element* can be controlled with the help of `create_options` options. Some of these `create_options` are specific for a particular *element*, where others are general.
 
 ## Exit codes
 
@@ -42,7 +42,7 @@ The creation of an *element* can be controlled with the help of `create_options`
 - **-n** : negate the test. Treat fail as true and vise versa.
 
 - **-t** : exit 0 if the test fail.
- 
+
 - **-D** : performs the test without creating the *element* if it does not exist yet.
 
 - **-X** : do not execute *prog*.
@@ -54,7 +54,7 @@ The creation of an *element* can be controlled with the help of `create_options`
 
 
 - Test and create:
-  
+
   * **-d** : true if *element* is a directory.
   * **-p** : true if *element* is a fifo.
   * **-S** : true if *element* is a socket.
@@ -62,7 +62,7 @@ The creation of an *element* can be controlled with the help of `create_options`
   * **-L** : true if *element* is a symlink.
 
 - Test only
-  
+
   * **-e** : true if *element* exist.
   * **-b** : true if *element* is a block.
   * **-c** : true if *element* is a character.
@@ -105,7 +105,7 @@ Depending on the *element* to create, `create_options` may or may not be mandato
 - **-s** : element will be `SOCK_DGRAM` where element is a socket. Default `SOCK_STREAM`. This option is used for socket creation and it has no effects in other cases.
 
 - **-D** : disallow instant rebinding of *element* to the same path where an *element* is a socket. Default is allow. This option is used for socket creation and it has no effects in other cases.
-    
+
 - **-B** : the *element* will be blocking where *element* is a socket. Default is unlocked. This option is used for socket creation and it has no effects in other cases.
 
 
@@ -116,71 +116,71 @@ Depending on the *element* to create, `create_options` may or may not be mandato
 Test and create a directory if it does not exist yet:
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -d /run/user/1000 -m 0700
-	66-echo -- "/run/user was created"
+#!/usr/bin/execlineb -P
+execl-toc -d /run/user/1000 -m 0700
+66-echo -- "/run/user was created"
 ```
 
 Test a directory but do not create it if it does not exist:
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -D -d /run/user/1000
-	66-echo -- "/run/user already exist"
+#!/usr/bin/execlineb -P
+execl-toc -D -d /run/user/1000
+66-echo -- "/run/user already exist"
 ```
 
 Test a directory, do not create it if it does not exist, and do not execute prog
 
 ```
-	#!/usr/bin/execlineb -P
-	if -n { execl-toc -X -D -d /run/user/1001 }
-	66-echo -- "/run/user/1001 does not exist"
+#!/usr/bin/execlineb -P
+if -n { execl-toc -X -D -d /run/user/1001 }
+66-echo -- "/run/user/1001 does not exist"
 ```
 
 Test a mountpoint and create it if it does not exist
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -m /dev/hugepage -o noatime,nodev,noexec,nosuid -t hugetlbfs -d hugepages
-	66-echo -- "/dev/hugepage created and mounted successfully"
+#!/usr/bin/execlineb -P
+execl-toc -m /dev/hugepage -o noatime,nodev,noexec,nosuid -t hugetlbfs -d hugepages
+66-echo -- "/dev/hugepage created and mounted successfully"
 ```
 
 Test a socket and create it if it doesn't exist
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -S /run/user/bus
-	66-echo -- "you can now use the socket"
+#!/usr/bin/execlineb -P
+execl-toc -S /run/user/bus
+66-echo -- "you can now use the socket"
 ```
 
 Test if a variable is set on the environment
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -V PATH
-	66-echo -- "PATH variable is set"
+#!/usr/bin/execlineb -P
+execl-toc -V PATH
+66-echo -- "PATH variable is set"
 ```
 
 Test if a file exists
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -e /home/obarun/.xinitrc
-	66-echo -- ".xinitrc is a regular file"
+#!/usr/bin/execlineb -P
+execl-toc -e /home/obarun/.xinitrc
+66-echo -- ".xinitrc is a regular file"
 ```
 
 Test if a file is executable
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -x /home/obarun/.xinitrc
-	66-echo -- ".xinitrc is executable"
+#!/usr/bin/execlineb -P
+execl-toc -x /home/obarun/.xinitrc
+66-echo -- ".xinitrc is executable"
 ```
 
 Test if a directory is empty
 
 ```
-	#!/usr/bin/execlineb -P
-	execl-toc -E /mnt
-	66-echo -- "/mnt is emtpy"
+#!/usr/bin/execlineb -P
+execl-toc -E /mnt
+66-echo -- "/mnt is emtpy"
 ```

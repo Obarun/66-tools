@@ -1,11 +1,11 @@
 # execl-subuidgid
 
-Substitutes a literal GID UID with the UID GID of the current owner of the process. 
+Substitutes a literal GID UID with the UID GID of the current owner of the process.
 
 ## Interface
 
 ```
-	execl-subuidgid [ -o owner ] prog
+execl-subuidgid [ -o owner ] prog
 ```
 
 - Substitutes the variable `UID` `GID` on *prog*.
@@ -25,12 +25,13 @@ Substitutes a literal GID UID with the UID GID of the current owner of the proce
 ## Usage examples
 
 ```
-	execl-subuidgid
-	if { mkdir -p /run/user }
-	chown -R $UID:$GID /run/user 
+execl-subuidgid
+if { mkdir -p /run/user }
+chown -R $UID:$GID /run/user
 ```
+
 ```
-	execl-subuidgid -o root
-	if { mkdir /run }
-	chmow -R $UID:$GID /run/user 
+execl-subuidgid -o root
+if { mkdir /run }
+chmow -R $UID:$GID /run/user
 ```

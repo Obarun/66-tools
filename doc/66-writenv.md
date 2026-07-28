@@ -5,10 +5,10 @@
 ## Interface
 
 ```
-	66-writenv [ -h ] [ -m mode ] dir file
+66-writenv [ -h ] [ -m mode ] dir file
 ```
 
-- This tool write its environment variables into *dir/file* under the classic format `key=value` pair and thoses one per line. *dir* must be an absolute path. 
+- This tool write its environment variables into *dir/file* under the classic format `key=value` pair and thoses one per line. *dir* must be an absolute path.
 
 ## Exit codes
 

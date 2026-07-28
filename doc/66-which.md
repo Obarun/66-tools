@@ -1,11 +1,11 @@
 # 66-which
 
-*66-which* is a portable which command that checks if a command exists and is executable in `PATH` or at specified path. It behaves slightly different then the `GNU` which command. 
+*66-which* is a portable which command that checks if a command exists and is executable in `PATH` or at specified path. It behaves slightly different then the `GNU` which command.
 
 ## Interface
 
 ```
-	66-which [ -h ] [ -q | -a ] command(s)
+66-which [ -h ] [ -q | -a ] command(s)
 ```
 
 This tool expect to find valid command name or path, it will check if they exists and are executable by the current user.
@@ -36,28 +36,28 @@ This tool expect to find valid command name or path, it will check if they exist
 Search for a command by using its name:
 
 ```
-	$ 66-which 66-echo
-	/usr/bin/66-echo
+$ 66-which 66-echo
+/usr/bin/66-echo
 ```
 
 Check for a command by using its path:
 
 ```
-	$ 66-which /usr/bin/66-echo
-	/usr/bin/66-echo
+$ 66-which /usr/bin/66-echo
+/usr/bin/66-echo
 ```
 
 Usage of 66-which in a script:
 
 ```
-	#!/usr/bin/execlineb -P
+#!/usr/bin/execlineb -P
 
-	if { 66-which -q vgchange }
-	vgchange -ay
+if { 66-which -q vgchange }
+vgchange -ay
 ```
 
 ## Notes
 
 *66-which* need at least one valid entry in `PATH` that exists on the system. *66-which* is often used on critical scripts, like the ones booting the system, so it's important to check if `PATH` contains valid entries for the current system.
 
-*66-which* correctly handle the tilde `~` character for paths. Beware that same shell, like bash, replaces this character with the current user home path. To pass the correct string to *66-which*, containing the tilde character, use quoting like this: `66-which '~/.bin/gvr'`. 
+*66-which* correctly handle the tilde `~` character for paths. Beware that same shell, like bash, replaces this character with the current user home path. To pass the correct string to *66-which*, containing the tilde character, use quoting like this: `66-which '~/.bin/gvr'`.

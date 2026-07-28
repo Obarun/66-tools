@@ -5,7 +5,7 @@
 ## Interface
 
 ```
-    66-getenv [ -h ] [ -x ] [ -d delim ] process
+66-getenv [ -h ] [ -x ] [ -d delim ] process
 ```
 
 - It find the corresponding pid of the *process* name applying a regex search.
@@ -29,8 +29,8 @@
 ## Usage example
 
 ```
-    66-getenv -x jwm
-    66-getenv "ck-launch-session"
+66-getenv -x jwm
+66-getenv "ck-launch-session"
 ```
 
 ## Note

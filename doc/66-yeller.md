@@ -5,7 +5,7 @@
 ## Interface
 
 ```
-	66-yeller [ -h ] [ -d ] [ -s|S ] [ -1 file ] [ -2 file ] [ -z ] [ -n ] [ -c ] [ -p prog ] [ -v verbosity ] [ -i|w|W|t|T|f|F ] msg...
+66-yeller [ -h ] [ -d ] [ -s|S ] [ -1 file ] [ -2 file ] [ -z ] [ -n ] [ -c ] [ -p prog ] [ -v verbosity ] [ -i|w|W|t|T|f|F ] msg...
 ```
 
 *66-yeller* writes the current system time, the name of the program, a colorized informative message (*msg*), depending on the options passed to one or two streams. By default, *stream_1* points to **stdout** and *stream_2* points to **stderr**. The *\a*, *\b*, *\t*, *\n*, *\v*, *\f*, and *\r* sequences are recognized in quoted strings, and are converted to the ASCII numbers 7, 8, 9, 10, 11, 12 and 13 respectively.
@@ -75,7 +75,7 @@
 - A `info`(default) message will be:
 
 	```
-		<sytem time> <prog>: info: <msg>
+	<sytem time> <prog>: info: <msg>
 	```
 
 	where `info` is written in green color.
@@ -84,7 +84,7 @@
 - A `warning` message will be:
 
 	```
-		<sytem time> <prog>: warning: <msg>
+	<sytem time> <prog>: warning: <msg>
 	```
 
 	where `warning` is written in yellow color.
@@ -92,7 +92,7 @@
 - A `tracing` message will be:
 
 	```
-		<sytem time> <prog>: tracing: <msg>
+	<sytem time> <prog>: tracing: <msg>
 	```
 
 	where `tracing` is written in white color.
@@ -100,7 +100,7 @@
 - A `fatal` message will be:
 
 	```
-		<sytem time> <prog>: fatal: <msg>
+	<sytem time> <prog>: fatal: <msg>
 	```
 
 	where `fatal` is written in red color.
@@ -146,154 +146,152 @@ The following environment variable can be set to configure the default *66-yelle
 Call 66-yeller from a terminal where the shell is `zsh`:
 
 ```
-	% 66-yeller this is an info message
-	2020-05-06 10:49:02.71 zsh: info: this is an info message
+% 66-yeller this is an info message
+2020-05-06 10:49:02.71 zsh: info: this is an info message
 ```
 
 Same things but specifying the name of the program to print:
 
 ```
-	% 66-yeller -p MyProg this is a warning message
-	2020-05-06 10:49:02.71 MyProg: info: this is a info message
+% 66-yeller -p MyProg this is a warning message
+2020-05-06 10:49:02.71 MyProg: info: this is a info message
 ```
 
 This following message will not be displayed:
 
 ```
-	% 66-yeller -p MyProg -w this following message will not be displayed
+% 66-yeller -p MyProg -w this following message will not be displayed
 ```
 
 Where this one will be:
 
 ```
-	% 66-yeller -p MyProg -W this following message will be displayed
-	2020-05-06 10:49:02.71 MyProg: warning: this following message will be displayed
+% 66-yeller -p MyProg -W this following message will be displayed
+2020-05-06 10:49:02.71 MyProg: warning: this following message will be displayed
 ```
 
 Also, it can be:
 
 ```
-	% 66-yeller -v2 -p MyProg -w this following message will be displayed
-	2020-05-06 10:49:02.71 MyProg: warning: this following message will be displayed
+% 66-yeller -v2 -p MyProg -w this following message will be displayed
+2020-05-06 10:49:02.71 MyProg: warning: this following message will be displayed
 ```
 
 Do not display the system time:
 
 ```
-	% 66-yeller -c -p MyProg what time is it\?
-	MyProg: info: what time is it?
+% 66-yeller -c -p MyProg what time is it\?
+MyProg: info: what time is it?
 ```
 
 Also do not display the informative message:
 
 ```
-	% 66-yeller -ic -p MyProg what time is it\?
-	what time is it?
+% 66-yeller -ic -p MyProg what time is it\?
+what time is it?
 ```
 
 Colorize the output where `what` will be displayed in red color and `time` in yellow color:
 
 ```
-	% 66-yeller -ic %r what %y time %n is it\?
-	what time is it?
+% 66-yeller -ic %r what %y time %n is it\?
+what time is it?
 ```
 
 Alos, it can be:
 
 ```
-	% 66-yeller -ic %rwhat%y time%n is it\?
-	what time is it?
+% 66-yeller -ic %rwhat%y time%n is it\?
+what time is it?
 ```
 
 Append a trailing newline and a tabulation:
 
 ```
-	% 66-yeller -ic what "time\nis\tit?"
-	what time
-	is	it?
+% 66-yeller -ic what "time\nis\tit?"
+what time
+is	it?
 ```
 
 Use the double-output and redirects *stream_2* to `myfile` file:
 
 ```
-	% 66-yeller -d -2 myfile -p MyProg reads myfile to see again this message
-	2020-05-18 09:33:16.47 MyProg: info: reads myfile to see again this message
+% 66-yeller -d -2 myfile -p MyProg reads myfile to see again this message
+2020-05-18 09:33:16.47 MyProg: info: reads myfile to see again this message
 ```
 
 Reads *msg* from stdin:
 
 ```
-	% ls -la /tmp | 66-yeller -p MyProg -S
-	2020-05-18 09:37:59.15 MyProg: info: total 840K
-	2020-05-18 09:37:59.15 MyProg: info: drwxrwxrwt  6 root   root   220 May 18 09:07 ./
-	2020-05-18 09:37:59.15 MyProg: info: drwxr-xr-x 19 root   root  4.0K May 16 09:13 ../
-	2020-05-18 09:37:59.15 MyProg: info: drwxr-xr-t  2 root   root    40 May 18 06:57 .ICE-unix/
-	2020-05-18 09:37:59.15 MyProg: info: drwxrwxrwt  2 root   root    60 May 18 06:57 .X11-unix/
-
+% ls -la /tmp | 66-yeller -p MyProg -S
+2020-05-18 09:37:59.15 MyProg: info: total 840K
+2020-05-18 09:37:59.15 MyProg: info: drwxrwxrwt  6 root   root   220 May 18 09:07 ./
+2020-05-18 09:37:59.15 MyProg: info: drwxr-xr-x 19 root   root  4.0K May 16 09:13 ../
+2020-05-18 09:37:59.15 MyProg: info: drwxr-xr-t  2 root   root    40 May 18 06:57 .ICE-unix/
+2020-05-18 09:37:59.15 MyProg: info: drwxrwxrwt  2 root   root    60 May 18 06:57 .X11-unix/
 ```
 
 Reads message from stdin. Does not display informative message and the system time. Uses double output and redirects *stream_2* to `myfile`
 
 ```
-	% ls -la /tmp | 66-yeller -cdi2 /tmp/myfile -S /tmp contents "->"
-	/tmp contents -> total 844K
-	/tmp contents -> drwxrwxrwt  6 root   root   240 May 18 09:40 ./
-	/tmp contents -> drwxr-xr-x 19 root   root  4.0K May 16 09:13 ../
-	/tmp contents -> drwxr-xr-t  2 root   root    40 May 18 06:57 .ICE-unix/
-	/tmp contents -> drwxrwxrwt  2 root   root    60 May 18 06:57 .X11-unix/
+% ls -la /tmp | 66-yeller -cdi2 /tmp/myfile -S /tmp contents "->"
+/tmp contents -> total 844K
+/tmp contents -> drwxrwxrwt  6 root   root   240 May 18 09:40 ./
+/tmp contents -> drwxr-xr-x 19 root   root  4.0K May 16 09:13 ../
+/tmp contents -> drwxr-xr-t  2 root   root    40 May 18 06:57 .ICE-unix/
+/tmp contents -> drwxrwxrwt  2 root   root    60 May 18 06:57 .X11-unix/
 ```
 
 Use *66-yeller* in a `sh` script called `script.sh` with a pre-defined behavior set by the environment variables:
 
 ```
-	#!/bin/sh
-	export PROG=my_awesome_script
-	export VERBOSITY=2
-	export DOUBLE_OUTPUT=1
-	export REDIRFD_2=/tmp/my_awesome_script.log
+#!/bin/sh
+export PROG=my_awesome_script
+export VERBOSITY=2
+export DOUBLE_OUTPUT=1
+export REDIRFD_2=/tmp/my_awesome_script.log
 
-	set -e
+set -e
 
-	if ! [ -e /etc/66/init.conf ]; then
-		66-yeller -f "file /etc/66/init.conf doesn't exist"
-	else
-		cat /etc/66/init.conf | 66-yeller -Sic "%y->%n "
-	fi
+if ! [ -e /etc/66/init.conf ]; then
+	66-yeller -f "file /etc/66/init.conf doesn't exist"
+else
+	cat /etc/66/init.conf | 66-yeller -Sic "%y->%n "
+fi
 
-	if ! [ -e /etc/66/toto.conf ]; then
-		66-yeller -f "file /etc/66/toto.conf doesn't exist"
-	else
-		cat /etc/66/toto.conf | 66-yeller -Sic "%y->%n "
-	fi
-	66-yeller you will never see this message
+if ! [ -e /etc/66/toto.conf ]; then
+	66-yeller -f "file /etc/66/toto.conf doesn't exist"
+else
+	cat /etc/66/toto.conf | 66-yeller -Sic "%y->%n "
+fi
+66-yeller you will never see this message
 ```
 
 ```
-	% ./script.sh
-	-> VERBOSITY=0
-	-> LIVE=/run/66
-	-> PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin
-	-> TREE=boot
-	-> RCINIT=/etc/66/rc.init
-	-> RCSHUTDOWN=/etc/66/rc.shutdown
-	-> RCSHUTDOWNFINAL=/etc/66/rc.shutdown.final
-	-> UMASK=0022
-	-> RESCAN=0
-	-> ISHELL=/etc/66/ishell
-	2020-05-18 09:57:16.83 my_awesome_script: fatal: file /etc/66/toto.conf doesn't exist
+% ./script.sh
+-> VERBOSITY=0
+-> LIVE=/run/66
+-> PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin
+-> TREE=boot
+-> RCINIT=/etc/66/rc.init
+-> RCSHUTDOWN=/etc/66/rc.shutdown
+-> RCSHUTDOWNFINAL=/etc/66/rc.shutdown.final
+-> UMASK=0022
+-> RESCAN=0
+-> ISHELL=/etc/66/ishell
+2020-05-18 09:57:16.83 my_awesome_script: fatal: file /etc/66/toto.conf doesn't exist
 
-	% cat /tmp/my_awesome_script
-	cat /tmp/my_awesome_script.log
-	-> VERBOSITY=0
-	-> LIVE=/run/66
-	-> PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin
-	-> TREE=boot
-	-> RCINIT=/etc/66/rc.init
-	-> RCSHUTDOWN=/etc/66/rc.shutdown
-	-> RCSHUTDOWNFINAL=/etc/66/rc.shutdown.final
-	-> UMASK=0022
-	-> RESCAN=0
-	-> ISHELL=/etc/66/ishell
-	2020-05-18 10:03:28.94 my_awesome_script: fatal: file /etc/66/toto.conf doesn't exist
-
+% cat /tmp/my_awesome_script
+cat /tmp/my_awesome_script.log
+-> VERBOSITY=0
+-> LIVE=/run/66
+-> PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin
+-> TREE=boot
+-> RCINIT=/etc/66/rc.init
+-> RCSHUTDOWN=/etc/66/rc.shutdown
+-> RCSHUTDOWNFINAL=/etc/66/rc.shutdown.final
+-> UMASK=0022
+-> RESCAN=0
+-> ISHELL=/etc/66/ishell
+2020-05-18 10:03:28.94 my_awesome_script: fatal: file /etc/66/toto.conf doesn't exist
 ```
