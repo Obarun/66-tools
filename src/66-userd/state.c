@@ -69,7 +69,7 @@ static int state_remove(char const *statedir, char const *sub, char const *name)
 
 int state_init(char const *statedir)
 {
-    _alloc_strbuf_(sdir, strlen(statedir) + sizeof(USERD_SESSIONS_SUB) + 1) ;
+    _alloc_strbuf_(sdir, strlen(statedir) + USERD_SESSIONS_SUB_LEN + 1) ;
 
     auto_strbuf(&sdir, statedir, USERD_SESSIONS_SUB) ;
 
