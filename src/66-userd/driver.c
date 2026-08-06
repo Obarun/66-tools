@@ -12,20 +12,25 @@
  * except according to the terms contained in the LICENSE file.
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/pidfd.h>
 #include <sys/signalfd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <oblibs/directory.h>
+#include <oblibs/fd.h>
 #include <oblibs/io.h>
 #include <oblibs/log.h>
 #include <oblibs/opt.h>
@@ -34,11 +39,13 @@
 #include <oblibs/types.h>
 #include <oblibs/strbuf.h>
 
+#include <66/constants.h>
 #include <66/ssexec.h>
 #include <66/utils.h>
 #include <66/svc.h>
 
 #include <66-tools/config.h>
+#include "constants.h"
 #include "userd.h"
 #include "driver.h"
 #include "userenv.h"
@@ -121,6 +128,162 @@ int driver_scandir_ok(uid_t uid)
     return svc_scandir_ok(scandir.s) ;
 }
 
+static int fd_accmode(char const *piddir, char const *fdname)
+{
+    size_t plen = strlen(piddir), nlen = strlen(fdname), flen = 6 ;
+    char path[ plen + 8 + nlen + 1] ;
+    auto_strings(path, piddir, "/fdinfo/", fdname) ;
+
+    int fd = io_open(path, O_RDONLY | O_CLOEXEC) ;
+    if (fd < 0)
+        return -1 ;
+
+    char buf[256] ;
+    size_t s = io_allread(fd, buf, sizeof(buf) - 1) ;
+    buf[s] = 0 ;
+    close_fd(fd) ;
+
+    char const *p = strstr(buf, "flags:") ;
+    if (!p)
+        return -1 ;
+
+    p += flen ;
+    while (*p == ' ' || *p == '\t') p++ ;
+
+    uint32_t flags ;
+    if (!u32_oscan(p, &flags))
+        return -1 ;
+
+    return (int)(flags & O_ACCMODE) ;
+}
+
+static int proc_holds_reader(char const *piddir, struct stat const *want)
+{
+    size_t plen = strlen(piddir) ;
+    char fddir[plen + 4] ;
+    auto_strings(fddir, piddir, "/fd") ;
+
+    DIR *dir = opendir(fddir) ;
+    if (!dir)
+        return 0 ;
+
+    int hit = 0, err = 0 ;
+    struct dirent *d ;
+    errno = 0 ;
+
+    while (!hit && (d = readdir(dir))) {
+
+        if (d->d_name[0] == '.')
+            continue ;
+
+        size_t flen = strlen(fddir), nlen = strlen(d->d_name) ;
+        char path[flen + 1 + nlen + 1] ;
+        auto_strings(path, fddir, "/", d->d_name) ;
+
+        struct stat st ;
+        if (stat(path, &st) < 0) {
+            errno = 0 ;
+            continue ; // raced with a close
+        }
+
+        if (st.st_dev != want->st_dev || st.st_ino != want->st_ino)
+            continue ;
+
+        if (fd_accmode(piddir, d->d_name) != O_WRONLY)
+            hit = 1 ;
+
+        errno = 0 ;
+    }
+
+    if (!hit && errno)
+        err = errno ;
+
+    dir_close(dir) ;
+
+    if (err) {
+        errno = err ;
+        hit = 0 ;
+    }
+
+    return hit ;
+}
+
+int driver_scandir_pidfd(uid_t uid, pid_t *pid_out, int *pidfd_out)
+{
+    *pid_out = 0 ;
+    *pidfd_out = -1 ;
+
+    _cleanup_strbuf_ strbuf scandir = STRBUF_ZERO ;
+
+    if (set_livescan(&scandir, uid) <= 0)
+        return (errno = ENOMEM, -1) ;
+
+    char fifo[scandir.len + SS_SVSCAN_LEN + USERD_CONTROL_LEN + 1] ;
+    auto_strings(fifo, scandir.s, SS_SVSCAN, USERD_CONTROL) ;
+
+    struct stat want ;
+    if (stat(fifo, &want) < 0)
+        return errno == ENOENT ? 0 : -1 ;
+
+    DIR *proc = opendir("/proc") ;
+    if (!proc)
+        return -1 ;
+
+    int found = 0, err = 0 ;
+    struct dirent *d ;
+    errno = 0 ;
+
+    while (!found && (d = readdir(proc))) {
+
+        uint32_t pid ;
+        if (!u32_scan_strict(d->d_name, &pid) || !pid) {
+            errno = 0 ;
+            continue ;
+        }
+
+        char piddir[6 + PID_FMT + 1] ;
+        auto_strings(piddir, "/proc/", d->d_name) ;
+
+        struct stat pst ;
+        if (stat(piddir, &pst) < 0 || pst.st_uid != uid) {
+            errno = 0 ;
+            continue ;
+        }
+
+        if (!proc_holds_reader(piddir, &want)) {
+            errno = 0 ;
+            continue ; // not it, or could not tell: either way not a candidate
+        }
+
+        int fd = pidfd_open((pid_t)pid, 0) ;
+        if (fd < 0) {
+            errno = 0 ;
+            continue ; // died between the scan and here
+        }
+
+        // be paranoid about race condition
+        if (!proc_holds_reader(piddir, &want) || fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+            close_fd(fd) ;
+            errno = 0 ;
+            continue ;
+        }
+
+        *pid_out = (pid_t)pid ;
+        *pidfd_out = fd ;
+        found = 1 ;
+    }
+
+    if (!found && errno)
+        err = errno ;
+
+    dir_close(proc) ;
+
+    if (err)
+        return (errno = err, -1) ;
+
+    return found ;
+}
+
 static void build_ssexec(ssexec_t *info, uid_t uid)
 {
     info->owner = uid ;
@@ -155,7 +318,7 @@ static void driver_scandir_up(uid_t uid, int notif_wfd)
     on_scandir_signal('d', snotif, &info) ;
     do_scandir_start(0, 0, &info) ;
 
-    flog_dieusys(LOG_EXIT_SYS, "start scandir for user %u", uid) ;
+    flog_die(LOG_EXIT_SYS, "scandir start returned for user %u without exec'ing -- a scandir may have appeared since the probe", uid) ;
 }
 
 static void driver_trees_up(uid_t uid)
@@ -243,90 +406,108 @@ static void guardian_main(uid_t uid, int readyfd)
     char runtime_dir[sizeof(SS_TOOLS_USERD_RUNTIME_BASE) + 1 + UID_FMT] ;
     auto_strings(runtime_dir, SS_TOOLS_USERD_RUNTIME_BASE, "/", uidstr) ;
 
-    /** Build the per-user environment BEFORE forking the scandir: setenv() the stable
-     * per-user defaults into our own environment so the scandir start (and every
-     * service) inherits them; 66 layers the user's ~/.66/environment on top, which
-     * wins — no envdir, no `-e`. A failure aborts bring-up: the env
-     * is the point. */
     if (!userenv_build(uid, runtime_dir))
         log_dieusys(LOG_EXIT_SYS, "build user environment for uid: ", uidstr) ;
 
-    int p[2] ;
-    if (pipe2(p, O_CLOEXEC) < 0)
-        log_dieusys(LOG_EXIT_SYS, "pipe2") ;
+    pid_t scandir = 0 ;
+    int svfd = -1, adopted = 0 ;
 
-    pid_t scandir = fork() ;
-    if (scandir < 0)
-        log_dieusys(LOG_EXIT_SYS, "fork scandir") ;
+    int up = driver_scandir_ok(uid) ;
+    if (up < 0)
+        log_dieusys(LOG_EXIT_SYS, "probe the scandir of uid: ", uidstr) ;
 
-    if (!scandir) {
-        close(p[0]) ;
-        guardian_sigunblock(SIGTERM, 0) ;
-        driver_scandir_up(uid, p[1]) ; // becomes 66-scandir; never returns
-        flog_die(LOG_EXIT_SYS, "scandir child returned for user %u", uid) ;
-    }
-    close(p[1]) ;
+    if (up) {
 
-    int svfd = pidfd_open(scandir, 0) ;
-    if (svfd < 0 || fcntl(svfd, F_SETFD, FD_CLOEXEC) < 0) {
-        log_warnusys("pidfd_open on scandir") ;
-        if (svfd >= 0)
-            close(svfd) ;
-        close(p[0]) ;
-        close(sigfd) ;
-        kill(scandir, SIGKILL) ;
-        process_wait(scandir, 0) ;
-        _exit(LOG_EXIT_SYS) ;
+        int r = driver_scandir_pidfd(uid, &scandir, &svfd) ;
+        if (r < 0)
+            log_dieusys(LOG_EXIT_SYS, "look up the running scandir of uid: ", uidstr) ;
+
+        if (!r)
+            flog_die(LOG_EXIT_SYS, "scandir of user %u is up but no process of that user reads its control fifo -- refusing to drive a scandir that cannot be supervised", uid) ;
+
+        adopted = 1 ;
+        flog_trace("adopted running scandir (pid %u) of user %u -- this guardian did not start it", (unsigned int)scandir, uid) ;
     }
 
-    /** bring-up: gate on the readiness byte, but also watch the scandir dying
-     * before it notifies (EOF / pidfd) and a stop arriving mid-bring-up. */
-    struct pollfd pfd[3] = {
-        { p[0], POLLIN, 0 }, // readiness pipe
-        { svfd, POLLIN, 0 }, // scandir death
-        { sigfd, POLLIN, 0 }, // stop request
-    } ;
+    if (!adopted) {
 
-    int ready = 0, stop = 0 ;
+        int p[2] ;
+        if (pipe2(p, O_CLOEXEC) < 0)
+            log_dieusys(LOG_EXIT_SYS, "pipe2") ;
 
-    while (!ready && !stop) {
+        scandir = fork() ;
+        if (scandir < 0)
+            log_dieusys(LOG_EXIT_SYS, "fork scandir") ;
 
-        if (poll(pfd, 3, -1) < 0) {
-            if (errno == EINTR)
-                continue ;
-            break ;
+        if (!scandir) {
+            close(p[0]) ;
+            guardian_sigunblock(SIGTERM, 0) ;
+            driver_scandir_up(uid, p[1]) ; // becomes 66-scandir; never returns
+            flog_die(LOG_EXIT_SYS, "scandir child returned for user %u", uid) ;
+        }
+        close(p[1]) ;
+
+        svfd = pidfd_open(scandir, 0) ;
+        if (svfd < 0 || fcntl(svfd, F_SETFD, FD_CLOEXEC) < 0) {
+            log_warnusys("pidfd_open on scandir") ;
+            if (svfd >= 0)
+                close(svfd) ;
+            close(p[0]) ;
+            close(sigfd) ;
+            kill(scandir, SIGKILL) ;
+            process_wait(scandir, 0) ;
+            _exit(LOG_EXIT_SYS) ;
         }
 
-        if (pfd[0].revents & POLLIN) {
+        /** bring-up: gate on the readiness byte, but also watch the scandir dying
+         * before it notifies (EOF / pidfd) and a stop arriving mid-bring-up. */
+        struct pollfd pfd[3] = {
+            { p[0], POLLIN, 0 }, // readiness pipe
+            { svfd, POLLIN, 0 }, // scandir death
+            { sigfd, POLLIN, 0 }, // stop request
+        } ;
 
-            char buf[16] ;
-            ssize_t r = io_read(p[0], buf, sizeof buf) ;
-            if (r > 0 && memchr(buf, '\n', (size_t)r)) {
-                ready = 1 ;
-            } else if (r <= 0)
-                break ; // EOF/error: scandir failed to notify
+        int ready = 0, stop = 0 ;
 
-        } else if (pfd[0].revents & POLLHUP)
-            break ; // writer gone: scandir failed
+        while (!ready && !stop) {
 
-        if (!ready && (pfd[1].revents & (POLLIN | POLLHUP)))
-            break ; // scandir died before readiness
+            if (poll(pfd, 3, -1) < 0) {
+                if (errno == EINTR)
+                    continue ;
+                break ;
+            }
 
-        if (pfd[2].revents & POLLIN)
-            stop = 1 ;
-    }
-    close(p[0]) ;
+            if (pfd[0].revents & POLLIN) {
 
-    if (!ready) {
-        /** Failed to come up, or stop requested before readiness: make sure the
-         * scandir is gone, then exit. The daemon's watcher fires either way. */
-        if (stop) log_info("stop for user: ", uidstr, " before readiness") ;
-        else log_warn("scandir for user: ", uidstr, " failed to signal readiness") ;
-        kill(scandir, SIGKILL) ; // SIGKILL: the blocking reap below must not hang on a wedged scandir
-        process_wait(scandir, 0) ;
-        close(svfd) ;
-        close(sigfd) ;
-        _exit(stop ? 0 : LOG_EXIT_SYS) ;
+                char buf[16] ;
+                ssize_t r = io_read(p[0], buf, sizeof buf) ;
+                if (r > 0 && memchr(buf, '\n', (size_t)r)) {
+                    ready = 1 ;
+                } else if (r <= 0)
+                    break ; // EOF/error: scandir failed to notify
+
+            } else if (pfd[0].revents & POLLHUP)
+                break ; // writer gone: scandir failed
+
+            if (!ready && (pfd[1].revents & (POLLIN | POLLHUP)))
+                break ; // scandir died before readiness
+
+            if (pfd[2].revents & POLLIN)
+                stop = 1 ;
+        }
+        close(p[0]) ;
+
+        if (!ready) {
+            /** Failed to come up, or stop requested before readiness: make sure the
+             * scandir is gone, then exit. The daemon's watcher fires either way. */
+            if (stop) log_info("stop for user: ", uidstr, " before readiness") ;
+            else log_warn("scandir for user: ", uidstr, " failed to signal readiness") ;
+            kill(scandir, SIGKILL) ; // SIGKILL: the blocking reap below must not hang on a wedged scandir
+            process_wait(scandir, 0) ;
+            close(svfd) ;
+            close(sigfd) ;
+            _exit(stop ? 0 : LOG_EXIT_SYS) ;
+        }
     }
 
     // supervisor up: start the user's enabled trees, then supervise.
@@ -373,7 +554,9 @@ static void guardian_main(uid_t uid, int readyfd)
                 log_warn("scandir for user: ", uidstr, " did not exit on quit; killing") ;
                 kill(scandir, SIGKILL) ;
             }
-            process_wait(scandir, 0) ;
+
+            if (!adopted)
+                process_wait(scandir, 0) ;
             close(svfd) ;
             close(sigfd) ;
             _exit(0) ;
@@ -382,7 +565,8 @@ static void guardian_main(uid_t uid, int readyfd)
         if (sup[0].revents & (POLLIN | POLLHUP)) {
             // scandir died on its own; the guardian follows it out.
             log_info("scandir for user: ", uidstr, " exited; guardian following") ;
-            process_wait(scandir, 0) ;
+            if (!adopted)
+                process_wait(scandir, 0) ;
             close(svfd) ;
             close(sigfd) ;
             _exit(0) ;

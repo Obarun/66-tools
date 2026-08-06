@@ -23,8 +23,22 @@
  * @brief Fork the per-user guardian.
  *
  * The daemon forks once; the child becomes the guardian. The guardian `setsid`s,
- * builds the per-user environment, then forks the scandir child (which becomes
- * `66-scandir` with the readiness pipe), gates on readiness — an EOF on the pipe
+ * builds the per-user environment, then either adopts an already running scandir or
+ * starts one.
+ *
+ * ADOPTION: a scandir may already be up for @uid — a previous guardian died and left
+ * its own behind, or something else started one. `66 scandir start` is idempotent and
+ * returns success WITHOUT exec'ing in that case, so forking for it would leave the
+ * child with nothing to become. The guardian therefore probes with
+ * driver_scandir_ok() first and, when one is up, resolves it with
+ * driver_scandir_pidfd(), which hands back a pidfd already bound to the process reading
+ * the control fifo, and skips the readiness gate. An adopted scandir is already ready.
+ * It refuses to proceed if that reader cannot be identified. An adopted scandir is not
+ * a child of the guardian: its death is seen through the pidfd and it is never reaped,
+ * since that belongs to init.
+ *
+ * Otherwise it forks the scandir child (which becomes `66-scandir` with the readiness
+ * pipe), gates on readiness — an EOF on the pipe
  * or the svscan dying first means the supervisor failed — runs `66 tree start`,
  * then signals @readyfd and supervises the svscan until it dies or a stop is
  * requested via `SIGTERM` (consumed through a signalfd so it is never lost to a
@@ -90,6 +104,52 @@ extern int driver_guardian_stop(pid_t guardian_pid) ;
  *         is not set to a single fixed code; it holds the source-dependent value.
  */
 extern int driver_scandir_ok(uid_t uid) ;
+
+/**
+ * @brief Resolve @uid's running 66-scandir and pin it behind a pidfd.
+ *
+ * A scandir publishes no pidfile, so it is identified by the process that holds its
+ * control fifo (`<SS_LIVE>/scandir/<uid>` + `SS_SVSCAN` + `USERD_CONTROL`) open **for
+ * reading**: the fifo's `(st_dev, st_ino)` pair is compared against every descriptor of
+ * every candidate, and the access mode read from `/proc/<pid>/fdinfo/<n>` settles which
+ * side of the pipe it is. Matching on `argv` instead would rely on a command line that
+ * is not a contract.
+ *
+ * The read end is what distinguishes the supervisor from its callers: every client of
+ * the control protocol opens the same fifo WRITE-ONLY to talk to it (`svc_scandir_send`,
+ * and `svc_scandir_ok` which driver_scandir_ok() itself uses), so a plain `(dev, ino)`
+ * match would also return the pid of a `66 scandir` command in flight. The scandir holds
+ * both ends — it keeps a writer open so the fifo never reaches EOF — hence every
+ * descriptor of a candidate is examined rather than stopping at the first hit.
+ *
+ * Only processes whose EFFECTIVE uid is @uid are considered, and that test runs before
+ * any descriptor is looked at: adopting a scandir owned by another user would hand this
+ * user's session over to a foreign process.
+ *
+ * The returned pidfd is what makes the answer usable: a bare pid would reopen the race
+ * the scan just closed, since the process could die and its pid be recycled before the
+ * caller signals it. The pid is re-checked behind the pidfd before returning, so the
+ * descriptor is bound to the process that really reads the fifo. It is `FD_CLOEXEC` and
+ * belongs to the caller, which must `close()` it.
+ *
+ * A pure probe — no fork, no signal, no privilege change — but it walks `/proc`, so it
+ * must run while the caller can still read other processes' descriptors, i.e. before
+ * dropping privileges.
+ *
+ * @param[in] uid UID whose scandir is looked up.
+ * @param[out] pid_out Set to the pid on success, 0 otherwise. Never NULL.
+ * @param[out] pidfd_out Set to the pidfd on success, -1 otherwise. Never NULL.
+ * @return 1 on success; @pid_out and @pidfd_out are set.
+ * @return 0 if no process of @uid reads the control fifo, or if the fifo itself is
+ *         absent (`ENOENT` from `stat(2)`). A scandir that is up but whose reader
+ *         cannot be seen also lands here — the caller must not read this as "nothing is
+ *         running", only as "nothing that can be supervised".
+ * @retval -1 on error, with errno set in every case: ENOMEM if `set_livescan()` failed,
+ *         the `stat(2)` errno if the fifo could not be stat'ed for a reason other than
+ *         ENOENT, the `opendir(3)` errno if `/proc` could not be opened, or the
+ *         `readdir(3)` errno if the walk itself failed.
+ */
+extern int driver_scandir_pidfd(uid_t uid, pid_t *pid_out, int *pidfd_out) ;
 
 /**
  * @brief Start the user's 66 services iff this REGISTER is the first session.
