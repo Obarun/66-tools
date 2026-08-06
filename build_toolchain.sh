@@ -6,7 +6,8 @@ if [ "$1" == "commit" ]; then
     tag=0
 fi
 
-oblibs_tag="0.3.4.0"
+oblibs_tag="0.4.0.0"
+ss_tag="0.9.0.0"
 
 check_tag(){
 
@@ -23,7 +24,21 @@ build_oblibs() {
 
     check_tag "${oblibs_tag}"
 
-    meson setup builddir -D prefix=/usr || return 1
+    meson setup builddir || return 1
+    meson compile -C builddir || return 1
+    meson install -C builddir || return 1
+    cd ..
+}
+
+## 66
+build_66() {
+
+    git clone https://git.obarun.org/obarun/66
+    cd 66
+
+    check_tag "${ss_tag}"
+
+    meson setup builddir || return 1
     meson compile -C builddir || return 1
     meson install -C builddir || return 1
     cd ..
@@ -39,3 +54,4 @@ _run() {
 
 ## do it
 _run build_oblibs
+_run build_66

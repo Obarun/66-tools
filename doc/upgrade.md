@@ -2,6 +2,87 @@
 
 ---
 
+# In 0.2.0.0
+
+- Adapt to `oblibs` 0.4.0.0
+- Depends on `lib66` 0.9.0.0
+
+## Overview
+
+This release makes 66-tools fully `oblibs`-native. The direct dependencies on
+`skalibs` and `execline` are both gone, the legacy `configure`/`make` build has
+been removed in favor of meson, and `66-ns` has been rewritten with proper
+supervision under a pid namespace.
+
+## Breaking changes
+
+- The legacy `configure` and `make` build system has been removed. The project
+  is now built exclusively with meson (`1c01296`). See `INSTALL.md`.
+- The `skalibs` dependency has been dropped entirely; `oblibs` is self-contained
+  and does not depend on it (`ff6bfbf`).
+- The `execline` dependency has been dropped: `execl-cmdline` no longer links it
+  (`796df87`). No binary links `execline` anymore.
+- `66-ns` now needs `lib66` at build time (`1ab255e`): it includes
+  `<66/config.h>` for the compile-time paths. It links no symbol from it, so
+  `lib66` is not a runtime dependency of that binary.
+- `lib66` is now a mandatory dependency of the project, and `libpam` becomes a
+  new one: `66-userd`, `66-userctl` and `pam_userd.so` are built
+  unconditionally.
+
+## New features
+
+- [66-userd](66-userd.html), [66-userctl](66-userctl.html) and
+  [pam_userd](pam_userd.html): session and user tracking for a 66 system,
+  without D-Bus. A PAM module reports the opening and the closing of a login
+  session to a daemon which, on the first login of a user, mounts the
+  runtime directory of that user and starts their `66-scandir` and enabled trees,
+  and on the last logout stops them. `66-userctl` is the query and power-action
+  CLI. The module is installed but never wired into the PAM stack by the package: see
+  [pam_userd](pam_userd.html), that step is mandatory.
+
+    When a scandir is already running for that user, a previous guardian died and
+    left its own behind, the `scandir@` module is still enabled, or one was started
+    by hand — it is adopted rather than started a second time, and the enabled trees
+    are brought up on it. Services already up are left running.
+
+- [66-ns](66-ns.html): supervision under a pid namespace. When a pid namespace
+  is requested, `66-ns` runs as pid 1 and acts as a transparent proxy for the
+  supervised daemon: it forwards the catchable control signals to the tracked
+  main, follows the real daemon across a double-fork, mirrors its exit code back
+  to the supervisor, and tears the namespace down once the service is gone. The
+  new `-p`, `--pidfile` option makes supervision authoritative (`4e8f4be`,
+  `a38366d`).
+- Long options are now available for every tool, e.g. `-h`, `--help`
+  (`92436f3`, `cdc900b`). `execl-toc` is intentionally left short-only, as its
+  options mirror `mount(8)`.
+
+## Bug Fixes
+
+- `execl-toc`: detect a group name lookup failure that previously went unnoticed
+  (`4b4a0ba`).
+- `66-dbus-launch`: bind the socket behind an exclusive lock, so a concurrent
+  launch on the same path gets a clean `EBUSY` instead of stealing the path from
+  the running instance (`3e4c272`).
+- `66-dbus-launch`: reject a notification file descriptor greater than
+  `INT_MAX` (`ca039f2`).
+- `66-which`: fix a leak of the `realpath` result (`fa9db26`).
+- `66-dbus-launch`: fix a swapped `io_read` argument order (`fa9db26`).
+
+## Enhancements
+
+- Ported every tool from `skalibs` to the new `oblibs` interfaces (`fa9db26`).
+- `66-ns` has been rewritten as a set of focused, modular translation units
+  backed by `oblibs` and `lib66` (`1ab255e`).
+- `execl-cmdline` reimplements `el_semicolon`/`el_getstrict` natively on
+  `oblibs` (`796df87`).
+- `66-dbus-launch` migrates its service hash table from uthash to the `oblibs`
+  intrusive hash table (`6866b5e`).
+- Documentation and CI are aligned on the `66` project: lowdown HTML/man rules,
+  a mkdocs stack and matching pipeline stages (`dcaa800`), and the build
+  instructions are unified into a single `INSTALL.md` (`7925ab1`).
+
+---
+
 # In 0.1.2.0
 
 - Adapt to `oblibs` 0.3.4.0

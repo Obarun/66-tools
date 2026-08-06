@@ -1,4 +1,4 @@
-![GitLabl Build Status](https://git.obarun.org/Obarun/66-tools/badges/master/pipeline.svg)
+![latest release](https://git.obarun.org/Obarun/66-tools/-/badges/release.svg)
 
 # 66-tools - A set of helper tools
 
@@ -12,15 +12,12 @@ See the INSTALL.md file.
 
 ## Documentation
 
-Online [documentation](https://web.obarun.org/software/66-tools/)
+Online [documentation](https://docs.obarun.org/66-tools/latest)
 
 ## Contact information
 
 * Email:
   Eric Vidal `<eric@obarun.org>`
-
-* Mailing list
-  https://obarun.org/mailman/listinfo/66_obarun.org/
 
 * Web site:
   https://web.obarun.org/
@@ -30,4 +27,4 @@ Online [documentation](https://web.obarun.org/software/66-tools/)
 
 ## Supports the project
 
-Please consider to make [donation](https://web.obarun.org/index.php?id=18)
+Please consider to make [donation](https://web.obarun.org/donate/)

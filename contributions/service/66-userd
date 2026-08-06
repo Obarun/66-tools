@@ -5,7 +5,10 @@ Depends = ( seatd )
 
 [Start]
 Notify = 3
-Execute = ( /usr/bin/66-userd -d 3 )
+Execute = ( /usr/bin/66-userd -d3 -v${Verbosity} )
+
+[Environment]
+Verbosity=!3
 
 [Event]
 EventType = service

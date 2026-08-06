@@ -10,7 +10,7 @@ To build and install the 66-tools project, you need:
 
 - `Ninja` (typically installed with Meson).
 
-- `oblibs` version `0.3.4.0` or later: [git.obarun.org/Obarun/oblibs](https://git.obarun.org/Obarun/oblibs).
+- `oblibs` version `0.4.0.0` or later: [git.obarun.org/Obarun/oblibs](https://git.obarun.org/Obarun/oblibs).
 
 - `66` version `0.9.0.0` or later: [git.obarun.org/Obarun/66](https://git.obarun.org/Obarun/66).
 
@@ -104,7 +104,6 @@ meson install -C build
 Meson supports a few environment variables for build customization, but passing options directly to meson setup is preferred for clarity:
 
 - `CC`: Overrides the compiler (e.g., `CC=clang meson setup build`). When cross-compiling, the `--cross-file` option may prefix the compiler with the target triplet.
-
 - `CFLAGS`, `CPPFLAGS`, `LDFLAGS`: Appended to Meson’s default flags. To override defaults, use Meson options or build variables instead.
 
 ## Build Variables
@@ -158,4 +157,4 @@ meson install -C build
 - For security-sensitive systems, consider enabling `enable-pie` to benefit from `ASLR`.
 
 - Documentation requires `lowdown`. If unavailable or `with-doc=false`, no documentation will be installed.
-</content>
+
