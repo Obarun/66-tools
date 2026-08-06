@@ -370,10 +370,23 @@ static void guardian_gc_cb(sse_watcher_t *w, void *data, int revents)
 
     user_t *u = data ;
     pid_t pid = u->guardian_pid ;
-    int wstat ;
+    int wstat = 0 ;
 
     if (pid > 0)
         process_wait(pid, &wstat) ;
+
+    if (pid > 0) {
+
+        if (WIFSIGNALED(wstat)) {
+
+            flog_warn("guardian of user %s (pid %u) was killed by signal %d", u->name, (unsigned int)pid, WTERMSIG(wstat)) ;
+
+        } else if (WIFEXITED(wstat) && WEXITSTATUS(wstat)) {
+
+            flog_warn("guardian of user %s (pid %u) exited with code %d", u->name, (unsigned int)pid, WEXITSTATUS(wstat)) ;
+
+        } else flog_trace("guardian of user %s (pid %u) exited", u->name, (unsigned int)pid) ;
+    }
 
     guardian_unarm(u) ;
     ready_unarm(u) ; // died before signalling readiness: release the channel
