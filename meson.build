@@ -1,6 +1,6 @@
 project('66-tools',
         'c',
-        version: '0.1.2.0',
+        version: '0.2.0.0',
         meson_version: '>=1.1.0',
         license: 'ISC',
         default_options: [
@@ -30,7 +30,7 @@ message('See INSTALL.md for detailed configuration instructions and warnings.')
 fs = import('fs')
 
 # Versioning
-version_oblibs = '>=0.3.4.0'
+version_oblibs = '>=0.4.0.0'
 version_66 = '>=0.9.0.0'
 
 # Compiler setup
