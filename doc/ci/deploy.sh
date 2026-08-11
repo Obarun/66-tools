@@ -37,7 +37,9 @@ mc ls "m/docs/${NAME}/" \
     | awk '{print $NF}' \
     | tr -d '/' \
     | grep -vE '^(latest|meta)$' \
-    | sort -V > /tmp/versions.txt
+    | awk '{ key = $0 ; sub(/^v/, "", key) ; print key "\t" $0 }' \
+    | sort -V \
+    | cut -f2- > /tmp/versions.txt
 
 LATEST=$(tail -n1 /tmp/versions.txt)
 VERSIONS=$(awk '{printf "\"%s\",",$0}' /tmp/versions.txt | sed 's/,$//')
