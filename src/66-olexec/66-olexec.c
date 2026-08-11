@@ -29,6 +29,7 @@
 #include <oblibs/io.h>
 #include <oblibs/spawn.h>
 #include <oblibs/process.h>
+#include <oblibs/attributes.h>
 
 #define TTY_LEN 256
 #define PREFIX "/sys/class/tty/"
@@ -136,9 +137,9 @@ int main(int argc, char const *const *argv,char const *const *envp)
     close(1) ;
     fd = io_open(dev, O_RDWR) ;
     if (fd < 0) log_dieusys(LOG_EXIT_SYS,"open: ",dev) ;
-    dup(fd) ;
+    int attribute_unused f = dup(fd) ;
     close(2) ;
-    dup(fd) ;
+    int attribute_unused d = dup(fd) ;
 
     /** we lock the fd anyway, maybe is useless to use it */
     if (ioctl(fd,TIOCEXCL) == -1) log_dieusys(LOG_EXIT_SYS,"get exclusivity of: ",dev) ;
