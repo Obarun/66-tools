@@ -200,10 +200,10 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, char
     // Re-export the daemon-normalized XDG context (TYPE/CLASS/SEAT/VTNR).
     reexport_session_context(pamh, sock, reply) ;
 
-    /** Export XDG_RUNTIME_DIR=<base>/<uid>, but only after
-     * verifying the daemon really brought the runtime dir up and that it is owned
-     * by this user. No fallback: if the dir is absent or not owned by uid, set
-     * nothing and warn — a wrong or guessed XDG_RUNTIME_DIR is worse than none. */
+    /** Export XDG_RUNTIME_DIR=<base>/<uid> and DBUS_SESSION_BUS_ADDRESS, but only
+     * after verifying the daemon really brought the runtime dir up and that it is
+     * owned by this user. No fallback: if the dir is absent or not owned by uid,
+     * set nothing and warn — a wrong or guessed value is worse than none. */
     char rdenv[sizeof("XDG_RUNTIME_DIR=" SS_TOOLS_USERD_RUNTIME_BASE "/") + UID_FMT] ;
     auto_strings(rdenv, "XDG_RUNTIME_DIR=" SS_TOOLS_USERD_RUNTIME_BASE "/", uid) ;
 
@@ -214,8 +214,14 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, char
         if (pam_putenv(pamh, rdenv) != PAM_SUCCESS)
             pam_syslog(pamh, LOG_WARNING, "pam_putenv(XDG_RUNTIME_DIR) failed") ;
 
+        char busenv[sizeof("DBUS_SESSION_BUS_ADDRESS=" SS_TOOLS_USERD_DBUS_ADDR_PREFIX SS_TOOLS_USERD_RUNTIME_BASE "/bus") + UID_FMT] ;
+        auto_strings(busenv, "DBUS_SESSION_BUS_ADDRESS=" SS_TOOLS_USERD_DBUS_ADDR_PREFIX, rdpath, "/bus") ;
+
+        if (pam_putenv(pamh, busenv) != PAM_SUCCESS)
+            pam_syslog(pamh, LOG_WARNING, "pam_putenv(DBUS_SESSION_BUS_ADDRESS) failed") ;
+
     } else {
-        pam_syslog(pamh, LOG_WARNING, "runtime dir %s absent or not owned by uid %s; XDG_RUNTIME_DIR not set", rdpath, uid) ;
+        pam_syslog(pamh, LOG_WARNING, "runtime dir %s absent or not owned by uid %s; XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS not set", rdpath, uid) ;
     }
 
     pam_syslog(pamh, LOG_INFO, "registered session %s for uid %s", reply, uid) ;

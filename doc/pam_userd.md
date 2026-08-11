@@ -72,8 +72,11 @@ After a successful REGISTER, the module puts these into the PAM environment, so 
 | `XDG_SEAT` | the normalized seat, when non-empty |
 | `XDG_VTNR` | the normalized VT number, only when greater than 0 |
 | `XDG_RUNTIME_DIR` | `%%userd_runtime_base%%/<uid>`, **only** after verifying that the directory exists and is owned by this uid |
+| `DBUS_SESSION_BUS_ADDRESS` | `%%userd_dbus_addr_prefix%%%%userd_runtime_base%%/<uid>/bus`, under the same verification |
 
-`XDG_RUNTIME_DIR` has no fallback on purpose. If the daemon did not bring the runtime directory up, or if it is not owned by the logging-in user, the module sets nothing and logs a warning. An `XDG_RUNTIME_DIR` pointing at a directory that does not exist, or that belongs to someone else, is worse than none at all.
+`XDG_RUNTIME_DIR` has no fallback on purpose. If the daemon did not bring the runtime directory up, or if it is not owned by the logging-in user, the module sets nothing and logs a warning. An `XDG_RUNTIME_DIR` pointing at a directory that does not exist, or that belongs to someone else, is worse than none at all. `DBUS_SESSION_BUS_ADDRESS` follows the same rule, and for the same reason it is gated on the runtime directory only: the socket itself appears asynchronously, when the bus service of the user comes up under its scandir.
+
+This is the very address the guardian gives to the scandir, so the login session and the services of the user talk to the same bus. Left unset, a client is at the mercy of the fallback of its D-Bus implementation: `libdbus` tries `$XDG_RUNTIME_DIR/bus`, which is the right socket only as long as `userd-dbus-addr-prefix` has not been pointed somewhere else, and falls through to autolaunch when that socket is absent.
 
 Note that `XDG_VTNR` is only ever passed through, never invented: *66-userd* does not query the X server to derive a VT number from a display. A session whose display manager did not set `XDG_VTNR` keeps `VTNR 0` and is still correctly attached to its seat.
 
