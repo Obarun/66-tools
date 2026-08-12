@@ -2,6 +2,26 @@
 
 ---
 
+# In 0.2.0.1
+
+## Overview
+
+This is a bug fix release.
+
+## Bug Fixes
+
+- [pam_userd](pam_userd.html): export `DBUS_SESSION_BUS_ADDRESS` into the login
+  session (`87cb9cf`). The guardian builds that address for the scandir branch,
+  but the session of the user never received it, so a D-Bus client started from
+  the session was left to the fallback of its implementation. The module now
+  exports the very address the guardian gives to the scandir, gated on the same
+  runtime directory check as `XDG_RUNTIME_DIR`.
+- `66-olexec`: suppress a compilation warning on the return value of `dup()`
+  (`e5e2283`).
+- Fix the version comparison of the documentation deployment (`7841edb`).
+
+---
+
 # In 0.2.0.0
 
 - Adapt to `oblibs` 0.4.0.0
