@@ -65,32 +65,36 @@ release:
 
 docbuild:
   stage: docbuild
-  image:
-    name: squidfunk/mkdocs-material:latest
-    entrypoint: [""]
-  before_script:
-    - apk add --no-cache build-base meson ninja lowdown
   script:
-    - meson setup build -D with-doc=true -D doc-only=true
-    - meson compile -C build doc
-    - mkdocs build -f build/doc/mkdocs/mkdocs.yml -d "$PWD/site" --clean
+  - meson setup build -D with-doc=true -D doc-only=true
+  - meson compile -C build doc
+  - mkdir -p doc-src
+  - cp build/doc/mkdocs/docs/*.md doc/doc.yml doc-src/
+
   artifacts:
     paths:
-      - site/
+      - doc-src/
     expire_in: 1 week
+
   rules:
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web"
 
-docdeploy:
+# The theme, the mkdocs configuration and the deployment live in
+# obdev/docs-builder. Only a tag publishes: without one DOC_VERSION would be
+# empty and docs-builder refuses to start.
+docpublish:
   stage: docdeploy
-  image: alpine:latest
   needs:
     - job: docbuild
-      artifacts: true
-  before_script: []
-  script:
-    - sh doc/ci/deploy.sh
+      artifacts: false
+  trigger:
+    project: obdev/docs-builder
+    strategy: depend
+
+  variables:
+    DOC_PROJECT_ID: $CI_PROJECT_ID
+    DOC_NAME: $CI_PROJECT_NAME
+    DOC_VERSION: $CI_COMMIT_TAG
+
   rules:
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web"

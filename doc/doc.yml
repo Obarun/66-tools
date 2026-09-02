@@ -1,0 +1,33 @@
+# Editorial identity of the documentation site, consumed by obdev/docs-builder.
+#
+# The theme, the mkdocs configuration and the deployment live there, not here.
+# This project only produces its markdown and this manifest.
+#
+# The four fields are required. The name and the version are not here: they come
+# from CI_PROJECT_NAME and CI_COMMIT_TAG, one source, and the name must stay
+# equal to the bucket prefix.
+description: Helper tools for the 66 service manager
+repo_url: https://git.obarun.org/Obarun/66-tools
+repo_name: Obarun/66-tools
+nav:
+- Home: index.md
+- Tools:
+  - 66-clock: 66-clock.md
+  - 66-getenv: 66-getenv.md
+  - 66-gnwenv: 66-gnwenv.md
+  - 66-olexec: 66-olexec.md
+  - 66-which: 66-which.md
+  - 66-writenv: 66-writenv.md
+  - 66-yeller: 66-yeller.md
+  - 66-ns: 66-ns.md
+  - 66-dbus-launch: 66-dbus-launch.md
+- Session tracking:
+  - 66-userd: 66-userd.md
+  - 66-userctl: 66-userctl.md
+  - pam_userd: pam_userd.md
+- Execline helpers:
+  - execl-cmdline: execl-cmdline.md
+  - execl-subuidgid: execl-subuidgid.md
+  - execl-toc: execl-toc.md
+- Reference:
+  - Changelog: upgrade.md
