@@ -15,14 +15,6 @@ conf.set_quoted('SS_TOOLS_BINPREFIX', BINDIR + '/')
 conf.set_quoted('SS_TOOLS_EXTBINPREFIX', '')
 conf.set_quoted('SS_TOOLS_LIBEXECPREFIX', LIBEXECDIR + '/')
 
-if get_option('enable-dbus') == 'basu'
-  conf.set('DEFINE_DBUS_LIB', '#define SS_TOOLS_USE_BASU')
-elif get_option('enable-dbus') == 'elogind'
-  conf.set('DEFINE_DBUS_LIB', '#define SS_TOOLS_USE_ELOGIND')
-else
-  conf.set('DEFINE_DBUS_LIB', '')
-endif
-
 configure_file(
   input: 'config.h.in',
   output: 'config.h',

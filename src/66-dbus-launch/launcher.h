@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <oblibs/attributes.h>
 #include <oblibs/sse.h>
 #include <oblibs/hash.h>
 
@@ -36,9 +37,8 @@ struct launcher_s
 	char machineid[MACHINEID + 2] ; // machine id string
 	uid_t uid ; // uid of the owner of the process
 	gid_t gid ; // gid of the owner of the process
-	sd_bus *bus_controller ;
-	sd_bus *bus_regular ;
-	pid_t bpid ; // pid of the broker
+	odbus *bus ;
+	pid_t bpid ; // pid of the broker, zero once it has been reaped
 	int sync[2] ; // synchronization between parent and child
 	sse_epoll_t p ; // event loop
 	sse_watcher_t wsignal ; // signal watcher (replaces selfpipe)
@@ -54,17 +54,16 @@ DBS_DEFINE_CLEANUP(launcher_t *, launcher_free) ;
 
 extern int launcher_new(launcher_t_ref *launcher, hash_t *hservice, int socket) ;
 extern int launcher_setup(launcher_t *launcher) ;
-extern int launcher_run_broker(launcher_t *launcher) ;
+extern void launcher_run_broker(launcher_t *launcher) attribute_noreturn ;
 extern int launcher_add_listener(launcher_t *launcher) ;
-extern int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error) ;
-extern int launcher_on_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error) ;
-extern void launcher_update_environment(launcher_t *launcher, sd_bus_message *m) ;
+extern int launcher_on_message(odbus_message *m, void *userdata) ;
+extern int launcher_on_reload_config(odbus_message *message, void *userdata) ;
+extern void launcher_update_environment(launcher_t *launcher, odbus_message *m) ;
 extern void launcher_get_machine_id(launcher_t *launcher) ;
 extern int launcher_drop_permissions(launcher_t *launcher) ;
 extern int launcher_run(launcher_t *launcher) ;
 extern int launcher_fork(launcher_t *launcher) ;
 extern int launcher_loop(launcher_t *launcher) ;
-extern int launcher_connect(launcher_t *launcher) ;
 
 #endif
 

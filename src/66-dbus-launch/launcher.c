@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include "launcher.h"
 #include "dbus.h"
@@ -33,6 +34,9 @@
 
 #include <errno.h>
 
+#include <oblibs/attributes.h>
+#include <oblibs/exec.h>
+#include <oblibs/fd.h>
 #include <oblibs/log.h>
 #include <oblibs/string.h>
 #include <oblibs/strbuf.h>
@@ -43,6 +47,8 @@
 #include <66-tools/config.h>
 
 #include <66/constants.h>
+#include <66/environ.h>
+#include <66/status.h>
 #include <66/config.h>
 
 static void on_signal(sse_watcher_t *w, void *data, int event) ;
@@ -55,12 +61,11 @@ launcher_t *launcher_free(launcher_t *launcher)
 	if (!launcher)
 		return NULL ;
 	sse_free(&launcher->p) ;
-	close(launcher->fd_dbus) ;
-    dbs_close_unref(launcher->bus_controller) ;
-    dbs_close_unref(launcher->bus_regular) ;
+	close_fd(launcher->fd_dbus) ;
+	odbus_free(launcher->bus) ;
 	service_hash_free(launcher->hservice) ;
-	close(launcher->fd_controller_in) ;
-	close(launcher->fd_controller_out) ;
+	close_fd(launcher->fd_controller_in) ;
+	close_fd(launcher->fd_controller_out) ;
 	free(launcher) ;
 	return NULL ;
 }
@@ -84,7 +89,7 @@ int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
 	launcher->fd_controller_out= -1 ;
 	launcher->uid = getuid() ;
 	launcher->gid = getgid() ;
-	launcher->loopret = 1 ;
+	launcher->loopret = DBS_EXIT_MAIN ;
 	launcher->nservice = 1 ;
 	launcher_get_machine_id(launcher) ;
 
@@ -176,13 +181,16 @@ int launcher_fork(launcher_t *launcher)
 
 	{
 		// synchronize with child
-		close(launcher->sync[1]) ;
-		int dummy ;
-		do r = read(launcher->sync[0], &dummy, 1) ;
-		while ((r < 0) && (errno == EINTR)) ;
+		close_fd(launcher->sync[1]) ;
+		char dummy ;
+		r = io_read(launcher->sync[0], &dummy, 1) ;
 		if (r < 0)
-			log_warnu_return(DBS_EXIT_FATAL, "synchronize with child") ;
-		close(launcher->sync[0]) ;
+			log_warnusys_return(DBS_EXIT_FATAL, "synchronize with child") ;
+
+		if (!r)
+			log_warnu_return(DBS_EXIT_FATAL, "start the broker -- the child went away before signalling") ;
+
+		close_fd(launcher->sync[0]) ;
 	}
 
 	return 1 ;
@@ -193,26 +201,18 @@ int launcher_setup(launcher_t *launcher)
 	log_flow() ;
 
 	int r ;
-	if (sd_bus_new(&launcher->bus_controller) < 0)
-	 	log_warn_return(DBS_EXIT_FATAL, "sd_bus_new") ;
 
-	if (sd_bus_set_fd(launcher->bus_controller, launcher->fd_controller_in, launcher->fd_controller_in) < 0)
-		log_warnu_return(DBS_EXIT_FATAL, "set the file descriptors to use for bus communication") ;
+	if (!odbus_open(&launcher->bus, launcher->fd_controller_in))
+		log_warnusys_return(DBS_EXIT_FATAL, "open the controller bus") ;
 
-	if (sd_bus_add_object_vtable(launcher->bus_controller, NULL, "/org/bus1/DBus/Controller", "org.bus1.DBus.Controller", launcher_vtable, launcher) < 0)
-		log_warnusys_return(DBS_EXIT_FATAL, "sd_bus_add_object_vtable") ;
+	if (!odbus_set_object(launcher->bus, "/org/bus1/DBus/Controller", "org.bus1.DBus.Controller", launcher_methods, launcher))
+		log_warnusys_return(DBS_EXIT_FATAL, "serve the controller object") ;
 
-	if (sd_bus_start(launcher->bus_controller) < 0)
-		log_warnusys_return(DBS_EXIT_FATAL, "sd_bus_start") ;
-
-	if (sd_bus_add_filter(launcher->bus_controller, NULL, launcher_on_message, launcher) < 0)
-		log_warnusys_return(DBS_EXIT_FATAL, "sd_bus_add_filter") ;
+	if (!odbus_set_filter(launcher->bus, launcher_on_message, launcher))
+		log_warnusys_return(DBS_EXIT_FATAL, "set the controller bus filter") ;
 
 	if (!launcher_add_listener(launcher))
 		log_warnsys("AddListener failed") ;
-
-	if (launcher_connect(launcher) < 0)
-	 	log_warnusys_return(DBS_EXIT_FATAL, "connect to dbus socket") ;
 
 	service_sync_launcher_broker(launcher) ;
 
@@ -223,31 +223,16 @@ int launcher_setup(launcher_t *launcher)
 	return 1 ;
 }
 
-int launcher_connect(launcher_t *launcher)
+void launcher_run_broker(launcher_t *launcher)
 {
 	log_flow() ;
 
-	if (launcher->uid) {
-		if (sd_bus_open_user(&launcher->bus_regular) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "set user dbus address") ;
-	} else {
-		if (sd_bus_open_system(&launcher->bus_regular) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "set system dbus address") ;
-	}
-
-	return 1  ;
-}
-
-int launcher_run_broker(launcher_t *launcher)
-{
-	log_flow() ;
-
-	int r, flags ;
+	int r ;
 	char fd[I32_FMT] ;
 	fd[i32_fmt(fd, launcher->fd_controller_out)] = 0 ;
 
 	const char *const nargv[] = {
-		"/usr/bin/dbus-broker",
+		"dbus-broker",
 		"--controller",
 		fd,
 		"--machine-id",
@@ -270,30 +255,23 @@ int launcher_run_broker(launcher_t *launcher)
 		goto exit ;
 	}
 
-	flags = fcntl(launcher->fd_controller_out, F_GETFD) ;
-    if (flags < 0) {
-		log_warnusys("get flags of fd_controller_out") ;
-		goto exit ;
-	}
-
-	if (fcntl(launcher->fd_controller_out, F_SETFD, flags & ~FD_CLOEXEC) < 0){
-		log_warnusys("remove FD_CLOEXEC flag on fd_controller_out") ;
+	if (!uncloexec_fd(launcher->fd_controller_out)) {
+		log_warnusys("keep fd_controller_out across the exec") ;
 		goto exit ;
 	}
 
 	{
 		// synchronize with parent
-		do r = write(launcher->sync[1], "\n", 1) ;
-		while (r < 0 && (errno = EINTR)) ;
-		if (r < 0) {
+		char sign = '\n' ;
+
+		if (io_write(launcher->sync[1], &sign, 1) < 0) {
 			log_warnusys("synchronize with parent") ;
 			goto exit ;
 		}
-		close(launcher->sync[1]) ;
+		close_fd(launcher->sync[1]) ;
 	}
 
-	execve(nargv[0], (char *const *) nargv, (char *const *) environ) ;
-	log_warnusys_return(DBS_EXIT_FATAL, "exec dbus-broker") ;
+	exec_path_die(nargv[0], nargv, (char const *const *)environ) ;
 
 	exit:
 		_exit(1) ;
@@ -303,27 +281,38 @@ int launcher_add_listener(launcher_t *launcher)
 {
 	log_flow() ;
 
-	sd_bus_message *m = NULL ;
+	odbus_message *m = NULL ;
+	int r ;
 
-	if (sd_bus_message_new_method_call(launcher->bus_controller,
+	if (!odbus_message_new_method_call(launcher->bus,
 									   &m,
-									   NULL,
 									   "/org/bus1/DBus/Broker",
 									   "org.bus1.DBus.Broker",
-									   "AddListener") < 0)
+									   "AddListener"))
 		log_warnusys_return(DBS_EXIT_WARN, "call method org.bus1.DBus.Broker") ;
 
-	if (sd_bus_message_append(m, "oh", "/org/bus1/DBus/Listener/0", launcher->fd_dbus) < 0)
+	if (!odbus_message_append(m, "oh", "/org/bus1/DBus/Listener/0", launcher->fd_dbus)) {
+		odbus_message_free(m) ;
 		log_warnusys_return(DBS_EXIT_WARN, "append message") ;
+	}
 
-	if (policy(m) < 0)
+	if (!policy(m)) {
+		odbus_message_free(m) ;
 		log_warnusys_return(DBS_EXIT_WARN, "export policy") ;
+	}
 
-	sd_bus_error error = SD_BUS_ERROR_NULL ;
-	if (sd_bus_call(launcher->bus_controller, m, 0, &error, NULL) < 0)
-		log_warnu_return(DBS_EXIT_WARN, "sd_bus_call failed: ", error.name," ", error.message) ;
+	r = odbus_call(launcher->bus, m, DBS_DBUS_CALL_TIMEOUT_MS) ;
+	odbus_message_free(m) ;
 
-	sd_bus_message_unref(m) ;
+	if (!r) {
+
+		char const *name = odbus_error_name(launcher->bus) ;
+
+		if (name)
+			log_warnusys_return(DBS_EXIT_WARN, "AddListener, refused with: ", name) ;
+
+		log_warnusys_return(DBS_EXIT_WARN, "AddListener") ;
+	}
 
 	return 1 ;
 }
@@ -352,14 +341,15 @@ static void on_bus(sse_watcher_t *w, void *data, int event)
 	int r ;
 
 	if (event & (SSE_ERROR | SSE_HUP)) {
-		launcher->loopret = DBS_EXIT_FATAL ;
+		log_warn("the controller bus ", (event & SSE_HUP) ? "was closed by the broker" : "reported an error", " -- stopping") ;
+		collect_broker_death(launcher) ;
 		w->p->running = false ;
 		return ;
 	}
 
 	/* drain the controller bus: process requests until none is left */
 	do {
-		do r = sd_bus_process(launcher->bus_controller, NULL) ;
+		do r = odbus_process(launcher->bus) ;
 		while (r < 0 && errno == EINTR) ;
 		if (r < 0) {
 			log_warnusys("process bus") ;
@@ -372,7 +362,7 @@ static void on_bus(sse_watcher_t *w, void *data, int event)
 
 int launcher_loop(launcher_t *launcher)
 {
-	launcher->loopret = 1 ;
+	launcher->loopret = DBS_EXIT_MAIN ;
 
 	if (!sse_start_io(&launcher->p, &launcher->wbus, on_bus, launcher, launcher->fd_controller_in, SSE_READ, 0))
 		log_warnusys_return(DBS_EXIT_FATAL, "start controller bus watcher") ;
@@ -384,17 +374,16 @@ int launcher_loop(launcher_t *launcher)
 }
 
 // https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L491
-int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
+int launcher_on_message(odbus_message *m, void *userdata)
 {
 	log_flow() ;
 
-	(void)error ;
 	launcher_t *launcher = userdata ;
 
 	const char *obj_path ;
 	int suffix ;
 
-	obj_path = sd_bus_message_get_path(m) ;
+	obj_path = odbus_message_get_path(m) ;
 
 	if (!obj_path)
 		return 0 ;
@@ -403,10 +392,13 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 
 	if (!suffix) {
 
-		if (sd_bus_message_is_signal(m, "org.bus1.DBus.Name", "Activate")) {
+		if (odbus_message_is_signal(m, "org.bus1.DBus.Name", "Activate")) {
 
-			uint64_t serial;
-			int r = sd_bus_message_read(m, "t", &serial);
+			uint64_t serial = 0 ;
+			int r ;
+
+			if (odbus_message_read(m, "t", &serial) != 1)
+				log_warnusys_return(DBS_EXIT_WARN, "read the serial of: ", obj_path) ;
 
 			_alloc_strbuf_(stk, strlen(obj_path) + 1) ;
 
@@ -416,74 +408,115 @@ int launcher_on_message(sd_bus_message *m, void *userdata, sd_bus_error *error)
 			r = service_activate(launcher, atoi(stk.s)) ;
 
 			if (r != 0)
-				sd_bus_call_method(launcher->bus_controller, NULL, obj_path, "org.bus1.DBus.Name", "Reset", NULL, NULL, "t", serial) ;
+				odbus_call_method(launcher->bus, obj_path, "org.bus1.DBus.Name", "Reset", DBS_DBUS_CALL_TIMEOUT_MS, "t", serial) ;
 
 		}
 
 	} else if (!strcmp(obj_path, "/org/bus1/DBus/Broker")) {
 
-		if (sd_bus_message_is_signal(m, "org.bus1.DBus.Broker", "SetActivationEnvironment"))
+		if (odbus_message_is_signal(m, "org.bus1.DBus.Broker", "SetActivationEnvironment"))
 			launcher_update_environment(launcher, m) ;
 	}
 
 	return 0 ;
 }
 
-int launcher_on_reload_config(sd_bus_message *message, void *userdata, sd_bus_error *error)
+int launcher_on_reload_config(odbus_message *message, void *userdata)
 {
 	log_flow() ;
-	(void)error ;
     launcher_t *launcher = userdata ;
 	log_info("config reload requested") ;
 	service_reload(launcher) ;
-	return sd_bus_reply_method_return(message, NULL) ;
+	return odbus_reply_method_return(message, NULL) ;
 }
 
 // https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L459
-void launcher_update_environment(launcher_t *launcher, sd_bus_message *m)
+static void launcher_publish_environ(char const *dir, char const *scandir, char const *key, char const *value)
+{
+	int r ;
+
+	if (!env_runtime_key_isvalid(key)) {
+		log_warn("skip variable: ", key, " -- not a valid name for the runtime environment") ;
+		return ;
+	}
+
+	/** D-Bus carries an empty value happily, and the only sensible reading of it
+	 * is that the variable no longer applies: withdraw it rather than refuse it. */
+	if (!*value) {
+
+		r = env_runtime_withdraw(dir, key) ;
+
+		if (r < 0) {
+			log_warnusys("withdraw variable: ", key) ;
+			return ;
+		}
+
+		if (!r)
+			return ; // it was not published, nothing to do
+
+		log_info("withdrew variable: ", key) ;
+
+		env_runtime_emit(scandir, STATUS_WHO_SELF, SS_LIVEENV_EVENT_GONE, key) ;
+
+		return ;
+	}
+
+	if (*value == SS_VAR_UNEXPORT) {
+		log_warn("skip variable: ", key, " -- its value starts with an exclamation mark, and the runtime environment is published verbatim") ;
+		return ;
+	}
+
+	if (!env_runtime_publish(dir, key, value)) {
+		log_warnusys("publish variable: ", key) ;
+		return ;
+	}
+
+	log_info("published variable: ", key) ;
+
+	env_runtime_emit(scandir, STATUS_WHO_SELF, SS_LIVEENV_EVENT, key) ;
+}
+
+void launcher_update_environment(launcher_t *launcher, odbus_message *m)
 {
 	log_flow() ;
 
-	char home[SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + 9] ;
-	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
+	char ownerstr[UID_FMT] ;
+	int r ;
+	char dir[sizeof(SS_LIVE) + SS_LIVEENV_LEN + 1 + UID_FMT] ;
+	char scandir[sizeof(SS_LIVE) + SS_SCANDIR_LEN + 1 + UID_FMT] ;
 
-	memset(home, 0, sizeof(char) * SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + 9) ;
+	ownerstr[uid_format(ownerstr, launcher->uid)] = 0 ;
+	auto_strings(dir, SS_LIVE, SS_LIVEENV, "/", ownerstr) ;
+	auto_strings(scandir, SS_LIVE, SS_SCANDIR, "/", ownerstr) ;
 
 	log_info("environment update requested") ;
 
-	int r = sd_bus_message_enter_container(m, 'a', "{ss}") ;
+	r = odbus_message_enter_container(m, 'a', "{ss}") ;
 	if (r != 1) {
 		log_warnusys("enter in container") ;
-		goto exit ;
+		return ;
 	}
 
-	while (!sd_bus_message_at_end(m, false)) {
+	if (scan_mode(dir, S_IFDIR) <= 0) {
+		log_warn("no runtime environment directory: ", dir, " -- the activation environment is dropped") ;
 
-		const char *key, *value;
+	} else {
 
-		r = sd_bus_message_read(m, "{ss}", &key, &value);
-		if (r < 0) {
-			log_warnusys("read environment key=value pair") ;
-			goto exit ;
-		}
+		while (!odbus_message_at_end(m)) {
 
-		if (!auto_strbuf(&sa, key, "=", value, "\n")) {
-			log_warnusys("stralloc") ;
-			goto exit ;
+			const char *key, *value ;
+
+			if (odbus_message_read(m, "{ss}", &key, &value) < 0) {
+				log_warnusys("read environment key=value pair") ;
+				break ;
+			}
+
+			launcher_publish_environ(dir, scandir, key, value) ;
 		}
 	}
 
-	if (!service_environ_file_name(home, launcher))
-		goto exit ;
-
-	log_trace("write environment file: ", home) ;
-	if (!file_write(home, sa.s, sa.len))
-		log_warnusys("write file: ", home) ;
-
-	exit:
-		r = sd_bus_message_exit_container(m) ;
-		if (r != 1)
-			log_warnusys("exit from container") ;
+	if (odbus_message_exit_container(m) != 1)
+		log_warnusys("exit from container") ;
 }
 
 void launcher_get_machine_id(launcher_t *launcher)

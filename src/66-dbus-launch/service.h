@@ -26,8 +26,6 @@
 #include <66/constants.h>
 #include <66/config.h>
 
-#define DBS_ENVIRONMENTFILE "0000-dbus"
-#define DBS_ENVIRONMENTFILE_LEN (sizeof DBS_ENVIRONMENTFILE - 1)
 #define DBS_SERVICE_SUFFIX ".dbus"
 #define DBS_SERVICE_SUFFIX_LEN (sizeof DBS_SERVICE_SUFFIX - 1)
 #define DBS_SERVICE_SECTION "[D-BUS Service]"
@@ -56,10 +54,8 @@ extern struct service_s *service_search_byid(hash_t *hservice, int id) ;
 extern int service_get_list(strbuf *sa, launcher_t *launcher) ;
 extern void service_add_hash(launcher_t *launcher, struct service_s *service) ;
 extern void service_remove_hash(launcher_t *launcher, const char *name) ;
-extern int service_environ_owner_path(char *store, launcher_t *launcher) ;
-extern int service_environ_file_name(char *store, launcher_t *launcher) ;
 extern int service_parse(struct service_s *service, const char *path) ;
-extern int service_frontend_path(char *store, launcher_t *launcher, const char *service) ;
+extern int service_front_path(char *store, launcher_t *launcher, const char *service) ;
 extern int service_resolve_path(char *store, launcher_t *launcher, const char *service) ;
 extern int service_write_frontend(launcher_t *launcher, struct service_s *service) ;
 extern int service_translate(launcher_t *launcher, const char *name) ;

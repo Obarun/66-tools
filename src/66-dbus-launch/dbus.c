@@ -29,36 +29,16 @@
 #include <oblibs/strbuf.h>
 #include <oblibs/socket.h>
 #include <oblibs/types.h>
+#include <oblibs/strbuf.h>
 
 #include <66/config.h>
 
 #include <66-tools/config.h>
 
-const sd_bus_vtable launcher_vtable[] = {
-	SD_BUS_VTABLE_START(0),
-	SD_BUS_METHOD("ReloadConfig", NULL, NULL, launcher_on_reload_config, 0),
-	SD_BUS_VTABLE_END
+const odbus_method launcher_methods[] = {
+	{ "ReloadConfig", launcher_on_reload_config },
+	{ NULL, NULL }
 } ;
-
-sd_bus *dbs_close_unref(sd_bus *bus)
-{
-	log_flow() ;
-	/** It is not sufficient to simply call sd_bus_unref(), as messages
-	* in the bus' queues may pin the bus itself. Also,
-	* sd_bus_flush_close_unref() is not always appropriate as it would
-	* block in poll waiting for messages to be flushed to the socket.
-	*
-	* In some cases all we really want to do is close the socket and
-	* release all the memory, ignoring whether or not it has been
-	* flushed to the kernel (typically in error paths). */
-	if (!bus)
-		return NULL ;
-
-	sd_bus_flush(bus) ;
-	//sd_bus_close(bus) ;
-
-	return sd_bus_unref(bus) ;
-}
 
 void dbs_get_socket_path(char *path)
 {
@@ -75,13 +55,11 @@ void dbs_get_socket_path(char *path)
 	}
 }
 
-int dbs_get_socket_unix_path(char *path)
+int dbs_get_socket_unix_path(strbuf *path)
 {
 	_alloc_strbuf_(s, SS_MAX_PATH) ;
 	dbs_get_socket_path(s.s) ;
-	auto_strings(path, "unix:path=", s.s) ;
-
-	return 1 ;
+	return auto_strbuf(path,"unix:path=", s.s) ;
 }
 
 int dbs_socket_bind(void)
@@ -114,9 +92,6 @@ int dbs_socket_bind(void)
 
 int dbs_setenv_dbus_address(void)
 {
-	/** bus_set_address_user and bus_set_address_system rely
-	 * on this environment variable*/
-
 	uid_t uid = getuid() ;
 	char *path = 0 ;
 	_alloc_strbuf_(stk, SS_MAX_PATH) ;
@@ -127,7 +102,7 @@ int dbs_setenv_dbus_address(void)
 
 		if (!path) {
 
-			if (dbs_get_socket_unix_path(stk.s) < 0)
+			if (dbs_get_socket_unix_path(&stk) < 0)
 				log_warnusys_return(DBS_EXIT_FATAL, "get dbus socket path") ;
 
 			if (setenv("DBUS_SYSTEM_BUS_ADDRESS", stk.s, 1) < 0)
@@ -145,7 +120,7 @@ int dbs_setenv_dbus_address(void)
 
 		if (!path) {
 
-			if (dbs_get_socket_unix_path(stk.s) < 0)
+			if (dbs_get_socket_unix_path(&stk) < 0)
 			log_warnusys_return(DBS_EXIT_FATAL, "get dbus socket path") ;
 
 			if (setenv("DBUS_SESSION_BUS_ADDRESS", stk.s, 1) < 0)

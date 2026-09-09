@@ -15,28 +15,19 @@
 #ifndef DBS_DBUS_H_INCLUDE
 #define DBS_DBUS_H_INCLUDE
 
+#include <oblibs/strbuf.h>
+
 #include <66-tools/config.h>
 
-#ifdef SS_TOOLS_USE_BASU
-#include <basu/sd-bus.h>
-#include <basu/sd-bus-vtable.h>
-#else
-#ifdef SS_TOOLS_USE_ELOGIND
-#include <elogind/sd-bus.h>
-#include <elogind/sd-bus-vtable.h>
-#else
-
-#error No sd_bus backend configured
-
-#endif
-#endif
+#include "odbus.h"
 
 #define MACHINEID 32 // https://www.freedesktop.org/software/systemd/man/latest/machine-id.html
 
-extern const sd_bus_vtable launcher_vtable[] ;
-extern sd_bus *dbs_close_unref(sd_bus *bus) ;
+#define DBS_DBUS_CALL_TIMEOUT_MS 30000
+
+extern const odbus_method launcher_methods[] ;
 extern void dbs_get_socket_path(char *store) ;
-extern int dbs_get_socket_unix_path(char *store) ;
+extern int dbs_get_socket_unix_path(strbuf *store) ;
 extern int dbs_socket_bind(void) ;
 extern int dbs_setenv_dbus_address(void) ;
 

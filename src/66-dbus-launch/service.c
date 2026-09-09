@@ -117,25 +117,6 @@ void service_remove_hash(launcher_t *launcher, const char *name)
 	}
 }
 
-int service_environ_file_name(char *store, launcher_t *launcher)
-{
-	log_flow() ;
-
-	if (launcher->uid > 0) {
-
-		if (!set_ownerhome_stack_byuid(store, launcher->uid))
-			log_warnusys_return(DBS_EXIT_WARN, "set home directory") ;
-
-		auto_string_builder(store, strlen(store), (char const *[]){ SS_ENVIRONMENT_USERDIR, DBS_ENVIRONMENTFILE, NULL }) ;
-
-	} else {
-
-		auto_strings(store, SS_ENVIRONMENT_ADMDIR, DBS_ENVIRONMENTFILE) ;
-	}
-
-	return 1 ;
-}
-
 int service_parse(struct service_s *service, const char *path)
 {
 	log_flow() ;
@@ -186,7 +167,7 @@ int service_parse(struct service_s *service, const char *path)
 	return 1 ;
 }
 
-int service_frontend_path(char *store, launcher_t *launcher, const char *service)
+int service_front_path(char *store, launcher_t *launcher, const char *service)
 {
 	if (launcher->uid > 0) {
 
@@ -226,43 +207,30 @@ int service_write_frontend(launcher_t *launcher, struct service_s *service)
 
 	_cleanup_strbuf_ strbuf sa = STRBUF_ZERO ;
 
-	char efile[SS_MAX_PATH_LEN + strlen(SS_ENVIRONMENT_USERDIR) + DBS_ENVIRONMENTFILE_LEN + 1] ;
-	const char *suid = 0 ;
-
-	if (launcher->uid) {
-		suid = "user" ;
-	} else {
-		suid = "root" ;
-	}
-
-	if (!service_environ_file_name(efile, launcher))
-		log_warnu_return(DBS_EXIT_WARN, "get environment file path") ;
-
 	if (!auto_strbuf(&sa,
 		"[Main]\n",
 		"Type = classic\n",
 		"Description = \"", service->name, " dbus service\"\n",
-		"User = ( ", suid, " )\n",
-		"Version = 0.0.1\n",
-		"InTree = dbus\n",
-		"MaxDeath = 5\n"
-		"TimeoutStart = 3000\n",
-		"TimeoutStop = 3000\n\n",
+		"InTree = dbus\n\n",
 		"[Start]\n"))
+			log_warnu_return(DBS_EXIT_FATAL, "build frontend file contents") ;
 
 	if (*service->user) {
-		if (!auto_strbuf(&sa, "RunAs = ", service->user,"\n"))
-			log_warnu_return(DBS_EXIT_FATAL, "stralloc") ;
+		if (!auto_strbuf(&sa, "RunAs = ", service->user, "\n"))
+			log_warnu_return(DBS_EXIT_FATAL, "build frontend file contents") ;
 	}
 
-	if (!auto_strbuf(&sa, "Execute = (\n",
+	if (!auto_strbuf(&sa,
+		"Execute = (\n",
 		"	", service->exec, "\n",
-		")\n\n",
-		"[Environment]\n",
-		"ImportFile=", efile, "\n"))
-			log_warnu_return(DBS_EXIT_FATAL, "stralloc") ;
+		")\n",
+		"Timeout = 3000\n",
+		"MaxDeath = 5\n\n",
+		"[Stop]\n",
+		"Timeout = 3000\n"))
+			log_warnu_return(DBS_EXIT_FATAL, "build frontend file contents") ;
 
-	if (!service_frontend_path(service->frontend, launcher, service->name))
+	if (!service_front_path(service->frontend, launcher, service->name))
 		log_warnu_return(DBS_EXIT_WARN, "get frontend service file of service: ", service->name) ;
 
 	log_trace("write frontend file: ", service->frontend) ;
@@ -344,7 +312,7 @@ void service_handle_state(strbuf *list, launcher_t *launcher)
 	FOREACH_SBL(list, pos) {
 
 		size_t len = strlen(list->s + pos) ;
-		_alloc_strbuf_(name, len) ;
+		_alloc_strbuf_(name, len + 1) ;
 		ssize_t r = get_rlen_until(list->s + pos, '.', len) ;
 
 		if (r < 0){
@@ -404,9 +372,8 @@ void service_sync_launcher_broker(launcher_t *launcher)
 
 		if (FLAGS_ISSET(c->state, DBS_SERVICE_INSERT)) {
 
-			r = sd_bus_call_method(launcher->bus_controller, NULL, "/org/bus1/DBus/Broker", "org.bus1.DBus.Broker", "AddName", NULL, NULL, "osu", path.s, c->name, 0) ;
-			if (r < 0) {
-				errno = -r ;
+			r = odbus_call_method(launcher->bus, "/org/bus1/DBus/Broker", "org.bus1.DBus.Broker", "AddName", DBS_DBUS_CALL_TIMEOUT_MS, "osu", path.s, c->name, 0) ;
+			if (!r) {
 				log_warnusys("org.bus1.DBus.AddName") ;
 				continue ;
 			}
@@ -421,9 +388,8 @@ void service_sync_launcher_broker(launcher_t *launcher)
 
 		} else if (FLAGS_ISSET(c->state, DBS_SERVICE_DELETE)) {
 
-			r = sd_bus_call_method(launcher->bus_controller, NULL, path.s, "org.bus1.DBus.Name", "Release", NULL, NULL, "") ;
-			if (r < 0) {
-				errno = -r ;
+			r = odbus_call_method(launcher->bus, path.s, "org.bus1.DBus.Name", "Release", DBS_DBUS_CALL_TIMEOUT_MS, "") ;
+			if (!r) {
 				log_warnusys("org.bus1.DBus.Name.Release") ;
 				continue ;
 			}
@@ -464,7 +430,10 @@ int service_activate(launcher_t *launcher, int id)
 
 	struct service_s *s = service_search_byid(launcher->hservice, id) ;
 
-	_alloc_strbuf_(name, strlen(s->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	if (!s)
+		flog_warnu_return(DBS_EXIT_FATAL, "find service with id: %d  -- ignoring activation request", id) ;
+
+	_alloc_strbuf_(name, strlen(s->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
 	auto_strings(name.s, s->name, DBS_SERVICE_SUFFIX) ;
 
 	char fmt[I32_FMT] ;
@@ -472,27 +441,23 @@ int service_activate(launcher_t *launcher, int id)
 
 	log_info("activation requested for service: ", name.s) ;
 
-	if (s) {
+	char *nargv[] = {
+		"66",
+		"-v",
+		fmt,
+		"start",
+		name.s,
+		0
+	} ;
 
-		char *nargv[] = {
-			"66",
-			"-v",
-			fmt,
-			"start",
-			name.s,
-			0
-		} ;
-
-		return sync_spawn(nargv) ;
-	}
-	log_warnu_return(DBS_EXIT_FATAL, "find service: ", name.s, " -- ignoring activation request") ;
+	return sync_spawn(nargv) ;
 }
 
 int service_reactivate(struct service_s *service)
 {
 	log_flow() ;
 
-	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
 	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
 
 	char fmt[I32_FMT] ;
@@ -517,7 +482,7 @@ int service_deactivate(struct service_s *service)
 {
 	log_flow() ;
 
-	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN) ;
+	_alloc_strbuf_(name, strlen(service->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
 	auto_strings(name.s, service->name, DBS_SERVICE_SUFFIX) ;
 
 	char fmt[I32_FMT] ;

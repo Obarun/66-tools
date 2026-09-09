@@ -15,8 +15,6 @@ Each instance of *66-dbus-launch* manages exactly one message bus. Each message 
 
 When started by a regular user, *66-dbus-launch* will drop privileges before executing [dbus-broker](https://github.com/bus1/dbus-broker). The launcher only manages services and environments for the process owner, meaning a user launcher cannot manage root services or environments and vice versa.
 
-This program is only built if the `--enable-dbus=` option is passed during compilation (see [Build Requirements](#build-requirements)).
-
 This tool is inspired by the [dbus-controllers](https://github.com/st3r4g/dbus-controllers) project and the original [dbus-broker](https://github.com/bus1/dbus-broker) program.
 
 ## Exit codes
@@ -129,7 +127,7 @@ By default, the frontend file can be installed at `%%datarootdir%%/66/service` (
 
 ## Build requirements
 
-- The `--enable-dbus=` option is required at compile time, with either `basu` or `elogind` as the provider of `sd_bus` functions. The use of the `sd_bus` library may change at any time without warning.
+- No external D-Bus library is needed: *66-dbus-launch* carries **odbus**, a small client that speaks exactly the nine messages that transit on the controller socket of [dbus-broker](https://github.com/bus1/dbus-broker), and nothing else.
 
 - For the runtime, the system must have [dbus-broker](https://github.com/bus1/dbus-broker) installed for *66-dbus-launch* to function properly.
 

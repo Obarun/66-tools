@@ -51,53 +51,51 @@ exe_configs = {
 }
 
 # Special handling for 66-dbus-launch
-if get_option('enable-dbus') != 'disabled'
-  # Define temporary lib66dbusbroker (not installed)
-  dbus_launch_dir = meson.current_source_dir() / '66-dbus-launch'
-  find_dbus_sources_cmd = run_command(
-    'sh', '-c',
-    'find "@0@" -maxdepth 1 -type f -name "*.c" ! -name "66-dbus-launch.c"'.format(dbus_launch_dir),
-    check: false
-  )
-  if find_dbus_sources_cmd.returncode() != 0
-    error('Failed to find source files in ' + dbus_launch_dir + ': ' + find_dbus_sources_cmd.stderr())
-  endif
-
-  lib66dbusbroker_sources = []
-  foreach file : find_dbus_sources_cmd.stdout().strip().split('\n')
-    if file != '' and fs.is_file(file)
-      lib66dbusbroker_sources += files(file)
-    endif
-  endforeach
-
-  if lib66dbusbroker_sources.length() == 0
-    error('No source files found for lib66dbusbroker in ' + dbus_launch_dir)
-  endif
-
-  lib66dbusbroker = static_library(
-    '66dbusbroker',
-    lib66dbusbroker_sources,
-    include_directories: [incdir, include_directories('66-dbus-launch')],
-    dependencies: [lib66_dep, oblibs_dep],
-    c_args: static_c_args,
-    link_args: static_link_args,
-    install: false
-  )
-
-  lib66dbusbroker_dep = declare_dependency(
-    link_with: lib66dbusbroker,
-    include_directories: [incdir, include_directories('66-dbus-launch')],
-    dependencies: [lib66_dep, oblibs_dep]
-  )
-
-  # Add 66-dbus-launch to exe_configs
-  exe_configs += {
-    '66-dbus-launch': {
-      'sources': ['66-dbus-launch.c'],
-      'deps': [lib66dbusbroker_dep, lib66_dep, oblibs_dep, dbus_dep]
-    }
-  }
+# Define temporary lib66dbusbroker (not installed)
+dbus_launch_dir = meson.current_source_dir() / '66-dbus-launch'
+find_dbus_sources_cmd = run_command(
+  'sh', '-c',
+  'find "@0@" -maxdepth 1 -type f -name "*.c" ! -name "66-dbus-launch.c"'.format(dbus_launch_dir),
+  check: false
+)
+if find_dbus_sources_cmd.returncode() != 0
+  error('Failed to find source files in ' + dbus_launch_dir + ': ' + find_dbus_sources_cmd.stderr())
 endif
+
+lib66dbusbroker_sources = []
+foreach file : find_dbus_sources_cmd.stdout().strip().split('\n')
+  if file != '' and fs.is_file(file)
+    lib66dbusbroker_sources += files(file)
+  endif
+endforeach
+
+if lib66dbusbroker_sources.length() == 0
+  error('No source files found for lib66dbusbroker in ' + dbus_launch_dir)
+endif
+
+lib66dbusbroker = static_library(
+  '66dbusbroker',
+  lib66dbusbroker_sources,
+  include_directories: [incdir, include_directories('66-dbus-launch')],
+  dependencies: [lib66_dep, oblibs_dep],
+  c_args: static_c_args,
+  link_args: static_link_args,
+  install: false
+)
+
+lib66dbusbroker_dep = declare_dependency(
+  link_with: lib66dbusbroker,
+  include_directories: [incdir, include_directories('66-dbus-launch')],
+  dependencies: [lib66_dep, oblibs_dep]
+)
+
+# Add 66-dbus-launch to exe_configs
+exe_configs += {
+  '66-dbus-launch': {
+    'sources': ['66-dbus-launch.c'],
+    'deps': [lib66dbusbroker_dep, lib66_dep, oblibs_dep]
+  }
+}
 
 # Special handling for 66-userd
 # The directory holds three artifacts sharing the same model: the daemon
@@ -244,9 +242,8 @@ foreach dir : exe_dirs
         if test_files.length() > 0
           test_deps = config['deps']
           test_incdirs = incdir
-          # For 66-dbus-launch tests, ensure lib66dbusbroker_dep is included
-          if exe == '66-dbus-launch' and get_option('enable-dbus') != 'disabled'
-            test_deps = [lib66dbusbroker_dep, lib66_dep, oblibs_dep, dbus_dep]
+          if exe == '66-dbus-launch'
+            test_deps = [lib66dbusbroker_dep, lib66_dep, oblibs_dep]
             test_incdirs = [include_directories('66-dbus-launch'), incdir]
           endif
           test_exe = executable('test_@0@'.format(exe),
@@ -258,7 +255,9 @@ foreach dir : exe_dirs
             link_args: link_args,
             pie: get_option('enable-pie')
           )
-          test('@0@_test'.format(exe), test_exe)
+          # Above the deadline the suite arms itself, so a hang is reported by
+          # the binary with a diagnostic rather than cut short by meson.
+          test('@0@_test'.format(exe), test_exe, timeout: 60)
         endif
       endif
     endif

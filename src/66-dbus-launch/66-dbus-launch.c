@@ -155,5 +155,5 @@ int main(int argc, char const *const *argv)
 	/** tear down all services from tree dbus */
 	service_discard_tree() ;
 
-	return 0 ;
+	return r ;
 }

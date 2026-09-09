@@ -7,7 +7,6 @@ project('66-tools',
           'c_std=c99',
           'prefix=/usr',
           'ns-rule-dir=/usr/share/66/script/ns',
-          'enable-dbus=disabled',
           'dbus-system-service-dir=/usr/share/dbus-1/system-services',
           'dbus-session-service-dir=/usr/share/dbus-1/services',
           'dbus-system-name=system_bus_socket',
@@ -79,11 +78,18 @@ if get_option('doc-only')
   subdir_done()
 endif
 
+include_flags = []
+foreach d : include_dirs
+  include_flags += '-I' + d
+endforeach
+
 # Dependency: oblibs
+# Probed on a header that exists: oblibs ships everything under oblibs/, there is
+# no flat oblibs.h to find.
 oblibs_lib = cc.find_library('oblibs', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
-oblibs_header = cc.has_header('oblibs.h', args: ['-I', include_dirs], required: false)
+oblibs_header = cc.has_header('oblibs/log.h', args: include_flags, required: false)
 if not oblibs_lib.found() or not oblibs_header
-  error('oblibs ' + version_oblibs + ' not found. Ensure liboblibs and oblibs.h are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
+  error('oblibs ' + version_oblibs + ' not found. Ensure liboblibs and oblibs/log.h are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
 endif
 dep_oblibs = declare_dependency(
   dependencies: oblibs_lib,
@@ -92,8 +98,8 @@ dep_oblibs = declare_dependency(
 
 # Dependency: 66
 lib66_lib = cc.find_library('66', dirs: lib_dirs, static: get_option('enable-static-deps'), required: false)
-lib66_header = cc.has_header('66.h', args: ['-I', include_dirs], required: false)
-if not lib66_lib.found() or not oblibs_header
+lib66_header = cc.has_header('66/config.h', args: include_flags, required: false)
+if not lib66_lib.found() or not lib66_header
   error('lib66 ' + version_66 + ' not found. Ensure lib66 and include/66/config.h are installed, or specify paths with with-include-dir and with-staticlib-dir/with-dynamiclib-dir.')
 endif
 dep_lib66 = declare_dependency(
@@ -113,27 +119,9 @@ dep_pam = declare_dependency(
   include_directories: include_dirs
 )
 
-# Dependency: dbus
-dep_dbus = []
-if get_option('enable-dbus') != 'disabled'
-  # Check for basu or elogind
-  if get_option('enable-dbus') == 'basu'
-    dep_dbus = dependency('basu', required: false, static: get_option('enable-static-deps'))
-    if not dep_dbus.found()
-      error('enable-dbus=basu requires basu library, but it was not found.')
-    endif
-  elif get_option('enable-dbus') == 'elogind'
-    dep_dbus = dependency('elogind', required: false, static: get_option('enable-static-deps'))
-    if not dep_dbus.found()
-      error('enable-dbus=elogind requires elogind library, but it was not found.')
-    endif
-  endif
-endif
-
 # Define global dependencies
 oblibs_dep = dep_oblibs
 lib66_dep = dep_lib66
-dbus_dep = dep_dbus
 pam_dep = dep_pam
 
 # Common compiler flags

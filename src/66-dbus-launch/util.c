@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #include "launcher.h"
 #include "service.h"
@@ -24,13 +25,9 @@
 #include <oblibs/log.h>
 #include <oblibs/spawn.h>
 #include <oblibs/process.h>
+#include <oblibs/environ.h>
 
-extern char **environ;
-
-/**
- * make a proper environment
- *
-*/
+#define BROKER_REAP_TRIES 1000
 
 pid_t async_spawn(char **cmd)
 {
@@ -75,6 +72,68 @@ static int compute_exit(int wstat)
     return WIFSIGNALED(wstat) ? 128 + WTERMSIG(wstat) : WEXITSTATUS(wstat) ;
 }
 
+static int reap_broker(pid_t pid, int *wstat)
+{
+	struct timespec ms = { .tv_sec = 0, .tv_nsec = 1000000 } ;
+	unsigned int i = 0 ;
+
+	for (; i < BROKER_REAP_TRIES ; i++) {
+
+		pid_t r = waitpid(pid, wstat, WNOHANG) ;
+
+		if (r > 0)
+			return 1 ;
+
+		if (r < 0)
+			return 0 ;
+
+		nanosleep(&ms, NULL) ;
+	}
+
+	return 0 ;
+}
+
+void report_broker_death(launcher_t *launcher, int wstat)
+{
+	log_flow() ;
+
+	/** @wstat is the only account of why the broker is gone: say it here or it
+	 * is lost, and carry it out of the loop as the code the launcher will take.
+	 * A zeroed bpid is what tells the rest of the loop the broker was reaped. */
+	if (WIFSIGNALED(wstat))
+		flog_warn("the dbus broker was killed by signal %d", WTERMSIG(wstat)) ;
+	else if (WEXITSTATUS(wstat))
+		flog_warn("the dbus broker exited with code %d", WEXITSTATUS(wstat)) ;
+	else
+		log_info("the dbus broker exited normally") ;
+
+	launcher->loopret = compute_exit(wstat) ;
+	launcher->bpid = 0 ;
+}
+
+void collect_broker_death(launcher_t *launcher)
+{
+	log_flow() ;
+
+	int wstat ;
+
+	/** A zeroed bpid means the signal watcher got there first and has already
+	 * said and recorded everything. */
+	if (!launcher->bpid)
+		return ;
+
+	if (reap_broker(launcher->bpid, &wstat)) {
+
+		report_broker_death(launcher, wstat) ;
+
+	} else {
+
+		log_warn("the controller bus went down while the dbus broker is still alive") ;
+
+		launcher->loopret = DBS_EXIT_FATAL ;
+	}
+}
+
 int handle_signal(launcher_t *launcher, int signo)
 {
 	int wstat ;
@@ -104,8 +163,12 @@ int handle_signal(launcher_t *launcher, int signo)
 				} else if (!cpid) return DBS_EXIT_CHILD ;
 
 				/** launcher */
-				if (cpid == launcher->bpid)
+				if (cpid == launcher->bpid) {
+
+					report_broker_death(launcher, wstat) ;
+
 					return compute_exit(wstat) ;
+				}
 			}
 			break ;
 		default : log_warn("unexpected signal") ; return DBS_EXIT_WARN ;

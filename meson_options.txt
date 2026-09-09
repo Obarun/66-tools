@@ -3,12 +3,6 @@ type: 'string',
 value: '/usr/share/66/script/ns',
 description: '66-ns rules installation directory')
 
-option('enable-dbus',
-type: 'combo',
-choices: ['disabled', 'basu', 'elogind'],
-value: 'disabled',
-description: 'Enable 66-dbus-broker-launch with basu or elogind support (default: disabled)')
-
 option('dbus-system-service-dir',
 type: 'string',
 value: '/usr/share/dbus-1/system-services',

@@ -69,7 +69,6 @@ meson install -C build
 ## Key options include:
 
 - `ns-rule-dir`: Set the installation directory for 66-ns rules (default: `/usr/share/66/script/ns`).
-- `enable-dbus`: Enable 66-dbus-launch with support for basu or elogind (choices: `disabled`, `basu`, `elogind`; default: `disabled`). Any value other than `disabled` requires `lib66`.
 - `dbus-system-service-dir`: Set the directory for DBus system service files (default: `/usr/share/dbus-1/system-services`).
 - `dbus-session-service-dir`: Set the directory for DBus session service files (default: `/usr/share/dbus-1/services`).
 - `dbus-system-name`: Specify the name of the DBus system socket (default: `system_bus_socket`).

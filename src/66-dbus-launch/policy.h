@@ -32,7 +32,7 @@
 
 #define POLICY_PRIORITY_DEFAULT (UINT64_C(1))
 
-extern int policy(sd_bus_message *m);
+extern int policy(odbus_message *m);
 
 #endif
 
