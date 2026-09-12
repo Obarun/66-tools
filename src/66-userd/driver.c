@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <limits.h>
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>
@@ -62,6 +63,7 @@ extern opt_cmd_fn do_tree_start ;
 extern opt_cmd_fn do_tree_stop ;
 
 #define GUARDIAN_QUIT_TIMEOUT_MS 5000
+#define GUARDIAN_READY_FD 3
 
 int driver_register(user_t *u, int readyfd)
 {
@@ -595,6 +597,17 @@ pid_t driver_guardian_spawn(uid_t uid, int readyfd)
         log_warnusys_return(LOG_EXIT_LESSONE, "fork guardian") ;
 
     if (!pid) {
+
+        if (readyfd >= 0) {
+
+            if (move_fd(GUARDIAN_READY_FD, readyfd) < 0)
+                log_dieusys(LOG_EXIT_SYS, "renumber the readiness descriptor of the guardian") ;
+
+            readyfd = GUARDIAN_READY_FD ;
+        }
+
+        if (close_range((unsigned int)(readyfd < 0 ? GUARDIAN_READY_FD : readyfd + 1), UINT_MAX, 0) < 0)
+            log_dieusys(LOG_EXIT_SYS, "close the descriptors inherited from the daemon") ;
 
         guardian_main(uid, readyfd) ;
         flog_die(LOG_EXIT_SYS, "guardian returned for user %u", uid) ;
