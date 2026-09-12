@@ -66,7 +66,7 @@ login / sshd / display manager
 
 2. The daemon normalizes that context—it, not the greeter or sshd, owns the canonical `SEAT`, `VTNR`, `TYPE` and `CLASS`—assigns a session id, and increments the session count of that user.
 
-3. **If this is the first session for that uid**, the daemon mounts the runtime directory of the user and forks a *guardian*: a per-user process that parents the user's `66-scandir`, waits for it to signal readiness, then runs `66 tree start` for the enabled trees of that user.
+3. **If this is the first session for that uid**, the daemon mounts the runtime directory of the user and forks a *guardian*: a per-user process that parents the user's `66-scandir`, waits for it to signal readiness, then runs `66 tree start` for the enabled trees of that user. That last step initializes the base of the user first, exactly as the `66` command does, so a first login on an account that has never used *66* creates its base and its default tree rather than failing.
 
 4. The daemon replies with the session id. The module re-exports the normalized context into the session environment as `XDG_*` variables.
 

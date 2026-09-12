@@ -40,6 +40,7 @@
 #include <oblibs/strbuf.h>
 
 #include <66/constants.h>
+#include <66/sanitize.h>
 #include <66/ssexec.h>
 #include <66/utils.h>
 #include <66/svc.h>
@@ -295,6 +296,8 @@ static void build_ssexec(ssexec_t *info, uid_t uid)
         log_dieusys(LOG_EXIT_SYS, "set owner system directory") ;
 
     set_info(info) ;
+
+    sanitize_system(info) ;
 }
 
 static void prepare_exec(uid_t uid, ssexec_t *info)
@@ -586,6 +589,7 @@ pid_t driver_guardian_spawn(uid_t uid, int readyfd)
         log_warnusys_return(LOG_EXIT_LESSONE, "fork guardian") ;
 
     if (!pid) {
+
         guardian_main(uid, readyfd) ;
         flog_die(LOG_EXIT_SYS, "guardian returned for user %u", uid) ;
     }
