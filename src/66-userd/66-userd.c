@@ -683,14 +683,17 @@ static void last_stop_dead_user(uid_t uid)
     unsigned long gst = 0 ;
     int gfd = -1 ;
 
-    if (state_load_user_guardian(userd.statedir, uid, &gpid, &gst) && gpid > 0 && leader_check(gpid, gst, &gfd) == 1) {
+    if (uid >= USERD_MIN_UID) {
 
-        close(gfd) ;
-        log_info("stopping orphaned guardian for dead user ", who) ;
-        driver_guardian_stop(gpid) ;
+        if (state_load_user_guardian(userd.statedir, uid, &gpid, &gst) && gpid > 0 && leader_check(gpid, gst, &gfd) == 1) {
 
-    } else if (driver_scandir_ok(uid) == 1) {
-        log_warn("abandoning unsupervised orphan scandir for dead user ", who) ;
+            close(gfd) ;
+            log_info("stopping orphaned guardian for dead user ", who) ;
+            driver_guardian_stop(gpid) ;
+
+        } else if (driver_scandir_ok(uid) == 1) {
+            log_warn("abandoning unsupervised orphan scandir for dead user ", who) ;
+        }
     }
 
     user_t u ;

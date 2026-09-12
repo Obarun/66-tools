@@ -66,7 +66,7 @@ login / sshd / display manager
 
 2. The daemon normalizes that context—it, not the greeter or sshd, owns the canonical `SEAT`, `VTNR`, `TYPE` and `CLASS`—assigns a session id, and increments the session count of that user.
 
-3. **If this is the first session for that uid**, the daemon mounts the runtime directory of the user and forks a *guardian*: a per-user process that parents the user's `66-scandir`, waits for it to signal readiness, then runs `66 tree start` for the enabled trees of that user. That last step initializes the base of the user first, exactly as the `66` command does, so a first login on an account that has never used *66* creates its base and its default tree rather than failing.
+3. **If this is the first session for that uid**, the daemon mounts the runtime directory of the user. When the uid is also at or above `USERD_MIN_UID`, it forks a *guardian*: a per-user process that parents the user's `66-scandir`, waits for it to signal readiness, then runs `66 tree start` for the enabled trees of that user. That last step initializes the base of the user first, exactly as the `66` command does, so a first login on an account that has never used *66* creates its base and its default tree rather than failing.
 
 4. The daemon replies with the session id. The module re-exports the normalized context into the session environment as `XDG_*` variables.
 
@@ -76,7 +76,13 @@ login / sshd / display manager
 
 7. **When the last session goes away**, the daemon signals the guardian, which runs `66 tree stop` then `66 scandir quit`—in that order, since the trees need the scandir alive to be stopped—and exits. The runtime directory is unmounted.
 
-Services therefore start on the `0 → 1` transition of the session count of a user and stop on the `1 → 0` transition, never in between.
+Services therefore start on the `0 → 1` transition of the session count of a managed user and stop on the `1 → 0` transition, never in between.
+
+## Managed accounts
+
+An account below `USERD_MIN_UID`, 1000 by default, is tracked but never driven: its session is registered, its runtime directory is mounted, and no guardian, no scandir and no tree are started for it. A display-manager greeter, a cron job of a service account, an ssh login of a system user are all sessions worth knowing about, and none of them owns a service tree. The session stays visible to `66-userctl` and still counts for the power policy, so a greeter can offer to shut the machine down.
+
+Root is below that range, and the guardian refuses it a second time on its own: for uid 0 the per-user scandir is the scandir of the system, so driving it would stop the machine at logout. The first refusal is policy and the second is an invariant, they are deliberately independent.
 
 The daemon itself never changes its uid and never calls into *66* in-process. Every operation that must run as the user runs in a throwaway child that drops privilege first.
 
