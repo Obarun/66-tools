@@ -29,5 +29,6 @@
 #define SESSION_ID_MAX 16
 #define SESSION_FIELD_MAX 256
 #define USER_NAME_MAX 256
+#define USERD_MIN_UID 1000
 
 #endif

@@ -68,6 +68,9 @@ int driver_register(user_t *u, int readyfd)
     if (u->nsessions != 1)
         return 1 ;
 
+    if (!(u->uid >= USERD_MIN_UID))
+        log_info_return(LOG_EXIT_ONE, "no supervisor for user ", u->name, ": uid below USERD_MIN_UID") ;
+
     if (u->scandir_up)
         return 1 ;
 
@@ -584,6 +587,9 @@ static void guardian_main(uid_t uid, int readyfd)
 
 pid_t driver_guardian_spawn(uid_t uid, int readyfd)
 {
+    if (!uid)
+        log_warn_return(LOG_EXIT_LESSONE, "refuse a guardian for uid 0: the scandir of uid 0 is the scandir of the system, driving it would stop the machine at logout") ;
+
     pid_t pid = fork() ;
     if (pid < 0)
         log_warnusys_return(LOG_EXIT_LESSONE, "fork guardian") ;
