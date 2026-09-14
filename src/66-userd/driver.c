@@ -16,7 +16,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
-#include <limits.h>
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>
@@ -63,9 +62,8 @@ extern opt_cmd_fn do_tree_start ;
 extern opt_cmd_fn do_tree_stop ;
 
 #define GUARDIAN_QUIT_TIMEOUT_MS 5000
-#define GUARDIAN_READY_FD 3
 
-int driver_register(user_t *u, int readyfd)
+int driver_register(user_t *u, int readyfd, int lockfd)
 {
     if (u->nsessions != 1)
         return 1 ;
@@ -76,7 +74,7 @@ int driver_register(user_t *u, int readyfd)
     if (u->scandir_up)
         return 1 ;
 
-    pid_t pid = driver_guardian_spawn(u->uid, readyfd) ;
+    pid_t pid = driver_guardian_spawn(u->uid, readyfd, lockfd) ;
     if (pid <= 0)
         log_warn_return(LOG_EXIT_ZERO, "66 first-start failed for user ", u->name) ;
 
@@ -587,7 +585,7 @@ static void guardian_main(uid_t uid, int readyfd)
     _exit(LOG_EXIT_SYS) ;
 }
 
-pid_t driver_guardian_spawn(uid_t uid, int readyfd)
+pid_t driver_guardian_spawn(uid_t uid, int readyfd, int lockfd)
 {
     if (!uid)
         log_warn_return(LOG_EXIT_LESSONE, "refuse a guardian for uid 0: the scandir of uid 0 is the scandir of the system, driving it would stop the machine at logout") ;
@@ -598,16 +596,8 @@ pid_t driver_guardian_spawn(uid_t uid, int readyfd)
 
     if (!pid) {
 
-        if (readyfd >= 0) {
-
-            if (move_fd(GUARDIAN_READY_FD, readyfd) < 0)
-                log_dieusys(LOG_EXIT_SYS, "renumber the readiness descriptor of the guardian") ;
-
-            readyfd = GUARDIAN_READY_FD ;
-        }
-
-        if (close_range((unsigned int)(readyfd < 0 ? GUARDIAN_READY_FD : readyfd + 1), UINT_MAX, 0) < 0)
-            log_dieusys(LOG_EXIT_SYS, "close the descriptors inherited from the daemon") ;
+        if (lockfd >= 0)
+            close_fd(lockfd) ;
 
         guardian_main(uid, readyfd) ;
         flog_die(LOG_EXIT_SYS, "guardian returned for user %u", uid) ;

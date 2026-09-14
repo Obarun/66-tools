@@ -303,7 +303,7 @@ static int guardian_arm(user_t *u)
 static int guardian_spawn_arm(user_t *u)
 {
     ready_arm(u) ;
-    pid_t pid = driver_guardian_spawn(u->uid, u->readyw.fd) ;
+    pid_t pid = driver_guardian_spawn(u->uid, u->readyw.fd, userd.fdlock) ;
     if (pid <= 0) {
         ready_unarm(u) ;
         u->guardian_pid = 0 ;
@@ -473,7 +473,7 @@ static void do_register(int fd, char const *payload)
      * outcome (later session, scandir already up, start failure) means nothing will
      * ever signal the readiness channel, so it is released right away. */
     ready_arm(u) ;
-    if (driver_register(u, u->readyw.fd)
+    if (driver_register(u, u->readyw.fd, userd.fdlock)
         && u->guardian_pid > 0 && u->guardianfd < 0) {
         if (!guardian_arm(u)) {
             driver_guardian_stop(u->guardian_pid) ;
@@ -953,6 +953,7 @@ int main(int argc, char const *const *argv)
     userd.rundir = SS_TOOLS_USERD_RUNTIME_BASE ; // system policy shared with the PAM module; build-time only
     userd.next_id = 1 ;
     userd.sfd = -1 ;
+    userd.fdlock = -1 ;
 
     int notif = 0 ;
 

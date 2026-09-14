@@ -58,13 +58,20 @@
  *                notification. The guardian owns its inherited copy and closes it
  *                after writing. A write failure is deliberately NOT fatal: the user
  *                simply stays `USER_STATE_OPENING` until a reconcile re-probes it.
+ * @param[in] lockfd Descriptor of the daemon's exclusive lock on its socket lock
+ *                file, or -1 for none. It is the one descriptor the child closes
+ *                before anything else: the guardian outlives a crashed daemon, and a
+ *                guardian still holding that lock makes every restart of the daemon
+ *                fail to bind. Every other descriptor of the daemon stays inherited;
+ *                in particular the signalfd, which the tree and scandir actions run
+ *                in the guardian still rely on.
  * @return The guardian pid (> 0) on success.
  * @return -1 on a `fork(2)` error in the daemon (errno set to the `fork(2)` errno,
  *         e.g. EAGAIN or ENOMEM). No errno path other than `fork(2)`'s exists here;
  *         every later failure happens in the child and surfaces only as the
  *         guardian exiting, which the daemon observes via its pidfd.
  */
-extern pid_t driver_guardian_spawn(uid_t uid, int readyfd) ;
+extern pid_t driver_guardian_spawn(uid_t uid, int readyfd, int lockfd) ;
 
 /**
  * @brief Request an ordered tear-down of a guardian.
@@ -172,13 +179,15 @@ extern int driver_scandir_pidfd(uid_t uid, pid_t *pid_out, int *pidfd_out) ;
  *                    only consumed on the actual transition: when this call is a
  *                    no-op the caller still owns it and must release it, since no
  *                    guardian will ever signal it.
+ * @param[in] lockfd  Descriptor of the daemon's socket lock, or -1 for none; handed
+ *                    to driver_guardian_spawn() unchanged, see there.
  * @return 1 if a guardian was started, or the call was a no-op (later session, or
  *         scandir already up). No errno is set by this function on the 1 paths.
  * @return 0 if the fork failed — driver_guardian_spawn() returned <= 0.
  *         `u->scandir_up`, `u->guardian_pid` and `u->state` are left untouched
  *         (clear). errno is not set by this function; it holds the `fork(2)` errno.
  */
-extern int driver_register(user_t *u, int readyfd) ;
+extern int driver_register(user_t *u, int readyfd, int lockfd) ;
 
 /**
  * @brief Request tear-down of the user's 66 services iff this RELEASE/GC was the
