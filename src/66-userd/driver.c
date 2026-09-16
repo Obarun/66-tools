@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <oblibs/clock.h>
 #include <oblibs/directory.h>
 #include <oblibs/fd.h>
 #include <oblibs/io.h>
@@ -62,6 +63,8 @@ extern opt_cmd_fn do_tree_start ;
 extern opt_cmd_fn do_tree_stop ;
 
 #define GUARDIAN_QUIT_TIMEOUT_MS 5000
+#define GUARDIAN_DAEMON_TIMEOUT_MS 3000
+#define GUARDIAN_DAEMON_POLL_MS 20
 
 int driver_register(user_t *u, int readyfd, int lockfd)
 {
@@ -392,6 +395,68 @@ static void guardian_run_child(void (*action)(uid_t uid), uid_t uid, char const 
         flog_warn("guardian %s failed for user %u", what, uid) ;
 }
 
+static int guardian_daemons_ready(uid_t uid, int svfd, int sigfd, int *stop)
+{
+    static char const *const internal[] = { SS_FDHOLDER, SS_ONESHOTD, SS_EVENTD, 0 } ;
+
+    _cleanup_strbuf_ strbuf scandir = STRBUF_ZERO ;
+
+    if (set_livescan(&scandir, uid) <= 0)
+        return 0 ;
+
+    struct timespec deadline, now, budget ;
+
+    if (!clock_now_mono(&deadline))
+        return 0 ;
+
+    clock_from_ms(&budget, GUARDIAN_DAEMON_TIMEOUT_MS) ;
+    clock_add(&deadline, &deadline, &budget) ;
+
+    struct pollfd pfd[2] = {
+        { svfd, POLLIN, 0 },
+        { sigfd, POLLIN, 0 },
+    } ;
+
+    for (;;) {
+
+        unsigned int i = 0 ;
+
+        for (; internal[i] ; i++) {
+
+            char dir[scandir.len + 1 + strlen(internal[i]) + 1] ;
+            auto_strings(dir, scandir.s, "/", internal[i]) ;
+
+            unsigned char up = 0, ready = 0 ;
+            if (!svc_status_state(dir, &up, &ready) || !ready)
+                break ;
+        }
+
+        if (!internal[i])
+            return 1 ;
+
+        if (!clock_now_mono(&now) || clock_cmp(&now, &deadline) >= 0)
+            return 0 ;
+
+        int r = poll(pfd, 2, GUARDIAN_DAEMON_POLL_MS) ;
+        if (r < 0) {
+            if (errno == EINTR)
+                continue ;
+            return 0 ;
+        }
+
+        if (!r)
+            continue ;
+
+        if (pfd[1].revents & POLLIN) {
+            *stop = 1 ;
+            return 0 ;
+        }
+
+        if (pfd[0].revents & (POLLIN | POLLHUP))
+            return 0 ;
+    }
+}
+
 static void guardian_main(uid_t uid, int readyfd)
 {
     // Detach from the daemon's controlling context (no controlling tty).
@@ -514,6 +579,22 @@ static void guardian_main(uid_t uid, int readyfd)
             close(sigfd) ;
             _exit(stop ? 0 : LOG_EXIT_SYS) ;
         }
+    }
+
+    int daemon_stop = 0 ;
+
+    if (!guardian_daemons_ready(uid, svfd, sigfd, &daemon_stop)) {
+
+        if (daemon_stop) log_info("stop for user: ", uidstr, " before the scandir daemons were ready") ;
+        else log_warn("scandir daemons for user: ", uidstr, " did not reach readiness") ;
+
+        if (!adopted) {
+            kill(scandir, SIGKILL) ;
+            process_wait(scandir, 0) ;
+        }
+        close(svfd) ;
+        close(sigfd) ;
+        _exit(daemon_stop ? 0 : LOG_EXIT_SYS) ;
     }
 
     // supervisor up: start the user's enabled trees, then supervise.
