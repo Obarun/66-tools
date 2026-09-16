@@ -242,9 +242,9 @@ static void ready_cb(sse_watcher_t *w, void *data, int revents)
 {
     (void)revents ;
 
-    user_t *u = data ;
+    (void)w ;
 
-    sse_read_eventfd(w) ;
+    user_t *u = data ;
 
     u->state = USER_STATE_ONLINE ;
     u->timestamp = get_timenow() ;
