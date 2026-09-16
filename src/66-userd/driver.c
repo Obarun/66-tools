@@ -374,12 +374,12 @@ static void guardian_sigblock(int sig, sigset_t *ssig)
     sigprocmask(SIG_BLOCK, rs, 0) ;
 }
 
-static void guardian_run_child(void (*action)(uid_t uid), uid_t uid, char const *what)
+static int guardian_run_child(void (*action)(uid_t uid), uid_t uid, char const *what)
 {
     pid_t pid = fork() ;
     if (pid < 0) {
         log_warnusys("fork guardian for ", what) ;
-        return ;
+        return 0 ;
     }
 
     if (!pid) {
@@ -391,8 +391,12 @@ static void guardian_run_child(void (*action)(uid_t uid), uid_t uid, char const 
     int wstat ;
     process_wait(pid, &wstat) ;
 
-    if (!WIFEXITED(wstat) || WEXITSTATUS(wstat))
+    if (!WIFEXITED(wstat) || WEXITSTATUS(wstat)) {
         flog_warn("guardian %s failed for user %u", what, uid) ;
+        return 0 ;
+    }
+
+    return 1 ;
 }
 
 static int guardian_daemons_ready(uid_t uid, int svfd, int sigfd, int *stop)
@@ -599,17 +603,21 @@ static void guardian_main(uid_t uid, int readyfd)
 
     // supervisor up: start the user's enabled trees, then supervise.
     log_info("scandir up for user: ", uidstr, "; starting trees") ;
-    guardian_run_child(driver_trees_up, uid, "tree start") ;
+    int started = guardian_run_child(driver_trees_up, uid, "tree start") ;
 
-    /** Trees are up (the start above is synchronous), so tell the daemon the user is
-     * fully online, not merely "scandir reached readiness". The eventfd has no peer
-     * and no EOF, so this write can never raise SIGPIPE — no signal disposition is
-     * touched. A write failure is not fatal: the user just stays OPENING until a
-     * reconcile re-probes the scandir. */
+    /** Online means the trees are up (the start above is synchronous), not merely
+     * "scandir reached readiness": a failed start leaves the user OPENING until a
+     * reconcile re-probes the scandir. The eventfd has no peer and no EOF, so this
+     * write can never raise SIGPIPE — no signal disposition is touched. A write
+     * failure is not fatal, it leaves the user OPENING too. */
     if (readyfd >= 0) {
-        uint64_t one = 1 ;
-        if (write(readyfd, &one, sizeof one) != sizeof one)
-            log_warnusys("notify readiness to the daemon") ;
+
+        if (started) {
+            uint64_t one = 1 ;
+            if (write(readyfd, &one, sizeof one) != sizeof one)
+                log_warnusys("notify readiness to the daemon") ;
+        }
+
         close(readyfd) ;
     }
 
