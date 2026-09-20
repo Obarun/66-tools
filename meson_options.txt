@@ -13,6 +13,23 @@ type: 'string',
 value: '/usr/share/dbus-1/services',
 description: 'Directory for DBus session service files')
 
+option('dbus-system-config',
+type: 'string',
+value: '/usr/share/dbus-1/system.conf',
+description: 'Main configuration file of the DBus system bus')
+
+option('dbus-session-config',
+type: 'string',
+value: '/usr/share/dbus-1/session.conf',
+description: 'Main configuration file of the DBus session bus')
+
+option('dbus-system-uid-max',
+type: 'integer',
+min: 0,
+max: 4294967294,
+value: 999,
+description: 'Highest uid of a system user: the at_console policy applies above it, the no_console policy up to it')
+
 option('dbus-system-name',
 type: 'string',
 value: 'system_bus_socket',
@@ -20,7 +37,7 @@ description: 'Name of the DBus system socket')
 
 option('dbus-session-name',
 type: 'string',
-value: 'dbus',
+value: 'bus',
 description: 'Name of the DBus session socket')
 
 option('userd-pam-dir',

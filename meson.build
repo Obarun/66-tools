@@ -9,8 +9,11 @@ project('66-tools',
           'ns-rule-dir=/usr/share/66/script/ns',
           'dbus-system-service-dir=/usr/share/dbus-1/system-services',
           'dbus-session-service-dir=/usr/share/dbus-1/services',
+          'dbus-system-config=/usr/share/dbus-1/system.conf',
+          'dbus-session-config=/usr/share/dbus-1/session.conf',
+          'dbus-system-uid-max=999',
           'dbus-system-name=system_bus_socket',
-          'dbus-session-name=dbus',
+          'dbus-session-name=bus',
           'userd-pam-dir=/usr/lib/security',
           'userd-runtime-base=/run/user',
           'userd-runtime-size=10%',
@@ -59,6 +62,9 @@ DATADIR = get_option('prefix') / get_option('datadir')
 ns_rule_dir = get_option('ns-rule-dir')
 dbus_system_service_dir = get_option('dbus-system-service-dir')
 dbus_session_service_dir = get_option('dbus-session-service-dir')
+dbus_system_config = get_option('dbus-system-config')
+dbus_session_config = get_option('dbus-session-config')
+dbus_system_uid_max = get_option('dbus-system-uid-max')
 dbus_system_name = get_option('dbus-system-name')
 dbus_session_name = get_option('dbus-session-name')
 userd_pam_dir = get_option('userd-pam-dir')
@@ -217,7 +223,7 @@ if get_option('enable-static-deps') and not get_option('enable-static')
 endif
 
 # Validate DBus service directories and the 66-userd directories
-foreach opt : ['dbus-system-service-dir', 'dbus-session-service-dir', 'userd-pam-dir', 'userd-runtime-base']
+foreach opt : ['dbus-system-service-dir', 'dbus-session-service-dir', 'dbus-system-config', 'dbus-session-config', 'userd-pam-dir', 'userd-runtime-base']
   dir = get_option(opt)
   if not dir.startswith('/')
     error(opt + ' must be an absolute path e.g., /usr/share/dbus-1/system-services.')
