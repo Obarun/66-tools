@@ -134,6 +134,9 @@ struct odbus_s
 	odbus_message_handler_t filter ;
 	void *filter_userdata ;
 
+	odbus_notify_t pending_notify ;
+	void *pending_notify_userdata ;
+
 	char const *object_path ;
 	char const *object_interface ;
 	odbus_method const *methods ;

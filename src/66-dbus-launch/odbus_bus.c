@@ -27,6 +27,8 @@
 
 #define ODBUS_METHODS_MAX 64
 
+static odbus_message *queue_pop(odbus *bus) ;
+
 /* Lifetime */
 
 int odbus_open(odbus **ret, int fd)
@@ -48,9 +50,7 @@ int odbus_open(odbus **ret, int fd)
 	}
 
 	if (!odbus_socket_auth(bus)) {
-		io_rb_close_fds(&bus->io.fdin.buf) ;
-		strbuf_free(&bus->in) ;
-		free(bus) ;
+		odbus_free(bus) ;
 		return 0 ;
 	}
 
@@ -61,16 +61,13 @@ int odbus_open(odbus **ret, int fd)
 
 odbus *odbus_free(odbus *bus)
 {
+	odbus_message *m ;
+
 	if (!bus)
 		return NULL ;
 
-	while (bus->queue_head) {
-
-		odbus_message *m = bus->queue_head ;
-
-		bus->queue_head = m->next ;
+	while ((m = queue_pop(bus)))
 		odbus_message_free(m) ;
-	}
 
 	io_rb_close_fds(&bus->io.fdin.buf) ;
 	strbuf_free(&bus->in) ;
@@ -123,6 +120,20 @@ int odbus_set_object(odbus *bus, char const *path, char const *interface, odbus_
 	bus->object_path = path ;
 	bus->object_interface = interface ;
 	bus->object_userdata = userdata ;
+
+	return 1 ;
+}
+
+int odbus_set_pending_notify(odbus *bus, odbus_notify_t callback, void *userdata)
+{
+	if (!bus || !callback)
+		return odbus_fail(EINVAL) ;
+
+	if (bus->pending_notify)
+		return odbus_fail(EEXIST) ;
+
+	bus->pending_notify = callback ;
+	bus->pending_notify_userdata = userdata ;
 
 	return 1 ;
 }
@@ -310,29 +321,24 @@ static int64_t now_ms(void)
 	return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000 ;
 }
 
-int odbus_call(odbus *bus, odbus_message *m, unsigned int timeout_ms)
+static void notify_pending(odbus *bus)
 {
-	int64_t deadline ;
-	uint32_t serial ;
+	int e ;
+
+	if (!bus->pending_notify)
+		return ;
+
+	if (!bus->queue_head && bus->in_index >= bus->in.len)
+		return ;
+
+	e = errno ;
+	bus->pending_notify(bus->pending_notify_userdata) ;
+	errno = e ;
+}
+
+static int call_wait(odbus *bus, uint32_t serial, int64_t deadline)
+{
 	int r ;
-
-	if (!bus || !m || !timeout_ms)
-		return odbus_fail(EINVAL) ;
-
-	if (bus->closed)
-		return odbus_fail(ENOTCONN) ;
-
-	if (!odbus_message_seal(m, serial_next(bus)))
-		return 0 ;
-
-	/** Sealing a message that already was one leaves its serial alone, so read
-	 * back what it actually carries rather than what was just handed out. */
-	serial = m->serial ;
-
-	if (!odbus_socket_send(bus, m))
-		return 0 ;
-
-	deadline = now_ms() + (int64_t)timeout_ms ;
 
 	for (;;) {
 
@@ -384,6 +390,34 @@ int odbus_call(odbus *bus, odbus_message *m, unsigned int timeout_ms)
 
 		queue_push(bus, in) ;
 	}
+}
+
+int odbus_call(odbus *bus, odbus_message *m, unsigned int timeout_ms)
+{
+	uint32_t serial ;
+	int r ;
+
+	if (!bus || !m || !timeout_ms)
+		return odbus_fail(EINVAL) ;
+
+	if (bus->closed)
+		return odbus_fail(ENOTCONN) ;
+
+	if (!odbus_message_seal(m, serial_next(bus)))
+		return 0 ;
+
+	/** Sealing a message that already was one leaves its serial alone, so read
+	 * back what it actually carries rather than what was just handed out. */
+	serial = m->serial ;
+
+	if (!odbus_socket_send(bus, m))
+		return 0 ;
+
+	r = call_wait(bus, serial, now_ms() + (int64_t)timeout_ms) ;
+
+	notify_pending(bus) ;
+
+	return r ;
 }
 
 int odbus_call_method(odbus *bus, char const *path, char const *interface, char const *member, unsigned int timeout_ms, char const *types, ...)
@@ -449,6 +483,45 @@ int odbus_reply_method_return(odbus_message *call, char const *types, ...)
 			odbus_message_free(m) ;
 			return -1 ;
 		}
+	}
+
+	if (!odbus_message_seal(m, serial_next(call->bus))) {
+		odbus_message_free(m) ;
+		return -1 ;
+	}
+
+	r = odbus_socket_send(call->bus, m) ;
+	odbus_message_free(m) ;
+
+	return r ? 1 : -1 ;
+}
+
+int odbus_reply_method_error(odbus_message *call, char const *name, char const *description)
+{
+	odbus_message *m ;
+	int r ;
+
+	if (!call || call->type != ODBUS_MESSAGE_METHOD_CALL || !call->bus || !name || !description)
+		return odbus_err(EINVAL) ;
+
+	if (call->flags & ODBUS_FLAG_NO_REPLY_EXPECTED)
+		return 0 ;
+
+	if (call->bus->closed)
+		return odbus_err(ENOTCONN) ;
+
+	m = odbus_message_alloc(call->bus, ODBUS_MESSAGE_ERROR) ;
+	if (!m)
+		return odbus_err(ENOMEM) ;
+
+	m->flags = ODBUS_FLAG_NO_REPLY_EXPECTED ;
+	m->reply_serial = call->serial ;
+	m->has_reply_serial = 1 ;
+	m->error_name = name ;
+
+	if (!odbus_message_append(m, "s", description)) {
+		odbus_message_free(m) ;
+		return -1 ;
 	}
 
 	if (!odbus_message_seal(m, serial_next(call->bus))) {

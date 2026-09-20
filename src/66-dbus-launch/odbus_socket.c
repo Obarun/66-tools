@@ -22,6 +22,7 @@
 
 #include <oblibs/io_rb.h>
 #include <oblibs/log.h>
+#include <oblibs/rbuffer.h>
 #include <oblibs/strbuf.h>
 
 #include "odbus_internal.h"
@@ -273,9 +274,34 @@ int odbus_socket_auth(odbus *bus)
 	return 1 ;
 }
 
+static int segment_take(struct iovec *iov, int niov, struct iovec *seg, size_t max)
+{
+	int i = 0, n = 0 ;
+
+	for (; i < niov && max ; i++) {
+
+		size_t len = iov[i].iov_len < max ? iov[i].iov_len : max ;
+
+		if (!len)
+			continue ;
+
+		seg[n].iov_base = iov[i].iov_base ;
+		seg[n].iov_len = len ;
+		n++ ;
+
+		iov[i].iov_base = (char *)iov[i].iov_base + len ;
+		iov[i].iov_len -= len ;
+		max -= len ;
+	}
+
+	return n ;
+}
+
 int odbus_socket_send(odbus *bus, odbus_message *m)
 {
-	struct iovec iov[2] ;
+	struct iovec iov[2], seg[2] ;
+	size_t capacity = rbuffer_capacity(&bus->io.out.buf) ;
+	unsigned int n_fds = m->n_fds ;
 	int r ;
 
 	if (bus->closed)
@@ -289,15 +315,31 @@ int odbus_socket_send(odbus *bus, odbus_message *m)
 	iov[1].iov_base = m->body.s ;
 	iov[1].iov_len = m->body.len ;
 
-	if (m->n_fds)
-		r = io_rb_putv_fd(&bus->io, iov, 2, m->fds, (int)m->n_fds, NULL) ;
-	else
-		r = io_rb_putv(&bus->io, iov, 2, NULL) ;
+	do {
 
-	if (r < 0)
-		return odbus_fail(errno ? errno : EIO) ;
+		int n = segment_take(iov, 2, seg, capacity) ;
 
-	return drain(bus) ;
+		if (n_fds)
+			r = io_rb_putv_fd(&bus->io, seg, n, m->fds, (int)n_fds, NULL) ;
+		else
+			r = io_rb_putv(&bus->io, seg, n, NULL) ;
+
+		if (r < 0)
+			return odbus_fail(errno ? errno : EIO) ;
+
+		if (!drain(bus)) {
+
+			if (io_rb_iovec_len(iov, 2))
+				bus->closed = 1 ;
+
+			return 0 ;
+		}
+
+		n_fds = 0 ;
+
+	} while (io_rb_iovec_len(iov, 2)) ;
+
+	return 1 ;
 }
 
 int odbus_socket_take(odbus *bus, odbus_message **ret)

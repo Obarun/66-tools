@@ -21,6 +21,7 @@
 typedef struct odbus_s odbus ;
 typedef struct odbus_message_s odbus_message ;
 typedef int (*odbus_message_handler_t)(odbus_message *m, void *userdata) ;
+typedef void (*odbus_notify_t)(void *userdata) ;
 typedef struct odbus_method_s odbus_method ;
 
 struct odbus_method_s
@@ -38,6 +39,7 @@ extern odbus *odbus_free(odbus *bus) ;
 
 extern int odbus_set_filter(odbus *bus, odbus_message_handler_t callback, void *userdata) ;
 extern int odbus_set_object(odbus *bus, char const *path, char const *interface, odbus_method const *methods, void *userdata) ;
+extern int odbus_set_pending_notify(odbus *bus, odbus_notify_t callback, void *userdata) ;
 
 /* Event loop and calls */
 
@@ -45,6 +47,7 @@ extern int odbus_process(odbus *bus) ;
 extern int odbus_call(odbus *bus, odbus_message *m, unsigned int timeout_ms) ;
 extern int odbus_call_method(odbus *bus, char const *path, char const *interface, char const *member, unsigned int timeout_ms, char const *types, ...) ;
 extern int odbus_reply_method_return(odbus_message *call, char const *types, ...) ;
+extern int odbus_reply_method_error(odbus_message *call, char const *name, char const *description) ;
 extern char const *odbus_error_name(odbus const *bus) ;
 
 /* Messages */
