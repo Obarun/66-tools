@@ -15,15 +15,10 @@
 #ifndef DBS_UTILS_H_INCLUDE
 #define DBS_UTILS_H_INCLUDE
 
-#include <sys/types.h>
-
 #include "launcher.h"
 
-extern pid_t async_spawn(char **cmd) ;
-extern int spawn_wait(pid_t p) ;
 extern int sync_spawn(char **cmd) ;
 extern int handle_signal(launcher_t *launcher, int signo) ;
-extern void report_broker_death(launcher_t *launcher, int wstat) ;
 extern void collect_broker_death(launcher_t *launcher) ;
 
 #endif

@@ -18,12 +18,12 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include <oblibs/attributes.h>
 #include <oblibs/sse.h>
 #include <oblibs/hash.h>
 
 #include "dbus.h"
 #include "macro.h"
+#include "policy.h"
 
 /** Avoid circular dependency with service.h header file*/
 struct service_s ;
@@ -43,9 +43,11 @@ struct launcher_s
 	sse_epoll_t p ; // event loop
 	sse_watcher_t wsignal ; // signal watcher (replaces selfpipe)
 	sse_watcher_t wbus ; // controller bus io watcher
+	sse_watcher_t wpending ;
 	int loopret ; // return code carried out of the event loop
 	uint32_t nservice ; // counter for struct service_s -> id, never reset
 	hash_t *hservice ;
+	policy_t policy ;
 } ;
 
 extern launcher_t *launcher_free(launcher_t *launcher) ;
@@ -53,16 +55,10 @@ extern launcher_t *launcher_free(launcher_t *launcher) ;
 DBS_DEFINE_CLEANUP(launcher_t *, launcher_free) ;
 
 extern int launcher_new(launcher_t_ref *launcher, hash_t *hservice, int socket) ;
-extern int launcher_setup(launcher_t *launcher) ;
-extern void launcher_run_broker(launcher_t *launcher) attribute_noreturn ;
-extern int launcher_add_listener(launcher_t *launcher) ;
-extern int launcher_on_message(odbus_message *m, void *userdata) ;
+extern int launcher_load_policy(launcher_t *launcher) ;
+extern int launcher_reload_policy(launcher_t *launcher) ;
 extern int launcher_on_reload_config(odbus_message *message, void *userdata) ;
-extern void launcher_update_environment(launcher_t *launcher, odbus_message *m) ;
-extern void launcher_get_machine_id(launcher_t *launcher) ;
-extern int launcher_drop_permissions(launcher_t *launcher) ;
 extern int launcher_run(launcher_t *launcher) ;
-extern int launcher_fork(launcher_t *launcher) ;
 extern int launcher_loop(launcher_t *launcher) ;
 
 #endif

@@ -12,6 +12,7 @@
  * except according to the terms contained in the LICENSE file./
  */
 
+#include <limits.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -26,6 +27,7 @@
 #include <sys/wait.h>
 
 #include "launcher.h"
+#include "config.h"
 #include "dbus.h"
 #include "service.h"
 #include "util.h"
@@ -53,6 +55,8 @@
 
 static void on_signal(sse_watcher_t *w, void *data, int event) ;
 static void on_bus(sse_watcher_t *w, void *data, int event) ;
+static void on_pending(sse_watcher_t *w, void *data, int event) ;
+static void bus_pending(void *data) ;
 
 launcher_t *launcher_free(launcher_t *launcher)
 {
@@ -66,8 +70,19 @@ launcher_t *launcher_free(launcher_t *launcher)
 	service_hash_free(launcher->hservice) ;
 	close_fd(launcher->fd_controller_in) ;
 	close_fd(launcher->fd_controller_out) ;
+	policy_free(&launcher->policy) ;
 	free(launcher) ;
 	return NULL ;
+}
+
+static void launcher_get_machine_id(launcher_t *launcher)
+{
+	log_flow() ;
+
+	if (file_read("/etc/machine-id", launcher->machineid, MACHINEID) < 0)
+		memcpy(launcher->machineid, "00000000000000000000000000000001", MACHINEID) ;
+
+	launcher->machineid[MACHINEID] = 0 ;
 }
 
 int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
@@ -90,7 +105,7 @@ int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
 	launcher->uid = getuid() ;
 	launcher->gid = getgid() ;
 	launcher->loopret = DBS_EXIT_MAIN ;
-	launcher->nservice = 1 ;
+	launcher->nservice = DBS_SERVICE_ID_FIRST ;
 	launcher_get_machine_id(launcher) ;
 
 	launcher->hservice = hservice ;
@@ -102,7 +117,7 @@ int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
 
 	/** event loop + signal trapping (replaces selfpipe). The signalfd is set up
 	 * here, before the broker is forked, so no signal is missed. */
-	if (!sse_new(&launcher->p, 2))
+	if (!sse_new(&launcher->p, 3))
 		log_warnusys_return(DBS_EXIT_FATAL, "create event loop") ;
 
 	if (!sse_start_signal(&launcher->p, &launcher->wsignal, on_signal, launcher, 10))
@@ -122,108 +137,26 @@ int launcher_new(launcher_t_ref *plauncher, hash_t *hservice, int socket)
 	return 1 ;
 }
 
-int launcher_run(launcher_t *launcher)
+static int launcher_drop_permissions(launcher_t *launcher)
 {
-	int r, controller[2] ;
+	if (launcher->uid > 0) {
+		/*
+		* For compatibility to dbus-daemon, this must be
+		* non-fatal.
+		*/
+		setgroups(0, NULL) ;
 
-	if (socketpair(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, controller) < 0)
-		log_warnu_return(DBS_EXIT_FATAL, "socketpair") ;
+		if (setgid(launcher->gid) < 0)
+			log_warnusys_return(DBS_EXIT_FATAL, "setgid") ;
 
-	launcher->fd_controller_in = controller[0] ;
-	launcher->fd_controller_out = controller[1] ;
-
-	if (pipe(launcher->sync) < 0)
-		log_warnu_return(DBS_EXIT_FATAL, "pipe") ;
-
-	r = launcher_fork(launcher) ;
-	if (r < 0)
-		return r ;
-
-	r = launcher_setup(launcher) ;
-	if (r < 0)
-		log_warnu_return(r, "setup launcher") ;
-
-	return 1 ;
-}
-
-int launcher_fork(launcher_t *launcher)
-{
-	int r ;
-	pid_t pid = fork();
-	if (pid == -1)
-		log_warnusys_return(DBS_EXIT_FATAL, "fork") ;
-
-	if (pid == 0) {
-
-		close(launcher->sync[0]) ;
-		/** drop the inherited event loop (epoll + signalfd) and restore a clean
-		 * signal mask for the broker (the mask is inherited across execve). */
-		sse_free(&launcher->p) ;
-		{
-			sigset_t set ;
-			sigemptyset(&set) ;
-			sigaddset(&set, SIGCHLD) ;
-			sigaddset(&set, SIGINT) ;
-			sigaddset(&set, SIGQUIT) ;
-			sigaddset(&set, SIGHUP) ;
-			sigaddset(&set, SIGTERM) ;
-			sigaddset(&set, SIGPIPE) ;
-			sigprocmask(SIG_UNBLOCK, &set, NULL) ;
-		}
-		close(launcher->fd_controller_in) ;
-
-		launcher_run_broker(launcher) ;
-	}
-
-	close(launcher->fd_controller_out) ;
-
-	launcher->bpid = pid ;
-
-	{
-		// synchronize with child
-		close_fd(launcher->sync[1]) ;
-		char dummy ;
-		r = io_read(launcher->sync[0], &dummy, 1) ;
-		if (r < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "synchronize with child") ;
-
-		if (!r)
-			log_warnu_return(DBS_EXIT_FATAL, "start the broker -- the child went away before signalling") ;
-
-		close_fd(launcher->sync[0]) ;
+		if (setuid(launcher->uid) < 0)
+			log_warnusys_return(DBS_EXIT_FATAL, "setuid") ;
 	}
 
 	return 1 ;
 }
 
-int launcher_setup(launcher_t *launcher)
-{
-	log_flow() ;
-
-	int r ;
-
-	if (!odbus_open(&launcher->bus, launcher->fd_controller_in))
-		log_warnusys_return(DBS_EXIT_FATAL, "open the controller bus") ;
-
-	if (!odbus_set_object(launcher->bus, "/org/bus1/DBus/Controller", "org.bus1.DBus.Controller", launcher_methods, launcher))
-		log_warnusys_return(DBS_EXIT_FATAL, "serve the controller object") ;
-
-	if (!odbus_set_filter(launcher->bus, launcher_on_message, launcher))
-		log_warnusys_return(DBS_EXIT_FATAL, "set the controller bus filter") ;
-
-	if (!launcher_add_listener(launcher))
-		log_warnsys("AddListener failed") ;
-
-	service_sync_launcher_broker(launcher) ;
-
-	r = launcher_drop_permissions(launcher) ;
-	if (r < 0)
-		log_warnusys_return(DBS_EXIT_FATAL, "drop permissions") ;
-
-	return 1 ;
-}
-
-void launcher_run_broker(launcher_t *launcher)
+static attribute_noreturn void launcher_run_broker(launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -277,7 +210,56 @@ void launcher_run_broker(launcher_t *launcher)
 		_exit(1) ;
 }
 
-int launcher_add_listener(launcher_t *launcher)
+static int launcher_fork(launcher_t *launcher)
+{
+	int r ;
+	pid_t pid = fork();
+	if (pid == -1)
+		log_warnusys_return(DBS_EXIT_FATAL, "fork") ;
+
+	if (pid == 0) {
+
+		close(launcher->sync[0]) ;
+		// drop the inherited event loop
+		sse_free(&launcher->p) ;
+		{
+			sigset_t set ;
+			sigemptyset(&set) ;
+			sigaddset(&set, SIGCHLD) ;
+			sigaddset(&set, SIGINT) ;
+			sigaddset(&set, SIGQUIT) ;
+			sigaddset(&set, SIGHUP) ;
+			sigaddset(&set, SIGTERM) ;
+			sigaddset(&set, SIGPIPE) ;
+			sigprocmask(SIG_UNBLOCK, &set, NULL) ;
+		}
+		close(launcher->fd_controller_in) ;
+
+		launcher_run_broker(launcher) ;
+	}
+
+	close(launcher->fd_controller_out) ;
+
+	launcher->bpid = pid ;
+
+	{
+		// synchronize with child
+		close_fd(launcher->sync[1]) ;
+		char dummy ;
+		r = io_read(launcher->sync[0], &dummy, 1) ;
+		if (r < 0)
+			log_warnusys_return(DBS_EXIT_FATAL, "synchronize with child") ;
+
+		if (!r)
+			log_warnu_return(DBS_EXIT_FATAL, "start the broker -- the child went away before signalling") ;
+
+		close_fd(launcher->sync[0]) ;
+	}
+
+	return 1 ;
+}
+
+static int launcher_add_listener(launcher_t *launcher)
 {
 	log_flow() ;
 
@@ -296,7 +278,7 @@ int launcher_add_listener(launcher_t *launcher)
 		log_warnusys_return(DBS_EXIT_WARN, "append message") ;
 	}
 
-	if (!policy(m)) {
+	if (!policy_export(&launcher->policy, m)) {
 		odbus_message_free(m) ;
 		log_warnusys_return(DBS_EXIT_WARN, "export policy") ;
 	}
@@ -315,119 +297,6 @@ int launcher_add_listener(launcher_t *launcher)
 	}
 
 	return 1 ;
-}
-
-static void on_signal(sse_watcher_t *w, void *data, int event)
-{
-	(void)event ;
-	launcher_t *launcher = data ;
-	sse_signal_t *sig = (sse_signal_t *)w->sdata ;
-
-	int r = handle_signal(launcher, sig->si.ssi_signo) ;
-
-	if (r == DBS_EXIT_FATAL) {
-		launcher->loopret = DBS_EXIT_FATAL ;
-		w->p->running = false ;
-	} else if (r == DBS_EXIT_MAIN) {
-		w->p->running = false ;
-	}
-	/* DBS_EXIT_CHILD (reload, transient child reaped) or broker death by signal:
-	 * keep the loop running, exactly like the former iopause loop. */
-}
-
-static void on_bus(sse_watcher_t *w, void *data, int event)
-{
-	launcher_t *launcher = data ;
-	int r ;
-
-	if (event & (SSE_ERROR | SSE_HUP)) {
-		log_warn("the controller bus ", (event & SSE_HUP) ? "was closed by the broker" : "reported an error", " -- stopping") ;
-		collect_broker_death(launcher) ;
-		w->p->running = false ;
-		return ;
-	}
-
-	/* drain the controller bus: process requests until none is left */
-	do {
-		do r = odbus_process(launcher->bus) ;
-		while (r < 0 && errno == EINTR) ;
-		if (r < 0) {
-			log_warnusys("process bus") ;
-			launcher->loopret = DBS_EXIT_FATAL ;
-			w->p->running = false ;
-			return ;
-		}
-	} while (r > 0) ;
-}
-
-int launcher_loop(launcher_t *launcher)
-{
-	launcher->loopret = DBS_EXIT_MAIN ;
-
-	if (!sse_start_io(&launcher->p, &launcher->wbus, on_bus, launcher, launcher->fd_controller_in, SSE_READ, 0))
-		log_warnusys_return(DBS_EXIT_FATAL, "start controller bus watcher") ;
-
-	if (!sse_poll(&launcher->p, SSE_TIMEOUT_INFINITE))
-		log_warnusys_return(DBS_EXIT_FATAL, "event loop") ;
-
-	return launcher->loopret ;
-}
-
-// https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L491
-int launcher_on_message(odbus_message *m, void *userdata)
-{
-	log_flow() ;
-
-	launcher_t *launcher = userdata ;
-
-	const char *obj_path ;
-	int suffix ;
-
-	obj_path = odbus_message_get_path(m) ;
-
-	if (!obj_path)
-		return 0 ;
-
-	suffix = str_start_with(obj_path, "/org/bus1/DBus/Name/") ;
-
-	if (!suffix) {
-
-		if (odbus_message_is_signal(m, "org.bus1.DBus.Name", "Activate")) {
-
-			uint64_t serial = 0 ;
-			int r ;
-
-			if (odbus_message_read(m, "t", &serial) != 1)
-				log_warnusys_return(DBS_EXIT_WARN, "read the serial of: ", obj_path) ;
-
-			_alloc_strbuf_(stk, strlen(obj_path) + 1) ;
-
-			if (!ob_basename(stk.s, obj_path))
-				log_warnu_return(DBS_EXIT_WARN, "get basename of: ", obj_path) ;
-
-			r = service_activate(launcher, atoi(stk.s)) ;
-
-			if (r != 0)
-				odbus_call_method(launcher->bus, obj_path, "org.bus1.DBus.Name", "Reset", DBS_DBUS_CALL_TIMEOUT_MS, "t", serial) ;
-
-		}
-
-	} else if (!strcmp(obj_path, "/org/bus1/DBus/Broker")) {
-
-		if (odbus_message_is_signal(m, "org.bus1.DBus.Broker", "SetActivationEnvironment"))
-			launcher_update_environment(launcher, m) ;
-	}
-
-	return 0 ;
-}
-
-int launcher_on_reload_config(odbus_message *message, void *userdata)
-{
-	log_flow() ;
-    launcher_t *launcher = userdata ;
-	log_info("config reload requested") ;
-	service_reload(launcher) ;
-	return odbus_reply_method_return(message, NULL) ;
 }
 
 // https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L459
@@ -476,7 +345,7 @@ static void launcher_publish_environ(char const *dir, char const *scandir, char 
 	env_runtime_emit(scandir, STATUS_WHO_SELF, SS_LIVEENV_EVENT, key) ;
 }
 
-void launcher_update_environment(launcher_t *launcher, odbus_message *m)
+static void launcher_update_environment(launcher_t *launcher, odbus_message *m)
 {
 	log_flow() ;
 
@@ -519,44 +388,291 @@ void launcher_update_environment(launcher_t *launcher, odbus_message *m)
 		log_warnusys("exit from container") ;
 }
 
-void launcher_get_machine_id(launcher_t *launcher)
+// https://github.com/bus1/dbus-broker/blob/main/src/launch/launcher.c#L491
+static int launcher_on_message(odbus_message *m, void *userdata)
 {
 	log_flow() ;
 
-	int fd = io_open("/etc/machine-id", O_RDONLY) ;
-	if (fd < 0) {
-		memcpy(launcher->machineid, "00000000000000000000000000000001", 32) ;
-        goto exit ;
-    }
+	launcher_t *launcher = userdata ;
 
-    int r = io_read(fd, launcher->machineid, 32) ;
-    if (r < 0)
-        memcpy(launcher->machineid, "00000000000000000000000000000001", 32) ;
+	const char *obj_path ;
+	int suffix ;
 
-    exit:
-	    r = 32 ;
-	    close(fd) ;
+	obj_path = odbus_message_get_path(m) ;
 
-        launcher->machineid[r + 1] = 0 ;
+	if (!obj_path)
+		return 0 ;
+
+	suffix = str_start_with(obj_path, "/org/bus1/DBus/Name/") ;
+
+	if (!suffix) {
+
+		if (odbus_message_is_signal(m, "org.bus1.DBus.Name", "Activate")) {
+
+			uint64_t serial = 0 ;
+			uint32_t id ;
+			int r ;
+
+			if (odbus_message_read(m, "t", &serial) != 1)
+				log_warnusys_return(DBS_EXIT_WARN, "read the serial of: ", obj_path) ;
+
+			_alloc_strbuf_(stk, strlen(obj_path) + 1) ;
+
+			if (!ob_basename(stk.s, obj_path))
+				log_warnu_return(DBS_EXIT_WARN, "get basename of: ", obj_path) ;
+
+			if (*stk.s == '0' || !u32_scan_strict(stk.s, &id) || id > INT_MAX)
+				id = DBS_SERVICE_ID_NONE ;
+
+			r = service_activate(launcher, (int)id) ;
+
+			if (r != 0 && !odbus_call_method(launcher->bus, obj_path, "org.bus1.DBus.Name", "Reset", DBS_DBUS_CALL_TIMEOUT_MS, "ts", serial, "org.bus1.DBus.Name.Error.StartupFailure"))
+				log_warnusys("reset the activation of: ", obj_path) ;
+
+		}
+
+	} else if (!strcmp(obj_path, "/org/bus1/DBus/Broker")) {
+
+		if (odbus_message_is_signal(m, "org.bus1.DBus.Broker", "SetActivationEnvironment"))
+			launcher_update_environment(launcher, m) ;
+	}
+
+	return 0 ;
 }
 
-int launcher_drop_permissions(launcher_t *launcher)
+static int launcher_setup(launcher_t *launcher)
 {
-	if (launcher->uid > 0) {
-		/*
-		* For compatibility to dbus-daemon, this must be
-		* non-fatal.
-		*/
-		setgroups(0, NULL) ;
+	log_flow() ;
 
-		if (setgid(launcher->gid) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "setgid") ;
+	int r ;
 
-		if (setuid(launcher->uid) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "setuid") ;
-	}
+	if (!odbus_open(&launcher->bus, launcher->fd_controller_in))
+		log_warnusys_return(DBS_EXIT_FATAL, "open the controller bus") ;
+
+	if (!odbus_set_object(launcher->bus, "/org/bus1/DBus/Controller", "org.bus1.DBus.Controller", launcher_methods, launcher))
+		log_warnusys_return(DBS_EXIT_FATAL, "serve the controller object") ;
+
+	if (!odbus_set_filter(launcher->bus, launcher_on_message, launcher))
+		log_warnusys_return(DBS_EXIT_FATAL, "set the controller bus filter") ;
+
+	if (!sse_start_eventfd(&launcher->p, &launcher->wpending, on_pending, launcher, 0))
+		log_warnusys_return(DBS_EXIT_FATAL, "start the watcher of the messages the bus sets aside") ;
+
+	if (!odbus_set_pending_notify(launcher->bus, bus_pending, launcher))
+		log_warnusys_return(DBS_EXIT_FATAL, "set the controller bus wakeup") ;
+
+	if (!launcher_add_listener(launcher))
+		log_warnsys("AddListener failed") ;
+
+	service_sync_launcher_broker(launcher) ;
+
+	r = launcher_drop_permissions(launcher) ;
+	if (r < 0)
+		log_warnusys_return(DBS_EXIT_FATAL, "drop permissions") ;
 
 	return 1 ;
 }
 
+int launcher_run(launcher_t *launcher)
+{
+	int r, controller[2] ;
 
+	if (socketpair(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, controller) < 0)
+		log_warnu_return(DBS_EXIT_FATAL, "socketpair") ;
+
+	launcher->fd_controller_in = controller[0] ;
+	launcher->fd_controller_out = controller[1] ;
+
+	if (pipe(launcher->sync) < 0)
+		log_warnu_return(DBS_EXIT_FATAL, "pipe") ;
+
+	r = launcher_fork(launcher) ;
+	if (r < 0)
+		return r ;
+
+	r = launcher_setup(launcher) ;
+	if (r < 0)
+		log_warnu_return(r, "setup launcher") ;
+
+	return 1 ;
+}
+
+int launcher_load_policy(launcher_t *launcher)
+{
+	log_flow() ;
+
+	char const *path = launcher->uid > 0 ? SS_TOOLS_DBS_SESSION_CONFIG : SS_TOOLS_DBS_SYSTEM_CONFIG ;
+
+	if (!policy_connect_self(&launcher->policy, launcher->uid))
+		log_warnusys_return(DBS_EXIT_FATAL, "allow the owner of the bus to connect") ;
+
+	if (!config_load(&launcher->policy, path))
+		log_warnu_return(DBS_EXIT_FATAL, "load the bus configuration: ", path) ;
+
+	policy_optimize(&launcher->policy) ;
+
+	return 1 ;
+}
+
+int launcher_reload_policy(launcher_t *launcher)
+{
+	log_flow() ;
+
+	char const *path = launcher->uid > 0 ? SS_TOOLS_DBS_SESSION_CONFIG : SS_TOOLS_DBS_SYSTEM_CONFIG ;
+	policy_t policy = POLICY_ZERO ;
+	odbus_message *m = NULL ;
+	int r, e ;
+
+	if (!policy_connect_self(&policy, launcher->uid)) {
+		policy_free(&policy) ;
+		log_warnusys_return(DBS_EXIT_WARN, "allow the owner of the bus to connect -- keeping the current bus policy") ;
+	}
+
+	if (!config_load(&policy, path)) {
+		policy_free(&policy) ;
+		log_warnu_return(DBS_EXIT_WARN, "reload the bus configuration: ", path, " -- keeping the current bus policy") ;
+	}
+
+	policy_optimize(&policy) ;
+
+	if (!odbus_message_new_method_call(launcher->bus,
+									   &m,
+									   "/org/bus1/DBus/Listener/0",
+									   "org.bus1.DBus.Listener",
+									   "SetPolicy")) {
+		policy_free(&policy) ;
+		log_warnusys_return(DBS_EXIT_WARN, "call method org.bus1.DBus.Listener -- keeping the current bus policy") ;
+	}
+
+	if (!policy_export(&policy, m)) {
+		odbus_message_free(m) ;
+		policy_free(&policy) ;
+		log_warnsys_return(DBS_EXIT_WARN, "keeping the current bus policy -- unable to export the policy") ;
+	}
+
+	r = odbus_call(launcher->bus, m, DBS_DBUS_SETPOLICY_TIMEOUT_MS) ;
+	e = errno ;
+	odbus_message_free(m) ;
+
+	if (!r) {
+
+		char const *name = odbus_error_name(launcher->bus) ;
+
+		policy_free(&policy) ;
+		errno = e ;
+
+		if (e == ETIMEDOUT)
+			log_warnusys_return(DBS_EXIT_WARN, "SetPolicy -- the broker may apply the new bus policy all the same") ;
+
+		if (e == EIO && name)
+			log_warnu_return(DBS_EXIT_WARN, "SetPolicy, refused with: ", name," -- keeping the current bus policy") ;
+
+		log_warnusys_return(DBS_EXIT_WARN, "call SetPolicy -- keeping the current bus policy") ;
+	}
+
+	policy_free(&launcher->policy) ;
+	launcher->policy = policy ;
+
+	return 1 ;
+}
+
+static void on_signal(sse_watcher_t *w, void *data, int event)
+{
+	(void)event ;
+	launcher_t *launcher = data ;
+	sse_signal_t *sig = (sse_signal_t *)w->sdata ;
+
+	int r = handle_signal(launcher, sig->si.ssi_signo) ;
+
+	if (r == DBS_EXIT_FATAL) {
+		launcher->loopret = DBS_EXIT_FATAL ;
+		w->p->running = false ;
+	} else if (r == DBS_EXIT_MAIN) {
+		w->p->running = false ;
+	}
+	/* DBS_EXIT_CHILD (reload, transient child reaped) or broker death by signal:
+	 * keep the loop running, exactly like the former iopause loop. */
+}
+
+static void bus_drain(launcher_t *launcher)
+{
+	int r ;
+
+	do {
+		do r = odbus_process(launcher->bus) ;
+		while (r < 0 && errno == EINTR) ;
+		if (r < 0) {
+			log_warnusys("process bus") ;
+			launcher->loopret = DBS_EXIT_FATAL ;
+			launcher->p.running = false ;
+			return ;
+		}
+	} while (r > 0) ;
+}
+
+static void on_bus(sse_watcher_t *w, void *data, int event)
+{
+	launcher_t *launcher = data ;
+
+	if (event & (SSE_ERROR | SSE_HUP)) {
+		log_warn("the controller bus ", (event & SSE_HUP) ? "was closed by the broker" : "reported an error", " -- stopping") ;
+		collect_broker_death(launcher) ;
+		w->p->running = false ;
+		return ;
+	}
+
+	bus_drain(launcher) ;
+}
+
+static void pending_drain(launcher_t *launcher)
+{
+	int r ;
+
+	do {
+		do r = odbus_process(launcher->bus) ;
+		while (r < 0 && errno == EINTR) ;
+		if (r < 0)
+			return ;
+	} while (r > 0) ;
+}
+
+static void on_pending(sse_watcher_t *w, void *data, int event)
+{
+	(void)w ;
+	(void)event ;
+	launcher_t *launcher = data ;
+
+	pending_drain(launcher) ;
+}
+
+static void bus_pending(void *data)
+{
+	launcher_t *launcher = data ;
+
+	if (!sse_write_eventfd(&launcher->wpending))
+		log_warnusys("wake the event loop for the messages the bus set aside") ;
+}
+
+int launcher_loop(launcher_t *launcher)
+{
+	launcher->loopret = DBS_EXIT_MAIN ;
+
+	if (!sse_start_io(&launcher->p, &launcher->wbus, on_bus, launcher, launcher->fd_controller_in, SSE_READ, 0))
+		log_warnusys_return(DBS_EXIT_FATAL, "start controller bus watcher") ;
+
+	if (!sse_poll(&launcher->p, SSE_TIMEOUT_INFINITE))
+		log_warnusys_return(DBS_EXIT_FATAL, "event loop") ;
+
+	return launcher->loopret ;
+}
+
+int launcher_on_reload_config(odbus_message *message, void *userdata)
+{
+	log_flow() ;
+    launcher_t *launcher = userdata ;
+	log_info("config reload requested") ;
+	if (!launcher_reload_policy(launcher))
+		return odbus_reply_method_error(message, "org.bus1.DBus.Controller.Error.InvalidConfig", "Invalid configuration. Reload ignored.") ;
+	service_reload(launcher) ;
+	return odbus_reply_method_return(message, NULL) ;
+}

@@ -24,6 +24,7 @@
 #define MACHINEID 32 // https://www.freedesktop.org/software/systemd/man/latest/machine-id.html
 
 #define DBS_DBUS_CALL_TIMEOUT_MS 30000
+#define DBS_DBUS_SETPOLICY_TIMEOUT_MS 5000
 
 extern const odbus_method launcher_methods[] ;
 extern void dbs_get_socket_path(char *store) ;

@@ -29,13 +29,13 @@
 
 #define BROKER_REAP_TRIES 1000
 
-pid_t async_spawn(char **cmd)
+static pid_t async_spawn(char **cmd)
 {
 	log_flow() ;
 	return spawn_path(cmd[0], (char const *const *)cmd, (char const *const *)environ) ;
 }
 
-int spawn_wait(pid_t p)
+static int spawn_wait(pid_t p)
 {
 	log_flow() ;
 
@@ -44,11 +44,7 @@ int spawn_wait(pid_t p)
 	if (process_wait(p, &wstat) < 0)
 		return DBS_EXIT_FATAL ;
 
-	if (WIFEXITED(wstat) && WEXITSTATUS(wstat) == 0)
-		return 0 ;
-	else
-		return WIFSIGNALED(wstat) ? 128 + WTERMSIG(wstat) : WEXITSTATUS(wstat) ;
-
+	return WIFSIGNALED(wstat) ? 128 + WTERMSIG(wstat) : WEXITSTATUS(wstat) ;
 }
 
 int sync_spawn(char **cmd)
@@ -65,9 +61,6 @@ int sync_spawn(char **cmd)
 static int compute_exit(int wstat)
 {
 	log_flow() ;
-
-    if (WIFEXITED(wstat) && WEXITSTATUS(wstat) == 0)
-        return DBS_EXIT_MAIN ;
 
     return WIFSIGNALED(wstat) ? 128 + WTERMSIG(wstat) : WEXITSTATUS(wstat) ;
 }
@@ -93,7 +86,7 @@ static int reap_broker(pid_t pid, int *wstat)
 	return 0 ;
 }
 
-void report_broker_death(launcher_t *launcher, int wstat)
+static void report_broker_death(launcher_t *launcher, int wstat)
 {
 	log_flow() ;
 
@@ -143,7 +136,8 @@ int handle_signal(launcher_t *launcher, int signo)
 
 		case SIGHUP:
 			log_info("caught SIGHUP signal, reloading services and configuration") ;
-			service_reload(launcher) ;
+			if (launcher_reload_policy(launcher))
+				service_reload(launcher) ;
 			return DBS_EXIT_CHILD ;
 		case SIGTERM:
 		case SIGINT:

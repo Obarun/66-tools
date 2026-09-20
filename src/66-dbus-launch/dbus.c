@@ -92,46 +92,20 @@ int dbs_socket_bind(void)
 
 int dbs_setenv_dbus_address(void)
 {
-	uid_t uid = getuid() ;
-	char *path = 0 ;
+	char const *var = !getuid() ? "DBUS_SYSTEM_BUS_ADDRESS" : "DBUS_SESSION_BUS_ADDRESS" ;
+	char *path = getenv(var) ;
 	_alloc_strbuf_(stk, SS_MAX_PATH) ;
 
-	if (!uid) {
+	if (!path) {
 
-		path = getenv("DBUS_SYSTEM_BUS_ADDRESS") ;
-
-		if (!path) {
-
-			if (dbs_get_socket_unix_path(&stk) < 0)
-				log_warnusys_return(DBS_EXIT_FATAL, "get dbus socket path") ;
-
-			if (setenv("DBUS_SYSTEM_BUS_ADDRESS", stk.s, 1) < 0)
-				log_warnusys_return(DBS_EXIT_FATAL, "set DBUS_SYSTEM_BUS_ADDRESS=", stk.s, " environment variable") ;
-
-			return 1 ;
-		}
-
-		if (setenv("DBUS_SYSTEM_BUS_ADDRESS", path, 1) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "set DBUS_SYSTEM_BUS_ADDRESS=", path, " environment variable") ;
-
-	} else {
-
-		path = getenv("DBUS_SESSION_BUS_ADDRESS") ;
-
-		if (!path) {
-
-			if (dbs_get_socket_unix_path(&stk) < 0)
+		if (dbs_get_socket_unix_path(&stk) < 0)
 			log_warnusys_return(DBS_EXIT_FATAL, "get dbus socket path") ;
 
-			if (setenv("DBUS_SESSION_BUS_ADDRESS", stk.s, 1) < 0)
-				log_warnusys_return(DBS_EXIT_FATAL, "set DBUS_SESSION_BUS_ADDRESS=", stk.s, " environment variable") ;
-
-			return 1 ;
-		}
-
-		if (setenv("DBUS_SESSION_BUS_ADDRESS", path, 1) < 0)
-			log_warnusys_return(DBS_EXIT_FATAL, "set DBUS_SESSION_BUS_ADDRESS=", path, " environment variable") ;
+		path = stk.s ;
 	}
+
+	if (setenv(var, path, 1) < 0)
+		log_warnusys_return(DBS_EXIT_FATAL, "set ", var, "=", path, " environment variable") ;
 
 	return 1 ;
 }

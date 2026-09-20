@@ -134,6 +134,10 @@ int main(int argc, char const *const *argv)
 	if (r < 0)
 		log_dieu(LOG_EXIT_SYS, "make new launcher") ;
 
+	r = launcher_load_policy(launcher) ;
+	if (r < 0)
+		log_dieu(LOG_EXIT_SYS, "load the bus policy") ;
+
 	r = service_load(launcher) ;
 	if (r <= 0)
 		log_dieu(LOG_EXIT_SYS, "collect service") ;
