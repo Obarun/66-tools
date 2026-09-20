@@ -71,8 +71,11 @@ meson install -C build
 - `ns-rule-dir`: Set the installation directory for 66-ns rules (default: `/usr/share/66/script/ns`).
 - `dbus-system-service-dir`: Set the directory for DBus system service files (default: `/usr/share/dbus-1/system-services`).
 - `dbus-session-service-dir`: Set the directory for DBus session service files (default: `/usr/share/dbus-1/services`).
+- `dbus-system-config`: Set the main configuration file of the DBus system bus, whose policy `66-dbus-launch` enforces (default: `/usr/share/dbus-1/system.conf`).
+- `dbus-session-config`: Set the main configuration file of the DBus session bus (default: `/usr/share/dbus-1/session.conf`).
+- `dbus-system-uid-max`: Set the highest uid of a system user; an `at_console` policy applies above it and a `no_console` policy up to it (default: `999`).
 - `dbus-system-name`: Specify the name of the DBus system socket (default: `system_bus_socket`).
-- `dbus-session-name`: Specify the name of the DBus session socket (default: `dbus`).
+- `dbus-session-name`: Specify the name of the DBus session socket (default: `bus`).
 - `userd-pam-dir`: Set the installation directory of `pam_userd.so`; this is the `SECUREDIR` of `libpam`, fixed by the host and independent of `prefix` (default: `/usr/lib/security`).
 - `userd-runtime-base`: Set the base directory of the per-user runtime directory managed by `66-userd` (default: `/run/user`).
 - `userd-runtime-size`: Set the `size=` option of the per-user runtime tmpfs (default: `10%`).
