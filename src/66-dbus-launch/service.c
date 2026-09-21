@@ -688,7 +688,19 @@ static void service_clean_orphans(launcher_t *launcher, strbuf *list, strbuf *cl
 	log_flow() ;
 
 	size_t pos = 0 ;
+	struct service_s *c, *tmp ;
 	_cleanup_strbuf_ strbuf contents = STRBUF_ZERO ;
+
+	service_tree_contents(&contents, launcher) ;
+
+	HASH_FOREACH(launcher->hservice, c, tmp) {
+
+		_alloc_strbuf_(name, strlen(c->name) + DBS_SERVICE_SUFFIX_LEN + 1) ;
+		auto_strings(name.s, c->name, DBS_SERVICE_SUFFIX) ;
+
+		if (contents.len && sbl_search(&contents, name.s) < 0)
+			FLAGS_SET(c->state, DBS_SERVICE_PARSE) ;
+	}
 
 	if (unread->len) {
 
@@ -697,8 +709,6 @@ static void service_clean_orphans(launcher_t *launcher, strbuf *list, strbuf *cl
 
 		return ;
 	}
-
-	service_tree_contents(&contents, launcher) ;
 
 	FOREACH_SBL(&contents, pos) {
 
