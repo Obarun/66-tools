@@ -21,6 +21,7 @@ nav:
   - 66-yeller: 66-yeller.md
   - 66-ns: 66-ns.md
   - 66-dbus-launch: 66-dbus-launch.md
+  - 66-web: 66-web.md
 - Session tracking:
   - 66-userd: 66-userd.md
   - 66-userctl: 66-userctl.md

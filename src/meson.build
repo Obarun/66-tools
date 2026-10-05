@@ -97,6 +97,61 @@ exe_configs += {
   }
 }
 
+web_dir = meson.current_source_dir() / '66-web'
+find_web_sources_cmd = run_command(
+  'sh', '-c',
+  'find "@0@" -maxdepth 1 -type f -name "*.c" ! -name "main.c"'.format(web_dir),
+  check: false
+)
+if find_web_sources_cmd.returncode() != 0
+  error('Failed to find source files in ' + web_dir + ': ' + find_web_sources_cmd.stderr())
+endif
+
+lib66web_sources = []
+foreach file : find_web_sources_cmd.stdout().strip().split('\n')
+  if file != '' and fs.is_file(file)
+    lib66web_sources += files(file)
+  endif
+endforeach
+
+if lib66web_sources.length() == 0
+  error('No source files found for lib66web in ' + web_dir)
+endif
+
+xxd = find_program('xxd', required: true)
+
+foreach asset, name : {'index.html': 'index_html', 'style.css': 'style_css', 'app.js': 'app_js'}
+  lib66web_sources += custom_target(name + '.c',
+    input: '66-web' / 'assets' / asset,
+    output: name + '.c',
+    command: [xxd, '-i', '-n', name, '@INPUT@'],
+    capture: true
+  )
+endforeach
+
+lib66web = static_library(
+  '66web',
+  lib66web_sources,
+  include_directories: [incdir, include_directories('66-web')],
+  dependencies: [lib66_dep, oblibs_dep],
+  c_args: static_c_args,
+  link_args: static_link_args,
+  install: false
+)
+
+lib66web_dep = declare_dependency(
+  link_with: lib66web,
+  include_directories: [incdir, include_directories('66-web')],
+  dependencies: [lib66_dep, oblibs_dep]
+)
+
+exe_configs += {
+  '66-web': {
+    'sources': ['main.c'],
+    'deps': [lib66web_dep, lib66_dep, oblibs_dep]
+  }
+}
+
 # Special handling for 66-userd
 # The directory holds three artifacts sharing the same model: the daemon
 # (66-userd), the query CLI (66-userctl) and the PAM module (pam_userd.so).

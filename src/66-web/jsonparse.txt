@@ -1,0 +1,169 @@
+jsonparse parser:
+
+A pushdown automaton over the request body, RFC 8259. The main table reads one
+byte at a time; a stack of open containers (object or array, JP_MAX_DEPTH at
+most) holds what the table cannot: whether a ',' or a closing bracket belongs
+to an object or an array. The tree is built as the table goes, by the actions.
+A second, small table validates the UTF-8 of the raw bytes inside strings.
+Escapes are checked for syntax by the main table and decoded when the string
+closes: \u0000, a lone surrogate, a duplicate key in an object, or more than
+JP_MAX_MEMBERS members in one object reject the whole document.
+
+main table:
+
+class	|	0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	20	21	22	23	24	25	26	27	28	29	30	31
+st\ev	|	sp	wh	{	}	[	]	:	,	"	\	/	+	-	.	0	19	a	b	e	f	l	n	r	s	t	u	E	hx	etc	ctl	u8	eof
+
+GO	|			o		a				m				m		m	m
+0	|	GO	GO	OB	__	AR	__	__	__	ST	__	__	__	MI	__	ZE	IN	__	__	__	F1	__	N1	__	__	T1	__	__	__	__	__	__	__
+
+OK	|				O		A		n
+1	|	OK	OK	__	OK	__	OK	__	VA	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	DN
+
+OB	|				O					mk
+2	|	OB	OB	__	OK	__	__	__	__	ST	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+KE	|									mk
+3	|	KE	KE	__	__	__	__	__	__	ST	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+CO	|
+4	|	CO	CO	__	__	__	__	VA	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+VA	|			o		a				m				m		m	m
+5	|	VA	VA	OB	__	AR	__	__	__	ST	__	__	__	MI	__	ZE	IN	__	__	__	F1	__	N1	__	__	T1	__	__	__	__	__	__	__
+
+AR	|			o		a	A			m				m		m	m
+6	|	AR	AR	OB	__	AR	OK	__	__	ST	__	__	__	MI	__	ZE	IN	__	__	__	F1	__	N1	__	__	T1	__	__	__	__	__	__	__
+
+ST	|	u		u	u	u	u	u	u	uq	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u	u		u
+7	|	ST	__	ST	ST	ST	ST	ST	ST	OK	ES	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	ST	__	ST	__
+
+ES	|
+8	|	__	__	__	__	__	__	__	__	ST	ST	ST	__	__	__	__	__	__	ST	__	ST	__	ST	ST	__	ST	U1	__	__	__	__	__	__
+
+U1	|
+9	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	U2	U2	U2	U2	U2	U2	__	__	__	__	__	__	U2	U2	__	__	__	__
+
+U2	|
+10	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	U3	U3	U3	U3	U3	U3	__	__	__	__	__	__	U3	U3	__	__	__	__
+
+U3	|
+11	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	U4	U4	U4	U4	U4	U4	__	__	__	__	__	__	U4	U4	__	__	__	__
+
+U4	|
+12	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	ST	ST	ST	ST	ST	ST	__	__	__	__	__	__	ST	ST	__	__	__	__
+
+MI	|
+13	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	ZE	IN	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+ZE	|	d	d		dO		dA		dn																								d
+14	|	OK	OK	__	OK	__	OK	__	VA	__	__	__	__	__	FR	__	__	__	__	E1	__	__	__	__	__	__	__	E1	__	__	__	__	DN
+
+IN	|	d	d		dO		dA		dn																								d
+15	|	OK	OK	__	OK	__	OK	__	VA	__	__	__	__	__	FR	IN	IN	__	__	E1	__	__	__	__	__	__	__	E1	__	__	__	__	DN
+
+FR	|
+16	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	FS	FS	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+FS	|	d	d		dO		dA		dn																								d
+17	|	OK	OK	__	OK	__	OK	__	VA	__	__	__	__	__	__	FS	FS	__	__	E1	__	__	__	__	__	__	__	E1	__	__	__	__	DN
+
+E1	|
+18	|	__	__	__	__	__	__	__	__	__	__	__	E2	E2	__	E3	E3	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+E2	|
+19	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	E3	E3	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+E3	|	d	d		dO		dA		dn																								d
+20	|	OK	OK	__	OK	__	OK	__	VA	__	__	__	__	__	__	E3	E3	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	DN
+
+T1	|
+21	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	T2	__	__	__	__	__	__	__	__	__
+
+T2	|
+22	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	T3	__	__	__	__	__	__
+
+T3	|																			T
+23	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	OK	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+F1	|
+24	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	F2	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+F2	|
+25	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	F3	__	__	__	__	__	__	__	__	__	__	__
+
+F3	|
+26	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	F4	__	__	__	__	__	__	__	__
+
+F4	|																			F
+27	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	OK	__	__	__	__	__	__	__	__	__	__	__	__	__
+
+N1	|
+28	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	N2	__	__	__	__	__	__
+
+N2	|
+29	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	N3	__	__	__	__	__	__	__	__	__	__	__
+
+N3	|																					N
+30	|	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	__	OK	__	__	__	__	__	__	__	__	__	__	__
+
+DN = 31 (done), __ = 32 (rejected)
+
+sp	space
+wh	\t \n \r
+19	1 to 9
+hx	c d A B C D F (hex digits with no other role)
+etc	any other byte from 0x21 to 0x7f
+ctl	0x00 to 0x1f except \t \n \r
+u8	0x80 to 0xff
+eof	fed once after the last byte
+
+31 states + DN + __ -> 6 bits, 13 actions -> 19 bits
+
+m	0x000040	mark the token start (a string's opening quote, a number's first char)
+k	0x000080	the string being opened is an object key
+q	0x000100	close the string: decode it; a key goes to CO, a value is attached
+d	0x000200	the number ends here: convert and attach it
+o	0x000400	open an object: attach it, push it
+O	0x000800	close an object: the top of the stack must be an object, pop it
+a	0x001000	open an array: attach it, push it
+A	0x002000	close an array: the top of the stack must be an array, pop it
+n	0x004000	next member: inside an object go to KE, inside an array to VA,
+		outside any container reject
+u	0x008000	run the UTF-8 table on this byte
+T	0x010000	attach true
+F	0x020000	attach false
+N	0x040000	attach null
+
+Actions run in this order: u m k q d T F N o a O A n. q and n set the next
+state themselves; every other cell's state is the table's. DN also requires
+an empty stack.
+
+utf-8 table (run by u):
+
+class	|	0	1	2	3	4	5	6	7	8	9	10	11
+st\ev	|	asc	c1	c2	c3	l2	e0	l3	ed	f0	l4	f4	bad
+
+ac	|	ac	__	__	__	n1	e0	n2	ed	f0	n3	f4	__
+n1	|	__	ac	ac	ac	__	__	__	__	__	__	__	__
+n2	|	__	n1	n1	n1	__	__	__	__	__	__	__	__
+n3	|	__	n2	n2	n2	__	__	__	__	__	__	__	__
+e0	|	__	__	__	n1	__	__	__	__	__	__	__	__
+ed	|	__	n1	n1	__	__	__	__	__	__	__	__	__
+f0	|	__	__	n2	n2	__	__	__	__	__	__	__	__
+f4	|	__	n2	__	__	__	__	__	__	__	__	__	__
+
+ac = 0 n1 = 1 n2 = 2 n3 = 3 e0 = 4 ed = 5 f0 = 6 f4 = 7, __ = 8
+
+asc	0x00 to 0x7f
+c1	0x80 to 0x8f
+c2	0x90 to 0x9f
+c3	0xa0 to 0xbf
+l2	0xc2 to 0xdf
+e0	0xe0
+l3	0xe1 to 0xec, 0xee, 0xef
+ed	0xed (no encoded surrogates: second byte 0x80 to 0x9f)
+f0	0xf0 (no overlong: second byte 0x90 to 0xbf)
+l4	0xf1 to 0xf3
+f4	0xf4 (nothing past U+10FFFF: second byte 0x80 to 0x8f)
+bad	0xc0, 0xc1, 0xf5 to 0xff

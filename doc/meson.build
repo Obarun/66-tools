@@ -29,7 +29,7 @@ sed_args = [
 html_pages = [
   '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
   '66-olexec', '66-userctl', '66-userd', '66-which', '66-writenv',
-  '66-yeller', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
+  '66-yeller', '66-web', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
   'pam_userd', 'index', 'upgrade',
 ]
 
@@ -37,7 +37,7 @@ html_pages = [
 man1_pages = [
   '66-clock', '66-dbus-launch', '66-getenv', '66-gnwenv', '66-ns',
   '66-olexec', '66-userctl', '66-userd', '66-which', '66-writenv',
-  '66-yeller', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
+  '66-yeller', '66-web', 'execl-cmdline', 'execl-subuidgid', 'execl-toc',
 ]
 
 man8_pages = [

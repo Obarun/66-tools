@@ -44,6 +44,8 @@ See [changes](upgrade.html) between version.
 
 - [66-dbus-launch](66-dbus-launch.html)
 
+- [66-web](66-web.html)
+
 - [66-userd](66-userd.html)
 
 - [66-userctl](66-userctl.html)

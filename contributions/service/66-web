@@ -1,0 +1,10 @@
+[Main]
+Type = classic
+Description = "66-web interface"
+
+[Start]
+Execute = ( 66-web -v${Verbosity} serve -l ${Listen} )
+
+[Environment]
+Verbosity=!3
+Listen=127.0.0.1:8066

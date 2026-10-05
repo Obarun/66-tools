@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>66-web</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark">66</span> monitor <span class="sub">/ Obarun service supervision</span></div>
+  <span class="scope" id="scope"></span>
+  <span class="grow"></span>
+  <span class="live" id="live" data-on="0"><span class="pulse"></span><span class="live-label"></span></span>
+  <button class="icon-btn" id="newbtn" type="button">+ new service</button>
+  <button class="icon-btn" id="refresh" type="button">↻ refresh</button>
+</div>
+
+<div class="cockpit">
+  <div class="ring-unit">
+    <div class="ring" id="ring"><div class="readout"><b id="ring-pct">–</b><span>available</span></div></div>
+    <div class="ring-legend" id="ring-legend"></div>
+  </div>
+  <div class="vitals-right">
+    <div class="tiles" id="tiles"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="segmented modes" id="modes">
+    <button data-m="services" class="active" type="button">services</button>
+    <button data-m="trees" type="button">trees</button>
+    <button data-m="graph" type="button">graph</button>
+    <button data-m="available" type="button">available</button>
+  </div>
+  <div class="search"><input id="filter" type="search" placeholder="filter services…" autocomplete="off" spellcheck="false"></div>
+  <div class="segmented" id="statusfilter"></div>
+  <div class="segmented" id="typefilter"></div>
+</div>
+
+<div class="wall" id="wall">Loading…</div>
+
+<section class="createview" id="createview" aria-hidden="true">
+  <div class="create-head">
+    <h2 id="c-title">New service</h2>
+    <div class="segmented" id="c-mode">
+      <button data-cm="service" class="active" type="button">service</button>
+      <button data-cm="module" type="button">module</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="c-adv"> advanced keys</label>
+    <button class="icon-btn" id="c-reset" type="button">reset</button>
+    <span class="grow"></span>
+    <button class="icon-btn" id="c-close" type="button">✕ close</button>
+  </div>
+  <div class="create-body" id="c-body-service">
+    <div class="create-form" id="c-form"></div>
+    <div class="create-prev">
+      <div class="ph">frontend preview</div>
+      <pre id="c-prev"></pre>
+    </div>
+  </div>
+  <div class="create-body" id="c-body-module" hidden>
+    <div class="create-form">
+      <div class="field"><label>module name <span class="req">●</span></label>
+        <input type="text" id="cm-name" placeholder="webapp" autocomplete="off">
+        <span class="hint">directory is the name (no <code>@</code>); the frontend file is <code>name@</code></span></div>
+      <div class="field"><label>instance to enable</label>
+        <input type="text" id="cm-instance" placeholder="blog" autocomplete="off">
+        <span class="hint">the frontend is a template <code>name@</code>; enabling creates <code>name@instance</code></span></div>
+      <div class="sec-block"><div class="sec-title">module frontend</div><div id="cm-front"></div></div>
+      <div class="sec-block"><div class="sec-title">contained services <span class="tag">frontend/</span>
+        <button class="btn sm" id="cm-add" type="button">+ add service</button></div>
+        <div id="cm-members" class="members"></div></div>
+      <div class="sec-block"><div class="sec-title">configure script <span class="tag">optional · configure/configure</span></div>
+        <textarea id="cm-configure" style="min-height:110px"></textarea>
+        <span class="hint"><code>$1</code> = Configure value · cwd = configure/ · non-zero exit fails the parse</span></div>
+    </div>
+    <div class="create-prev"><div class="ph">module directory preview</div><div id="cm-prev"></div></div>
+  </div>
+  <div class="create-foot">
+    <div class="acts" id="c-actions">
+      <span class="actlbl">on create:</span>
+      <label class="chk"><input type="radio" name="c-act" value="enablestart" checked> enable + start</label>
+      <label class="chk"><input type="radio" name="c-act" value="enable"> enable</label>
+      <label class="chk"><input type="radio" name="c-act" value="start"> start only</label>
+      <label class="chk"><input type="radio" name="c-act" value="none"> frontend only</label>
+    </div>
+    <div class="field cfield"><label>target tree</label>
+      <select id="c-tree"></select><span class="hint" id="c-treehint"></span></div>
+    <label class="chk"><input type="checkbox" id="c-overwrite"> replace if it exists</label>
+    <span class="grow"></span>
+    <div class="cmd"><span class="path" id="c-path"></span><span id="c-cmd"></span></div>
+    <button class="btn primary" id="c-create" type="button">create</button>
+  </div>
+</section>
+
+<div class="modal-scrim" id="c-modal" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="c-modal-title"></h3><button class="close" id="c-modal-x" type="button" aria-label="Close">✕</button></div>
+    <pre class="modal-body" id="c-modal-body"></pre>
+    <div class="modal-foot" id="c-modal-foot"></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dresize" id="d-resize" title="Drag to resize"></div>
+  <div class="dhead">
+    <div class="dtitle"><h2 id="d-name"></h2><div class="dsub" id="d-sub"></div></div>
+    <button class="close" id="d-close" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="dbody" id="d-body"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="/app.js" defer></script>
+</body>
+</html>

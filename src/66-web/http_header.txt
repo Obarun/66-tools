@@ -1,0 +1,45 @@
+http header parser:
+
+Runs once over the header block, from the byte after the request line to the
+end of the empty line that closes the block. It validates the field syntax of
+RFC 9112 section 5 and indexes each field (name and value offsets) for the
+lookups that follow. Any malformed byte rejects the whole request.
+
+class	|	0	1	2	3	4	5	6
+st\ev	|	tchar	:	ows	\r	\n	vchar	ctl
+
+LINE	|	m
+0	|	NAME	X	X	CREND	X	X	X
+
+NAME	|		e
+1	|	NAME	OWS	X	X	X	X	X
+
+OWS	|	v l	v l				v l
+2	|	VAL	VAL	OWS	CR	X	VAL	X
+
+VAL	|	l	l				l
+3	|	VAL	VAL	VAL	CR	X	VAL	X
+
+CR	|					+
+4	|	X	X	X	X	LINE	X	X
+
+CREND	|
+5	|	X	X	X	X	END	X	X
+
+END = 6, X = 7
+
+tchar	ALPHA DIGIT ! # $ % & ' * + - . ^ _ ` | ~
+ows	space, \t
+vchar	any other byte from 0x21 to 0x7e, and 0x80 to 0xff
+ctl	0x00 to 0x1f except \t \r \n, and 0x7f
+
+What X rejects, among others: a space before the colon, a line starting with
+a space (obsolete line folding), a bare \r or \n, a control byte anywhere.
+
+8 states, 5 actions -> 9 bits
+
+m	0x0010	mark name start
+e	0x0020	mark name end, value empty after the colon
+v	0x0040	mark value start
+l	0x0080	value end = cur + 1, so trailing ows is left out
++	0x0100	store the field
