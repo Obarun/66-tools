@@ -118,13 +118,14 @@ if lib66web_sources.length() == 0
   error('No source files found for lib66web in ' + web_dir)
 endif
 
-xxd = find_program('xxd', required: true)
+python = import('python').find_installation()
+embed = files('66-web' / 'embed.py')
 
 foreach asset, name : {'index.html': 'index_html', 'style.css': 'style_css', 'app.js': 'app_js'}
   lib66web_sources += custom_target(name + '.c',
     input: '66-web' / 'assets' / asset,
     output: name + '.c',
-    command: [xxd, '-i', '-n', name, '@INPUT@'],
+    command: [python, embed, name, '@INPUT@'],
     capture: true
   )
 endforeach
