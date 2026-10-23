@@ -84,11 +84,12 @@ extern void ns_remount_ro(ns_t *ns, ns_entry_t *e) ;
  *  file type (file/directory/fifo/sock/chr/blk). */
 extern ssize_t ns_hidden_path(ns_t *ns, char const *path) ;
 
-/** @brief realpath() the source path of every bind entry. */
+/** @brief realpath() the source path of every bind entry; a defaulted
+ *  target follows it. */
 extern void ns_resolve_symlinks(ns_t *ns) ;
 
-/** @brief Sort entries by path, drop exact duplicates, prune children of a
- *  hidden parent. */
+/** @brief Sort entries by target (stable), drop duplicate targets, prune
+ *  children of a hidden parent. */
 extern void ns_clean_entries(ns_t *ns) ;
 
 /** @brief The in-child mount orchestration: slave-rec "/", bind "/" to nstmp,

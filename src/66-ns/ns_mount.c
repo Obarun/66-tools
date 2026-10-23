@@ -528,32 +528,30 @@ void ns_resolve_symlinks(ns_t *ns)
             char *sym = realpath(ns->sb.s + m->path, NULL) ;
 
             if (sym) {
+                uint8_t deftarget = m->target == m->path ;
                 m->path = (ssize_t)ns_arena_add(ns, sym) ;
+                if (deftarget)
+                    m->target = m->path ;
                 free(sym) ;
             }
         }
     }
 }
 
-// selection sort by path string -- entry counts are tiny
+// stable insertion sort by target string -- entry counts are tiny
 static void entries_sort(ns_t *ns)
 {
     size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
     ns_entry_t *a = genbuf_s(ns_entry_t, &ns->entries) ;
 
-    for (size_t i = 0 ; i + 1 < n ; i++) {
+    for (size_t i = 1 ; i < n ; i++) {
 
-        size_t min = i ;
-        for (size_t j = i + 1 ; j < n ; j++) {
-            if (strcmp(ns->sb.s + a[j].path, ns->sb.s + a[min].path) < 0)
-                min = j ;
-        }
+        ns_entry_t t = a[i] ;
+        size_t j = i ;
+        for (; j > 0 && strcmp(ns->sb.s + a[j - 1].target, ns->sb.s + t.target) > 0 ; j--)
+            a[j] = a[j - 1] ;
 
-        if (min != i) {
-            ns_entry_t t = a[i] ;
-            a[i] = a[min] ;
-            a[min] = t ;
-        }
+        a[j] = t ;
     }
 }
 
@@ -566,13 +564,13 @@ void ns_clean_entries(ns_t *ns)
     size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
     ns_entry_t *a = genbuf_s(ns_entry_t, &ns->entries) ;
 
-    /* drop exact-duplicate paths (keep the later one, mark the earlier) */
+    /* drop exact-duplicate targets (keep the later one, mark the earlier) */
     for (size_t i = 0 ; i + 1 < n ; i++) {
 
         if (a[i].skip || a[i].ignore)
             continue ;
 
-        if (!strcmp(ns->sb.s + a[i].path, ns->sb.s + a[i + 1].path)) {
+        if (!strcmp(ns->sb.s + a[i].target, ns->sb.s + a[i + 1].target)) {
             a[i].skip = 1 ;
             a[i].ignore = 1 ;
         }
@@ -585,19 +583,19 @@ void ns_clean_entries(ns_t *ns)
         if (a[i].ignore)
             continue ;
 
-        char const *pp = ns->sb.s + a[i].path ;
+        char const *pp = ns->sb.s + a[i].target ;
         if (!i && pp[0] == '/' && !pp[1]) {
             gparent = 0 ;
             continue ;
         }
 
         uint8_t hidden = a[gparent].type == NS_TYPE_HIDDEN ;
-        char const *parent = ns->sb.s + a[gparent].path ;
+        char const *parent = ns->sb.s + a[gparent].target ;
 
         if (i + 1 >= n)
             break ;
 
-        char const *child = ns->sb.s + a[i + 1].path ;
+        char const *child = ns->sb.s + a[i + 1].target ;
 
         if (dir_is_child(parent, child) && hidden) {
             a[i + 1].skip = 1 ;
