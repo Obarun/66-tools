@@ -27,6 +27,7 @@
 #include <oblibs/log.h>
 #include <oblibs/opt.h>
 #include <oblibs/io.h>
+#include <oblibs/directory.h>
 #include <oblibs/string.h>
 #include <oblibs/types.h>
 
@@ -40,10 +41,24 @@ static char const *const dev_nodes[] = {
     "/null", "/zero", "/full", "/random", "/urandom", "/tty"
 } ;
 
-static void dev_rootless(char const *target)
+static void fs_target_create(char const *target, uint8_t create)
 {
+    struct stat st ;
+
+    if (!create || !lstat(target, &st))
+        return ;
+
+    log_trace("create directory: ", target) ;
+    if (!dir_create_parent(target, 0755))
+        log_dieusys(LOG_EXIT_SYS, "create directory: ", target) ;
+}
+
+static void dev_rootless(char const *target, uint8_t create)
+{
+    fs_target_create(target, create) ;
+
     log_trace("mount: rootless /dev tmpfs to: ", target) ;
-    ns_do_mount("tmpfs", target, "tmpfs", MS_NOSUID | MS_STRICTATIME, "mode=755", 1) ;
+    ns_do_mount("tmpfs", target, "tmpfs", MS_NOSUID | MS_STRICTATIME, "mode=755", 0) ;
 
     size_t tlen = strlen(target) ;
 
@@ -103,8 +118,10 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
             if (!ns->rootless && ns_is_mnt(target))
                 ns_umount_recursive(target) ;
 
+            fs_target_create(target, e->create) ;
+
             log_trace("mount: tmpfs to: ", target) ;
-            ns_do_mount("tmpfs", target, "tmpfs", flags, e->opts >= 0 ? optbuf : NULL, e->create) ;
+            ns_do_mount("tmpfs", target, "tmpfs", flags, e->opts >= 0 ? optbuf : NULL, 0) ;
 
             return ;
 
@@ -147,8 +164,10 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
 
             } else {
 
+                fs_target_create(target, e->create) ;
+
                 log_trace("mount: proc to: ", target) ;
-                ns_do_mount("proc", target, "proc", flags, NULL, e->create) ;
+                ns_do_mount("proc", target, "proc", flags, NULL, 0) ;
             }
 
             return ;
@@ -162,12 +181,14 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
 
             if (ns->rootless) {
 
-                dev_rootless(target) ;
+                dev_rootless(target, e->create) ;
 
             }else {
 
+                fs_target_create(target, e->create) ;
+
                 log_trace("mount: dev to: ", target) ;
-                ns_do_mount("dev", target, "devtmpfs", flags, "mode=755", e->create) ;
+                ns_do_mount("dev", target, "devtmpfs", flags, "mode=755", 0) ;
             }
 
             return ;
@@ -186,8 +207,10 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
 
             } else {
 
+                fs_target_create(target, e->create) ;
+
                 log_trace("mount: sys to: ", target) ;
-                ns_do_mount("sys", target, "sysfs", flags, NULL, e->create) ;
+                ns_do_mount("sys", target, "sysfs", flags, NULL, 0) ;
             }
             return ;
 
