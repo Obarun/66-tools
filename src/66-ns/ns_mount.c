@@ -253,25 +253,18 @@ char const *ns_mntinfo_opts(ns_t *ns, char const *path)
 
 int ns_is_mnt(char const *str)
 {
-    struct stat st ;
-    size_t slen = strlen(str) ;
+    struct statx stx ;
 
-    if (lstat(str, &st) < 0)
+    if (statx(AT_FDCWD, str, AT_SYMLINK_NOFOLLOW, STATX_TYPE, &stx) < 0)
         return 0 ;
 
-    if (!S_ISDIR(st.st_mode))
+    if (!S_ISDIR(stx.stx_mode))
         return 0 ;
 
-    dev_t st_dev = st.st_dev ;
-    ino_t st_ino = st.st_ino ;
-    char p[slen + 4] ;
-    auto_strings(p, str, "/..") ;
+    if (!(stx.stx_attributes_mask & STATX_ATTR_MOUNT_ROOT))
+        log_die(LOG_EXIT_SYS, "statx does not report mount roots for: ", str) ;
 
-    if (!stat(p, &st)) {
-        if ((st_dev == st.st_dev) && (st_ino != st.st_ino))
-            return 0 ; /* same device, different inode -> parent reachable -> not a mountpoint */
-    }
-    return 1 ;
+    return !!(stx.stx_attributes & STATX_ATTR_MOUNT_ROOT) ;
 }
 
 void ns_clone_node(char const *path, char const *target)

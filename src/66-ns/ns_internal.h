@@ -45,8 +45,8 @@ extern void ns_mntinfo_init(ns_t *ns) ;
 extern char const *ns_mntinfo_type(ns_t *ns, char const *path) ;
 extern char const *ns_mntinfo_opts(ns_t *ns, char const *path) ;
 
-/** @brief 1 if @path is a mountpoint (directory whose st_dev differs from its
- *  parent), else 0. */
+/** @brief 1 if @path is a mountpoint (directory reported as a mount root by
+ *  statx), else 0. Dies if the kernel does not report mount roots. */
 extern int ns_is_mnt(char const *path) ;
 
 /** @brief Lazily detach @path and every filesystem mounted below it
