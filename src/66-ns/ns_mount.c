@@ -368,8 +368,14 @@ void ns_mount_recursive(ns_t *ns, char const *root, ns_entry_t *e)
     log_flow() ;
 
     size_t prefix_len = strlen(root) ;
-    char const *path = ns->sb.s + e->path ;
-    char const *useropts = e->opts >= 0 ? ns->sb.s + e->opts : "" ;
+
+    char const *path0 = ns->sb.s + e->path ;
+    char path[strlen(path0) + 1] ;
+    auto_strings(path, path0) ;
+
+    char const *useropts0 = e->opts >= 0 ? ns->sb.s + e->opts : "" ;
+    char useropts[strlen(useropts0) + 1] ;
+    auto_strings(useropts, useropts0) ;
 
     size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
     mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
@@ -410,8 +416,12 @@ void ns_remount_ro(ns_t *ns, ns_entry_t *e)
 
     unsigned long const myflag = MS_BIND | MS_REMOUNT | MS_RDONLY ;
     size_t nlen = strlen(ns->nstmp) ;
-    char const *target = ns->sb.s + e->target ;
-    size_t tlen = strlen(target) ;
+
+    char const *tgt0 = ns->sb.s + e->target ;
+    size_t tlen = strlen(tgt0) ;
+    char target[tlen + 1] ;
+    auto_strings(target, tgt0) ;
+
     char ntarget[nlen + tlen + 1] ;
     auto_strings(ntarget, ns->nstmp, target) ;
 
