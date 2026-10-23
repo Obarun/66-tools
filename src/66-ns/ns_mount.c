@@ -217,6 +217,29 @@ static char const *mntinfo_find(ns_t *ns, char const *path, int want_opts)
     return 0 ;
 }
 
+static char const *mntinfo_holding_opts(ns_t *ns, char const *path)
+{
+    char const *opts = 0 ;
+    size_t best = 0 ;
+    size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
+    mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
+
+    for (size_t i = 0 ; i < n ; i++) {
+
+        char const *dir = ns->mntsb.s + a[i].dir ;
+        if (strcmp(dir, path) && dir_is_child(dir, path) <= 0)
+            continue ;
+
+        size_t len = strlen(dir) ;
+        if (!opts || len >= best) {
+            best = len ;
+            opts = ns->mntsb.s + a[i].opts ;
+        }
+    }
+
+    return opts ;
+}
+
 char const *ns_mntinfo_type(ns_t *ns, char const *path)
 {
     return mntinfo_find(ns, path, 0) ;
@@ -425,9 +448,16 @@ void ns_remount_ro(ns_t *ns, ns_entry_t *e)
     char ntarget[nlen + tlen + 1] ;
     auto_strings(ntarget, ns->nstmp, target) ;
 
-    /* options carried by the entry's own mountpoint, if any */
-    char keepopts[4096] ;
-    keepopts[0] = 0 ;
+    /* options of the mount holding a bind source (its locked flags must be
+     * kept), else of the entry's own mountpoint, if any */
+    uint8_t bind = e->type == NS_TYPE_BIND || e->type == NS_TYPE_RECURSIVE ;
+    char const *keepopts = "" ;
+
+    if (bind) {
+        char const *o = mntinfo_holding_opts(ns, ns->sb.s + e->path) ;
+        if (o)
+            keepopts = o ;
+    }
 
     size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
     mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
@@ -439,7 +469,8 @@ void ns_remount_ro(ns_t *ns, ns_entry_t *e)
         char const *dir = ns->mntsb.s + a[i].dir ;
 
         if (!strcmp(dir, target)) {
-            auto_strings(keepopts, ns->mntsb.s + a[i].opts) ;
+            if (!bind)
+                keepopts = ns->mntsb.s + a[i].opts ;
             continue ;
         }
 
