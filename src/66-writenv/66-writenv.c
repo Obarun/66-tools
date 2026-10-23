@@ -15,7 +15,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>//fsync,close
+#include <unistd.h>//close
 #include <errno.h>
 
 #include <oblibs/log.h>
@@ -24,6 +24,7 @@
 #include <oblibs/opt.h>
 #include <oblibs/stream.h>
 #include <oblibs/io.h>
+#include <oblibs/fd.h>
 
 #define MAX_ENV 4095
 
@@ -94,7 +95,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         (!ostream_put(&b, "\n",1))) { close(fd) ; log_dieusys(LOG_EXIT_SYS,"write buffer") ; }
     }
     if(!ostream_flush(&b)){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"flush") ; }
-    if (fsync(fd) < 0){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"sync") ; }
+    if (sync_fd(fd) < 0){ close(fd) ; log_dieusys(LOG_EXIT_SYS,"sync") ; }
     close(fd) ;
     return 0 ;
 }
