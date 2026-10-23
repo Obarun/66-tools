@@ -550,6 +550,32 @@ ssize_t ns_hidden_path(ns_t *ns, char const *path)
 
 // entry list grooming
 
+void ns_drop_missing(ns_t *ns)
+{
+    log_flow() ;
+
+    size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
+    for (size_t i = 0 ; i < n ; i++) {
+
+        ns_entry_t *m = &genbuf_s(ns_entry_t, &ns->entries)[i] ;
+        if (!m->ignore)
+            continue ;
+
+        char const *path = ns->sb.s + m->path ;
+        struct stat st ;
+
+        if (lstat(path, &st) == -1) {
+
+            if (errno != ENOENT)
+                log_dieusys(LOG_EXIT_SYS, "find: ", path) ;
+
+            log_trace("ignore missing element: ", path) ;
+            m->skip = 1 ;
+
+        } else m->ignore = 0 ;
+    }
+}
+
 void ns_resolve_symlinks(ns_t *ns)
 {
     log_flow() ;
@@ -655,6 +681,7 @@ void ns_setup_ns(ns_t *ns)
 
     unsigned long prop = ns->root_propagation ? ns->root_propagation : MS_SHARED ;
 
+    ns_drop_missing(ns) ;
     ns_resolve_symlinks(ns) ;
 
     /* disconnect "/" from the host: nothing we do propagates back */
