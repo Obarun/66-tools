@@ -477,11 +477,11 @@ static int handle_service_log(char const *name, api_response_t *resp)
 			int loaded = 0 ;
 
 			// The logdir/file only exists once the service has run at least once
-			if (io.fdout.type == E_PARSER_IO_TYPE_66LOG && scan_mode(dest, S_IFDIR) == 1) {
+			if (io.fdout.type == E_PARSER_IO_TYPE_66LOG && scan_mode(dest, FLAGS_DIR) == 1) {
 
 				loaded = log_source_logdir(&src, name, dest) ;
 
-			} else if (io.fdout.type == E_PARSER_IO_TYPE_FILE && scan_mode(dest, S_IFREG) == 1) {
+			} else if (io.fdout.type == E_PARSER_IO_TYPE_FILE && scan_mode(dest, FLAGS_REG) == 1) {
 
 				loaded = log_source_file(&src, name, dest) ;
 			}
@@ -1075,7 +1075,7 @@ static int handle_available(api_response_t *resp)
 	auto_strings(rdir, ctx->base, SS_SYSTEM, SS_RESOLVE, SS_SERVICE) ;
 
 	_cleanup_strbuf_ strbuf parsed = STRBUF_ZERO ;
-	if (!sbl_dir_get_recursive(&parsed, rdir, noexc, S_IFLNK, 0) && errno != ENOENT) // ENOENT: a fresh base
+	if (!sbl_dir_get_recursive(&parsed, rdir, noexc, FLAGS_LNK, 0) && errno != ENOENT) // ENOENT: a fresh base
 		return resp_error(500, "list the parsed services", resp) ;
 
 	if (!service_src_dirs(ctx->owner, dirs, editable, &ndirs, home))
@@ -1102,8 +1102,8 @@ static int handle_available(api_response_t *resp)
 		 * directory: say so once, and list the others. */
 		_cleanup_strbuf_ strbuf files = STRBUF_ZERO ;
 		_cleanup_strbuf_ strbuf modules = STRBUF_ZERO ;
-		if (!sbl_dir_get(&files, dirs[di], exclude, S_IFREG) ||
-			!sbl_dir_get(&modules, dirs[di], exclude, S_IFDIR)) {
+		if (!sbl_dir_get(&files, dirs[di], exclude, FLAGS_REG) ||
+			!sbl_dir_get(&modules, dirs[di], exclude, FLAGS_DIR)) {
 				log_warnusys("list the frontends in ", dirs[di]) ;
 				continue ;
 		}

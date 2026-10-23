@@ -280,7 +280,7 @@ static int auto_dir(opts_common_t *arguments)
 
     mode_t mode = !arguments->minus_M ? 0755 : arguments->minus_M ;
 
-    r = scan_mode(dir,S_IFDIR) ;
+    r = scan_mode(dir,FLAGS_DIR) ;
     if (r == -1) return 0 ;
     if (!r) {
         if (arguments->minus_M) umask(0) ;
@@ -289,7 +289,7 @@ static int auto_dir(opts_common_t *arguments)
 
         /** dir_create_parent do not warn if the parent directory
          * can not be created, so check it */
-        r = scan_mode(dir,S_IFDIR) ;
+        r = scan_mode(dir,FLAGS_DIR) ;
         if (!r) return 0 ;
 
         /** only the last element should match the uid and gid
@@ -329,7 +329,7 @@ int execl_directory(opts_common_t *arguments,char **nargv)
 
     mode_t mode = !arguments->minus_m ? 0755 : arguments->minus_m ;
 
-    r = scan_mode(arguments->test_on,S_IFDIR) ;
+    r = scan_mode(arguments->test_on,FLAGS_DIR) ;
     if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but it is not a directory") ;
     if (!r && !arguments->not_create) {
         if (arguments->minus_m) umask(0) ;
@@ -355,7 +355,7 @@ int execl_fifo(opts_common_t *arguments,char **nargv)
 
     mode_t mode = !arguments->minus_m ? S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH : arguments->minus_m ;
 
-    r = scan_mode(arguments->test_on,S_IFIFO) ;
+    r = scan_mode(arguments->test_on,FLAGS_FIFO) ;
     if (r == -1) log_warn_return(LOG_EXIT_ZERO,arguments->test_on," exist but it is not a fifo") ;
     if (!r && !arguments->not_create) {
         if (!auto_dir(arguments)) {
@@ -527,19 +527,19 @@ int execl_common(opts_common_t *arguments, char **nargv)
                             break ;
 
         case T_BLOCK :
-                            r = scan_mode(test,S_IFBLK) ;
+                            r = scan_mode(test,FLAGS_BLK) ;
                             if (r == -1){ log_warn(test," exist but it is not a block") ; e = 0 ; }
                             if (!r) { log_warn(test," is not a block") ; e = 0 ; }
                             break ;
 
         case T_CHAR :
-                            r = scan_mode(test,S_IFCHR) ;
+                            r = scan_mode(test,FLAGS_CHR) ;
                             if (r == -1){ log_warn(test," exist but it is not a character") ; e = 0 ; }
                             if (!r) { log_warn(test," is not a character") ; e = 0 ; }
                             break ;
 
         case T_REGULAR :
-                            r = scan_mode(test,S_IFREG) ;
+                            r = scan_mode(test,FLAGS_REG) ;
                             if (r == -1) { log_warn(test," exist but it is not a regular file") ; e = 0 ; }
                             if (!r) { log_warn(test," is not a regular file") ; e = 0 ; }
                             break ;
@@ -699,7 +699,7 @@ int execl_common(opts_common_t *arguments, char **nargv)
                         {
                             _cleanup_strbuf_ strbuf satree = STRBUF_ZERO ;
                             char const *exclude[1] = { 0 } ;
-                            if (!sbl_dir_get(&satree,test,exclude,S_IFBLK|S_IFCHR|S_IFIFO|S_IFREG|S_IFDIR|S_IFLNK)) {
+                            if (!sbl_dir_get(&satree,test,exclude,FLAGS_ALL)) {
                                 log_warnusys("get contain of directory: ",test) ;
                                 e = 0 ;
                                 break ;

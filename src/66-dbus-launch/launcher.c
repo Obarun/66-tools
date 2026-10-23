@@ -366,7 +366,7 @@ static void launcher_update_environment(launcher_t *launcher, odbus_message *m)
 		return ;
 	}
 
-	if (scan_mode(dir, S_IFDIR) <= 0) {
+	if (scan_mode(dir, FLAGS_DIR) <= 0) {
 		log_warn("no runtime environment directory: ", dir, " -- the activation environment is dropped") ;
 
 	} else {

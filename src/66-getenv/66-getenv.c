@@ -115,7 +115,7 @@ void get_procs ()
     _cleanup_strbuf_ strbuf saproc = STRBUF_ZERO ;
     char const *exclude[1] = { 0 } ;
 
-    if (!sbl_dir_get(&satmp,proc,exclude,S_IFDIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
+    if (!sbl_dir_get(&satmp,proc,exclude,FLAGS_DIR)) log_dieusys(LOG_EXIT_SYS,"get content of /proc") ;
 
     i = 0, len = satmp.len ;
     for (;i < len; i += strlen(satmp.s + i) + 1)
