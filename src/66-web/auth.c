@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <stdio.h> // rename
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -314,42 +313,27 @@ static int ensure_parent_dir(char const *path)
 static int write_atomic_0600(char const *path, char const *line, size_t linelen)
 {
 	char tmp[SS_MAX_PATH_LEN + 1] ;
-	char pidbuf[PID_FMT] ;
 	int fd ;
 
 	if (!ensure_parent_dir(path))
 		return 0 ;
 
-	pidbuf[pid_format(pidbuf, getpid())] = 0 ;
-
-	if (strlen(path) + 5 + strlen(pidbuf) >= SS_MAX_PATH_LEN + 1)
+	if (strlen(path) + 7 >= SS_MAX_PATH_LEN + 1)
 		return (errno = ENAMETOOLONG, 0) ;
 
-	auto_strings(tmp, path, ".tmp.", pidbuf) ;
+	auto_strings(tmp, path, ".XXXXXX") ;
 
-	fd = io_open_mode(tmp, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600) ;
+	fd = file_tmp_open(tmp, 0600, (uid_t)-1, (gid_t)-1) ;
 	if (fd < 0) return 0 ;
 
-	/* The creation mode is filtered by the umask; force the bits back. */
-	if (fchmod(fd, 0600) < 0 ||
-		io_allwrite(fd, (char *)line, linelen) != linelen ||
-		fsync(fd) < 0) {
+	if (io_allwrite(fd, (char *)line, linelen) != linelen ||
+		sync_fd(fd) < 0) {
 			close_fd(fd) ;
 			file_tryunlink(tmp) ;
 			return 0 ;
 	}
 
-	if (close(fd) < 0) {
-		file_tryunlink(tmp) ;
-		return 0 ;
-	}
-
-	if (rename(tmp, path) < 0) {
-		file_tryunlink(tmp) ;
-		return 0 ;
-	}
-
-	return 1 ;
+	return file_tmp_rename_at(fd, tmp, path) ;
 }
 
 static int write_credential(char const *path, char const *user, char const *pass)
