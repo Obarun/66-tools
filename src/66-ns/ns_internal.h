@@ -86,9 +86,10 @@ extern ssize_t ns_hidden_path(ns_t *ns, char const *path) ;
 
 extern void ns_drop_missing(ns_t *ns) ;
 
-/** @brief realpath() the source path of every bind entry; a defaulted
- *  target follows it. */
+/** @brief realpath() the source path of every bind entry. */
 extern void ns_resolve_symlinks(ns_t *ns) ;
+
+extern void ns_resolve_targets(ns_t *ns) ;
 
 /** @brief Sort entries by target (stable), drop duplicate targets, prune
  *  children of a hidden parent. */

@@ -23,6 +23,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+#include <sys/syscall.h>
+#include <linux/openat2.h>
+#include <limits.h>
 #include <mntent.h>
 
 #include <oblibs/log.h>
@@ -676,14 +679,101 @@ void ns_resolve_symlinks(ns_t *ns)
             char *sym = realpath(ns->sb.s + m->path, NULL) ;
 
             if (sym) {
-                uint8_t deftarget = m->target == m->path ;
                 m->path = (ssize_t)ns_arena_add(ns, sym) ;
-                if (deftarget)
-                    m->target = m->path ;
                 free(sym) ;
             }
         }
     }
+}
+
+static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd)
+{
+    char const *target = ns->sb.s + m->target ;
+    size_t tlen = strlen(target) ;
+    char head[tlen + 1] ;
+    auto_strings(head, target) ;
+
+    struct open_how how = {
+        .flags = O_PATH | O_CLOEXEC | (m->type == NS_TYPE_HIDDEN || m->type == NS_TYPE_CLONE ? O_NOFOLLOW : 0),
+        .resolve = RESOLVE_IN_ROOT | RESOLVE_NO_MAGICLINKS
+    } ;
+
+    size_t cut = tlen ;
+    int fd ;
+
+    while ((fd = (int)syscall(SYS_openat2, rootfd, head, &how, sizeof(how))) < 0) {
+
+        if (errno != ENOENT)
+            log_dieusys(LOG_EXIT_SYS, "resolve target: ", target) ;
+
+        cut = (size_t)get_rlen_until(head, '/', strlen(head)) ;
+        head[cut ? cut : 1] = 0 ;
+        how.flags &= ~(uint64_t)O_NOFOLLOW ;
+    }
+
+    if (cut < tlen) {
+
+        char const *name = target + cut + 1 ;
+        size_t nlen = str_search(name, '/') ;
+        char first[nlen + 1] ;
+        memcpy(first, name, nlen) ;
+        first[nlen] = 0 ;
+
+        struct stat st ;
+        if (!fstatat(fd, first, &st, AT_SYMLINK_NOFOLLOW) && S_ISLNK(st.st_mode))
+            log_die(LOG_EXIT_USER, "target goes through a dangling symlink: ", target) ;
+    }
+
+    char fdstr[U32_FMT] ;
+    fdstr[u32_fmt(fdstr, (uint32_t)fd)] = 0 ;
+
+    char proc[sizeof("/proc/self/fd/") + U32_FMT] ;
+    auto_strings(proc, "/proc/self/fd/", fdstr) ;
+
+    char real[PATH_MAX] ;
+    ssize_t r = readlink(proc, real, sizeof(real) - 1) ;
+    close(fd) ;
+
+    if (r < 0)
+        log_dieusys(LOG_EXIT_SYS, "readlink: ", proc) ;
+
+    real[r] = 0 ;
+
+    size_t rlen = strlen(ns->nstmp) ;
+    if (str_start_with(real, ns->nstmp) || (real[rlen] && real[rlen] != '/'))
+        log_die(LOG_EXIT_SYS, "target resolves outside the namespace root: ", target) ;
+
+    char const *rel = real + rlen ;
+    char const *tail = target + cut ;
+    char resolved[strlen(rel) + strlen(tail) + 2] ;
+    auto_strings(resolved, rel, tail) ;
+
+    if (!resolved[0])
+        auto_strings(resolved, "/") ;
+
+    if (strcmp(resolved, target))
+        m->target = (ssize_t)ns_arena_add(ns, resolved) ;
+}
+
+void ns_resolve_targets(ns_t *ns)
+{
+    log_flow() ;
+
+    int rootfd = io_open(ns->nstmp, O_PATH | O_DIRECTORY | O_CLOEXEC) ;
+    if (rootfd < 0)
+        log_dieusys(LOG_EXIT_SYS, "open: ", ns->nstmp) ;
+
+    size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
+    for (size_t i = 0 ; i < n ; i++) {
+
+        ns_entry_t *m = &genbuf_s(ns_entry_t, &ns->entries)[i] ;
+        if (m->skip)
+            continue ;
+
+        target_resolve(ns, m, rootfd) ;
+    }
+
+    close(rootfd) ;
 }
 
 // stable insertion sort by target string -- entry counts are tiny
@@ -781,6 +871,7 @@ void ns_setup_ns(ns_t *ns)
     if (mount(NULL, ns->nstmp, NULL, MS_UNBINDABLE, NULL) == -1)
         log_dieusys(LOG_EXIT_SYS, "make unbindable: ", ns->nstmp) ;
 
+    ns_resolve_targets(ns) ;
     ns_clean_entries(ns) ;
 
     size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
