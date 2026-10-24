@@ -132,7 +132,7 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
             if (!ns->rootless && ns_is_mnt(target))
                 ns_umount_recursive(target) ;
 
-            ssize_t h = ns_hidden_path(ns, path) ;
+            ssize_t h = ns_hidden_path(ns, target) ;
             char const *hidden = ns->sb.s + h ;
 
             log_trace("mount: ", hidden, " to: ", target) ;

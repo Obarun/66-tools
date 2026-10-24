@@ -642,7 +642,7 @@ void ns_drop_missing(ns_t *ns)
     for (size_t i = 0 ; i < n ; i++) {
 
         ns_entry_t *m = &genbuf_s(ns_entry_t, &ns->entries)[i] ;
-        if (!m->ignore)
+        if (!m->ignore || m->type == NS_TYPE_HIDDEN)
             continue ;
 
         char const *path = ns->sb.s + m->path ;
@@ -710,6 +710,9 @@ static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd)
         head[cut ? cut : 1] = 0 ;
         how.flags &= ~(uint64_t)O_NOFOLLOW ;
     }
+
+    if (m->type == NS_TYPE_HIDDEN && cut == tlen)
+        m->ignore = 0 ;
 
     if (cut < tlen) {
 
@@ -863,6 +866,20 @@ void ns_setup_ns(ns_t *ns)
      * and the hidden placeholders, before binding "/" onto nstmp */
     ns_prepare_directory(ns) ;
 
+    ns_entry_t *root = 0 ;
+    size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
+    for (size_t i = 0 ; i < n ; i++) {
+
+        ns_entry_t *m = &genbuf_s(ns_entry_t, &ns->entries)[i] ;
+        if (m->skip || strcmp(ns->sb.s + m->target, "/"))
+            continue ;
+
+        if (m->type != NS_TYPE_BIND && m->type != NS_TYPE_RECURSIVE)
+            log_die(LOG_EXIT_USER, "type ", ns_type_str[m->type], " cannot be used for the root: ", ns->sb.s + m->path) ;
+
+        root = m ;
+    }
+
     /* bind "/" into the staging directory */
     if (mount("/", ns->nstmp, NULL, MS_BIND | MS_REC, NULL) == -1)
         log_dieusys(LOG_EXIT_SYS, "bind / to: ", ns->nstmp) ;
@@ -871,10 +888,13 @@ void ns_setup_ns(ns_t *ns)
     if (mount(NULL, ns->nstmp, NULL, MS_UNBINDABLE, NULL) == -1)
         log_dieusys(LOG_EXIT_SYS, "make unbindable: ", ns->nstmp) ;
 
+    if (root) {
+        ns_apply_entry(ns, root, ns->nstmp) ;
+        root->done = 1 ;
+    }
+
     ns_resolve_targets(ns) ;
     ns_clean_entries(ns) ;
-
-    size_t n = genbuf_len(ns_entry_t, &ns->entries) ;
 
     for (size_t i = 0 ; i < n ; i++) {
 
