@@ -86,7 +86,7 @@ static void entry_finalize(ns_t *ns, ns_entry_t *e)
             if (strcmp(path, "/sys"))
                 log_die(LOG_EXIT_USER, "type sys is only valid for /sys, got: ", path) ;
 
-            e->flags = MS_NOSUID | MS_STRICTATIME | MS_NOEXEC ;
+            e->flags = MS_NOSUID | MS_NOEXEC ;
             break ;
 
         case NS_TYPE_BIND :
