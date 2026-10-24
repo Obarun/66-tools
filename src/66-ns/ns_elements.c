@@ -41,6 +41,14 @@ static char const *const dev_nodes[] = {
     "/null", "/zero", "/full", "/random", "/urandom", "/tty"
 } ;
 
+static char const *const dev_links[][2] = {
+    { "/fd", "/proc/self/fd" },
+    { "/stdin", "/proc/self/fd/0" },
+    { "/stdout", "/proc/self/fd/1" },
+    { "/stderr", "/proc/self/fd/2" },
+    { "/ptmx", "pts/ptmx" }
+} ;
+
 static void fs_target_create(char const *target, uint8_t create)
 {
     struct stat st ;
@@ -82,6 +90,29 @@ static void dev_rootless(char const *target, uint8_t create)
         if (mount(hostsrc, dst, NULL, MS_BIND, NULL) == -1)
             log_warnusys("bind device: ", hostsrc) ;
     }
+
+    for (size_t i = 0 ; i < OPT_COUNT(dev_links) ; i++) {
+
+        char dst[tlen + strlen(dev_links[i][0]) + 1] ;
+        auto_strings(dst, target, dev_links[i][0]) ;
+
+        if (symlink(dev_links[i][1], dst) == -1)
+            log_warnusys("create symlink: ", dst) ;
+    }
+
+    char pts[tlen + sizeof("/pts")] ;
+    auto_strings(pts, target, "/pts") ;
+
+    if (mkdir(pts, 0755) == -1) {
+        log_warnusys("create directory: ", pts) ;
+    } else if (mount("devpts", pts, "devpts", MS_NOSUID | MS_NOEXEC, "newinstance,ptmxmode=0666,mode=620") == -1)
+        log_warnusys("mount devpts to: ", pts) ;
+
+    char shm[tlen + sizeof("/shm")] ;
+    auto_strings(shm, target, "/shm") ;
+
+    if (mkdir(shm, 01777) == -1)
+        log_warnusys("create directory: ", shm) ;
 }
 
 void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
