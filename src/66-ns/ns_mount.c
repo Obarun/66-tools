@@ -726,7 +726,7 @@ void ns_resolve_symlinks(ns_t *ns)
     }
 }
 
-static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd)
+static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd, uint8_t check)
 {
     char const *target = ns->sb.s + m->target ;
     size_t tlen = strlen(target) ;
@@ -751,7 +751,7 @@ static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd)
         how.flags &= ~(uint64_t)O_NOFOLLOW ;
     }
 
-    if (m->type == NS_TYPE_HIDDEN && cut == tlen)
+    if (!check && m->type == NS_TYPE_HIDDEN && cut == tlen)
         m->ignore = 0 ;
 
     if (cut < tlen) {
@@ -794,8 +794,13 @@ static void target_resolve(ns_t *ns, ns_entry_t *m, int rootfd)
     if (!resolved[0])
         auto_strings(resolved, "/") ;
 
-    if (strcmp(resolved, target))
-        m->target = (ssize_t)ns_arena_add(ns, resolved) ;
+    if (!strcmp(resolved, target))
+        return ;
+
+    if (check)
+        log_die(LOG_EXIT_USER, "target goes through a symlink brought by another element: ", target, " resolves to: ", resolved) ;
+
+    m->target = (ssize_t)ns_arena_add(ns, resolved) ;
 }
 
 void ns_resolve_targets(ns_t *ns)
@@ -813,7 +818,7 @@ void ns_resolve_targets(ns_t *ns)
         if (m->skip)
             continue ;
 
-        target_resolve(ns, m, rootfd) ;
+        target_resolve(ns, m, rootfd, 0) ;
     }
 
     close(rootfd) ;
@@ -936,17 +941,24 @@ void ns_setup_ns(ns_t *ns)
     ns_resolve_targets(ns) ;
     ns_clean_entries(ns) ;
 
+    int rootfd = io_open(ns->nstmp, O_PATH | O_DIRECTORY | O_CLOEXEC) ;
+    if (rootfd < 0)
+        log_dieusys(LOG_EXIT_SYS, "open: ", ns->nstmp) ;
+
     for (size_t i = 0 ; i < n ; i++) {
 
         ns_entry_t *m = &genbuf_s(ns_entry_t, &ns->entries)[i] ;
 
-        if (m->done || m->skip)
+        if (m->done || m->skip || m->ignore)
             continue ;
 
+        target_resolve(ns, m, rootfd, 1) ;
         ns_apply_entry(ns, m, ns->nstmp) ;
 
         m->done = 1 ;
     }
+
+    close(rootfd) ;
 
     /* read-only pass (after all mounts exist so sub-mounts can be set up rw first) */
     for (size_t i = 0 ; i < n ; i++) {
