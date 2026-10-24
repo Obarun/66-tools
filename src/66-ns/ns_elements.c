@@ -268,7 +268,17 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
     uint8_t same = ns_is_mnt(target) && !stat(path, &sst) && !stat(target, &tst) &&
         sst.st_dev == tst.st_dev && sst.st_ino == tst.st_ino ;
 
-    if (same) {
+    if (!same) {
+
+        struct stat st ;
+        if (lstat(target, &st) == -1)
+            ns_mountpoint_create(path, target) ;
+
+        log_trace("mount: ", path, " to: ", target) ;
+        ns_do_mount(path, target, type, flags, popts, e->create) ;
+    }
+
+    if (same || (flags & ~(unsigned long)(MS_BIND | MS_REC))) {
         _cleanup_strbuf_ strbuf mopts = STRBUF_ZERO ;
 
         if (!ns_mntinfo_live_opts(target, &mopts))
@@ -283,15 +293,6 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
 
         log_trace("remount: ", path, " to: ", target) ;
         ns_do_mount(path, target, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, e->create) ;
-
-    } else {
-
-        struct stat st ;
-        if (lstat(target, &st) == -1)
-            ns_mountpoint_create(path, target) ;
-
-        log_trace("mount: ", path, " to: ", target) ;
-        ns_do_mount(path, target, type, flags, popts, e->create) ;
     }
 
     if (recursive)
