@@ -288,7 +288,7 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
 
         struct stat st ;
         if (lstat(target, &st) == -1)
-            ns_clone_node(path, target) ;
+            ns_mountpoint_create(path, target) ;
 
         log_trace("mount: ", path, " to: ", target) ;
         ns_do_mount(path, target, type, flags, popts, e->create) ;

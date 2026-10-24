@@ -354,6 +354,36 @@ int ns_is_mnt(char const *str)
 }
 
 
+void ns_mountpoint_create(char const *path, char const *target)
+{
+    log_flow() ;
+
+    struct stat st ;
+    if (stat(path, &st) == -1)
+        log_dieusys(LOG_EXIT_SYS, "find: ", path) ;
+
+    if (S_ISDIR(st.st_mode)) {
+
+        log_trace("create directory: ", target) ;
+        if (!dir_create_parent(target, st.st_mode & 07777))
+            log_dieusys(LOG_EXIT_SYS, "create directory: ", target) ;
+
+        return ;
+    }
+
+    size_t tlen = strlen(target) ;
+    char dir[tlen + 1], name[tlen + 1] ;
+    if (!ob_dirname(dir, target) || !ob_basename(name, target))
+        log_dieusys(LOG_EXIT_SYS, "split path: ", target) ;
+
+    if (!dir_create_parent(dir, 0755))
+        log_dieusys(LOG_EXIT_SYS, "create directory: ", dir) ;
+
+    log_trace("create file: ", target) ;
+    if (!file_create_empty(dir, name, 0644))
+        log_dieusys(LOG_EXIT_SYS, "create file: ", target) ;
+}
+
 void ns_clone_node(char const *path, char const *target)
 {
     log_flow() ;
@@ -361,6 +391,16 @@ void ns_clone_node(char const *path, char const *target)
     struct stat st ;
     if (lstat(path, &st) == -1)
         log_dieusys(LOG_EXIT_SYS, "find: ", path) ;
+
+    if (!S_ISDIR(st.st_mode)) {
+
+        char parent[strlen(target) + 1] ;
+        if (!ob_dirname(parent, target))
+            log_dieusys(LOG_EXIT_SYS, "get dirname of: ", target) ;
+
+        if (!dir_create_parent(parent, 0755))
+            log_dieusys(LOG_EXIT_SYS, "create directory: ", parent) ;
+    }
 
     if (S_ISREG(st.st_mode)) {
 
@@ -417,7 +457,7 @@ int ns_do_mount(char const *path, char const *target, char const *type, unsigned
         if (errno == ENOENT && create) {
 
             log_trace("mount failed (ENOENT) -- create target: ", target) ;
-            ns_clone_node(path, target) ;
+            ns_mountpoint_create(path, target) ;
 
             if (mount(path, target, type, flags, opts) == -1)
                 log_dieusys(LOG_EXIT_SYS, "mount: ", path, " to: ", target) ;

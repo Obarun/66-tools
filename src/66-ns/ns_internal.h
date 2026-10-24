@@ -61,6 +61,8 @@ extern int ns_move_root(char const *path) ;
  *  preserving mode/owner where possible. */
 extern void ns_clone_node(char const *path, char const *target) ;
 
+extern void ns_mountpoint_create(char const *path, char const *target) ;
+
 /** @brief mount(2) wrapper: on ENOENT with @create, clone the node and retry.
  *  @return 1 on success; dies on hard failure. */
 extern int ns_do_mount(char const *path, char const *target, char const *type,
