@@ -1,9 +1,6 @@
 [/]
 options=ro
 
-[/boot]
-type=recursive
-
 [/proc]
 type=recursive
 
@@ -15,12 +12,12 @@ type=recursive
 
 [/home]
 type=recursive
+ignore=yes
 
 [/run/user]
 type=recursive
+ignore=yes
 
 [/root]
-options=rw
-
-[/tmp]
 type=recursive
+ignore=yes

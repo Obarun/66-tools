@@ -1,0 +1,5 @@
+[/proc/sys/kernel/hostname]
+options=ro
+
+[/proc/sys/kernel/domainname]
+options=ro

@@ -1,0 +1,12 @@
+[/proc]
+type=proc
+
+[/dev]
+type=recursive
+
+[/sys]
+type=recursive
+
+[/run]
+type=tmpfs
+options=nosuid,nodev,strictatime,mode=0755,size=20%,nr_inodes=800k

@@ -1,9 +1,14 @@
 [/home]
+type=recursive
 options=ro
+ignore=yes
 
 [/run/user]
 type=recursive
 options=ro
+ignore=yes
 
 [/root]
+type=recursive
 options=ro
+ignore=yes

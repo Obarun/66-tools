@@ -1,12 +1,14 @@
 [/home]
 type=tmpfs
-options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
+options=ro,nodev,strictatime,mode=0755,size=4m,nr_inodes=1k
+ignore=yes
 
 [/run/user]
 type=tmpfs
-options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
-
+options=ro,nodev,strictatime,mode=0755,size=4m,nr_inodes=1k
+ignore=yes
 
 [/root]
 type=tmpfs
-options=ro,mode=0755,nodev,strictatime,size=4m,nr_inodes=1k
+options=ro,nodev,strictatime,mode=0700,size=4m,nr_inodes=1k
+ignore=yes

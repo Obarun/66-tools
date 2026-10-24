@@ -1,8 +1,11 @@
 [/home]
 type=hidden
+ignore=yes
 
 [/run/user]
 type=hidden
+ignore=yes
 
 [/root]
 type=hidden
+ignore=yes

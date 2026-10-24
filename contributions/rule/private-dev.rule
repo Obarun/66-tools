@@ -1,18 +1,16 @@
 [/dev]
 type=tmpfs
-options=nosuid,strictatime,noexec,mode=755,size=4m,nr_inodes=64k
+options=nosuid,noexec,strictatime,mode=0755,size=4m,nr_inodes=64k
 
 [/dev/pts]
-options=rw
 
 [/dev/shm]
-options=rw
-
-[/dev/hugepages]
-options=rw
 
 [/dev/mqueue]
-options=rw
+ignore=yes
+
+[/dev/hugepages]
+ignore=yes
 
 [/dev/ptmx]
 type=clone
@@ -35,9 +33,6 @@ type=clone
 [/dev/tty]
 type=clone
 
-[/dev/core]
-type=clone
-
 [/dev/fd]
 type=clone
 
@@ -49,3 +44,7 @@ type=clone
 
 [/dev/stderr]
 type=clone
+
+[/dev/core]
+type=clone
+ignore=yes

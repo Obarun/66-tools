@@ -57,13 +57,8 @@ ignore=yes
 [/sys]
 options=ro
 
-[/sys/fs/bpf]
-options=ro
-ignore=yes
-
 [/sys/fs/cgroup]
 options=rw
-ignore=yes
 
 [/sys/fs/selinux]
 options=rw
@@ -74,5 +69,9 @@ options=ro
 ignore=yes
 
 [/sys/kernel/tracing]
+options=ro
+ignore=yes
+
+[/sys/fs/bpf]
 options=ro
 ignore=yes

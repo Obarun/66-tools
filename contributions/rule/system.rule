@@ -3,23 +3,8 @@ options=ro
 
 [/boot]
 options=ro
+ignore=yes
 
 [/efi]
-options=ro
-ignore=yes
-
-[/lib]
-options=ro
-ignore=yes
-
-[/lib64]
-options=ro
-ignore=yes
-
-[/bin]
-options=ro
-ignore=yes
-
-[/sbin]
 options=ro
 ignore=yes
