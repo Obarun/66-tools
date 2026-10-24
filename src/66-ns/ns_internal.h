@@ -41,9 +41,9 @@ extern void ns_prepare_directory(ns_t *ns) ;
 /** @brief Snapshot /proc/self/mounts into @ns->mntinfo / @ns->mntsb. */
 extern void ns_mntinfo_init(ns_t *ns) ;
 
-/** @brief Mount type / options of the mountpoint @path in the snapshot, or NULL. */
-extern char const *ns_mntinfo_type(ns_t *ns, char const *path) ;
-extern char const *ns_mntinfo_opts(ns_t *ns, char const *path) ;
+/** @brief Append to @opts the per-mount options of the topmost mount at @path,
+ *  read from the live /proc/self/mountinfo. 1 if found, else 0. */
+extern int ns_mntinfo_live_opts(char const *path, strbuf *opts) ;
 
 /** @brief 1 if @path is a mountpoint (directory reported as a mount root by
  *  statx), else 0. Dies if the kernel does not report mount roots. */

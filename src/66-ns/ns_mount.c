@@ -35,6 +35,7 @@
 #include <oblibs/types.h>
 #include <oblibs/directory.h>
 #include <oblibs/files.h>
+#include <oblibs/io.h>
 
 #include "ns.h"
 #include "ns_internal.h"
@@ -81,6 +82,16 @@ static mnt_opt_t const mnt_opt_table[] = {
     { "slave",         MS_SLAVE,       MNT_ADD    },
     { "private",       MS_PRIVATE,     MNT_ADD    },
     { "unbindable",    MS_UNBINDABLE,  MNT_ADD    },
+} ;
+
+#define MOUNTINFO_CHUNK 4096
+#define MOUNTINFO_FIELDS 6
+
+typedef struct livemnt_s livemnt_t ;
+struct livemnt_s {
+    uint64_t id ;
+    size_t   dir ;
+    size_t   opts ;
 } ;
 
 static int mnt_flag_consume(unsigned long *flags, char const *tok)
@@ -167,10 +178,10 @@ void ns_compute_opts(ns_t *ns, char const *a, char const *b, unsigned long *flag
 
 // /proc/self/mounts snapshot
 
-static size_t mntsa_add(ns_t *ns, char const *s)
+static size_t mntsa_add(strbuf *sb, char const *s)
 {
-    size_t off = ns->mntsb.len ;
-    if (!strbuf_catb(&ns->mntsb, s, strlen(s) + 1))
+    size_t off = sb->len ;
+    if (!strbuf_catb(sb, s, strlen(s) + 1))
         log_die_nomem("mntsb") ;
 
     return off ;
@@ -187,9 +198,9 @@ void ns_mntinfo_init(ns_t *ns)
     struct mntent *m ;
     while ((m = getmntent(f))) {
         mntinfo_t cp = MNTINFO_ZERO ;
-        cp.dir  = (ssize_t)mntsa_add(ns, m->mnt_dir) ;
-        cp.type = (ssize_t)mntsa_add(ns, m->mnt_type) ;
-        cp.opts = (ssize_t)mntsa_add(ns, m->mnt_opts) ;
+        cp.dir  = (ssize_t)mntsa_add(&ns->mntsb, m->mnt_dir) ;
+        cp.type = (ssize_t)mntsa_add(&ns->mntsb, m->mnt_type) ;
+        cp.opts = (ssize_t)mntsa_add(&ns->mntsb, m->mnt_opts) ;
         if (!genbuf_append(mntinfo_t, &ns->mntinfo, &cp))
             log_die_nomem("mntinfo") ;
     }
@@ -197,7 +208,103 @@ void ns_mntinfo_init(ns_t *ns)
     endmntent(f) ;
 }
 
-static char const *mntinfo_find(ns_t *ns, char const *path, int want_opts)
+static size_t mntsa_add_unescaped(strbuf *sb, char const *s)
+{
+    size_t off = sb->len ;
+    size_t len = strlen(s) ;
+
+    for (size_t i = 0 ; i < len ; i++) {
+
+        char c = s[i] ;
+
+        if (c == '\\' && len - i > 3) {
+
+            char oct[4] = { s[i + 1], s[i + 2], s[i + 3], 0 } ;
+            uint8_t u ;
+
+            if (u8_scan_strict_base(oct, &u, 8)) {
+                c = (char)u ;
+                i += 3 ;
+            }
+        }
+
+        if (!strbuf_catb(sb, &c, 1))
+            log_die_nomem("mntsb") ;
+    }
+
+    if (!strbuf_catb(sb, "", 1))
+        log_die_nomem("mntsb") ;
+
+    return off ;
+}
+
+static void livemnt_read(genbuf *g, strbuf *sb)
+{
+    _cleanup_strbuf_ strbuf raw = STRBUF_ZERO ;
+    char buf[MOUNTINFO_CHUNK] ;
+    ssize_t r ;
+
+    int fd = io_open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC) ;
+    if (fd < 0)
+        log_dieusys(LOG_EXIT_SYS, "open: /proc/self/mountinfo") ;
+
+    while ((r = io_read(fd, buf, sizeof(buf))) > 0)
+        if (!strbuf_catb(&raw, buf, (size_t)r))
+            log_die_nomem("mountinfo") ;
+
+    close(fd) ;
+
+    if (r < 0)
+        log_dieusys(LOG_EXIT_SYS, "read: /proc/self/mountinfo") ;
+
+    if (!strbuf_terminate(&raw))
+        log_die_nomem("mountinfo") ;
+
+    if (!sbl_split_string_in_nline(&raw))
+        log_dieu(LOG_EXIT_SYS, "parse: /proc/self/mountinfo") ;
+
+    _cleanup_strbuf_ strbuf fields = STRBUF_ZERO ;
+    size_t pos = 0 ;
+    {
+        FOREACH_SBL(&raw, pos) {
+
+            if (!sbl_clean_string(&fields, raw.s + pos))
+                log_dieu(LOG_EXIT_SYS, "parse: /proc/self/mountinfo") ;
+
+            char const *tok[MOUNTINFO_FIELDS] ;
+            size_t nt = 0, fpos = 0 ;
+            {
+                FOREACH_SBL(&fields, fpos) {
+                    if (nt < MOUNTINFO_FIELDS)
+                        tok[nt++] = fields.s + fpos ;
+                }
+            }
+
+            uint64_t id ;
+            if (nt < MOUNTINFO_FIELDS || !u64_scan(tok[0], &id))
+                log_die(LOG_EXIT_SYS, "malformed line in: /proc/self/mountinfo") ;
+
+            livemnt_t m = { .id = id, .dir = mntsa_add_unescaped(sb, tok[4]), .opts = mntsa_add(sb, tok[5]) } ;
+            if (!genbuf_append(livemnt_t, g, &m))
+                log_die_nomem("mountinfo") ;
+        }
+    }
+}
+
+static int livemnt_visible(livemnt_t const *m, char const *dir)
+{
+    struct statx stx ;
+
+    if (statx(AT_FDCWD, dir, AT_SYMLINK_NOFOLLOW, STATX_MNT_ID, &stx) < 0)
+        return 0 ;
+
+    if (!(stx.stx_mask & STATX_MNT_ID))
+        log_die(LOG_EXIT_SYS, "statx does not report mount ids for: ", dir) ;
+
+    return stx.stx_mnt_id == m->id ;
+}
+
+int ns_mntinfo_live_opts(char const *path, strbuf *opts)
 {
     size_t plen = strlen(path) ;
     char p[plen + 1] ;
@@ -205,48 +312,24 @@ static char const *mntinfo_find(ns_t *ns, char const *path, int want_opts)
 
     dir_unslash(p) ;
 
-    size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
-    mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
+    _cleanup_strbuf_ strbuf live = STRBUF_ZERO ;
+    genbuf mnt = GENBUF_ZERO ;
+    livemnt_read(&mnt, &live) ;
 
-    for (size_t i = 0 ; i < n ; i++) {
+    size_t n = genbuf_len(livemnt_t, &mnt) ;
+    livemnt_t *a = genbuf_s(livemnt_t, &mnt) ;
+    char const *found = 0 ;
 
-        if (!strcmp(ns->mntsb.s + a[i].dir, p))
-            return ns->mntsb.s + (want_opts ? a[i].opts : a[i].type) ;
-    }
+    for (size_t i = 0 ; i < n ; i++)
+        if (!strcmp(live.s + a[i].dir, p))
+            found = live.s + a[i].opts ;
 
-    return 0 ;
-}
+    if (found && (!strbuf_cats(opts, found) || !strbuf_terminate(opts)))
+        log_die_nomem("opts") ;
 
-static char const *mntinfo_holding_opts(ns_t *ns, char const *path)
-{
-    char const *opts = 0 ;
-    size_t best = 0 ;
-    size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
-    mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
+    genbuf_free(&mnt) ;
 
-    for (size_t i = 0 ; i < n ; i++) {
-
-        char const *dir = ns->mntsb.s + a[i].dir ;
-        if (strcmp(dir, path) && dir_is_child(dir, path) <= 0)
-            continue ;
-
-        size_t len = strlen(dir) ;
-        if (!opts || len >= best) {
-            best = len ;
-            opts = ns->mntsb.s + a[i].opts ;
-        }
-    }
-
-    return opts ;
-}
-
-char const *ns_mntinfo_type(ns_t *ns, char const *path)
-{
-    return mntinfo_find(ns, path, 0) ;
-}
-char const *ns_mntinfo_opts(ns_t *ns, char const *path)
-{
-    return mntinfo_find(ns, path, 1) ;
+    return !!found ;
 }
 
 // primitives
@@ -266,6 +349,7 @@ int ns_is_mnt(char const *str)
 
     return !!(stx.stx_attributes & STATX_ATTR_MOUNT_ROOT) ;
 }
+
 
 void ns_clone_node(char const *path, char const *target)
 {
@@ -393,6 +477,12 @@ void ns_mount_recursive(ns_t *ns, char const *root, ns_entry_t *e)
     char useropts[strlen(useropts0) + 1] ;
     auto_strings(useropts, useropts0) ;
 
+    char const *target = ns->sb.s + e->target ;
+    char tgt[strlen(target) + 1] ;
+    auto_strings(tgt, strcmp(target, "/") ? target : "") ;
+    size_t plen = strcmp(path, "/") ? strlen(path) : 0 ;
+    size_t tlen = strlen(tgt) ;
+
     size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
     mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
 
@@ -410,12 +500,12 @@ void ns_mount_recursive(ns_t *ns, char const *root, ns_entry_t *e)
 
             ns_compute_opts(ns, mopts, useropts, &flags, &kept) ;
 
-            flags |= MS_REMOUNT | MS_BIND | MS_REC ;
+            flags |= e->flags | MS_REMOUNT | MS_BIND | MS_REC ;
             flags &= ~(unsigned long)MS_RDONLY ;
 
-            size_t len = strlen(dir) ;
-            char target[prefix_len + len + 1] ;
-            auto_strings(target, root, dir) ;
+            char const *sub = dir + plen ;
+            char target[prefix_len + tlen + strlen(sub) + 1] ;
+            auto_strings(target, root, tgt, sub) ;
 
             log_trace("remount submount: ", target) ;
             ns_do_mount(NULL, target, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, e->create) ;
@@ -433,77 +523,73 @@ void ns_remount_ro(ns_t *ns, ns_entry_t *e)
     unsigned long const myflag = MS_BIND | MS_REMOUNT | MS_RDONLY ;
     size_t nlen = strlen(ns->nstmp) ;
 
-    char const *tgt0 = ns->sb.s + e->target ;
-    size_t tlen = strlen(tgt0) ;
+    char const *target0 = ns->sb.s + e->target ;
+    size_t tlen = strlen(target0) ;
     char target[tlen + 1] ;
-    auto_strings(target, tgt0) ;
+    auto_strings(target, target0) ;
 
     char ntarget[nlen + tlen + 1] ;
     auto_strings(ntarget, ns->nstmp, target) ;
+    dir_unslash(ntarget) ;
 
-    /* options of the mount holding a bind source (its locked flags must be
-     * kept), else of the entry's own mountpoint, if any */
-    uint8_t bind = e->type == NS_TYPE_BIND || e->type == NS_TYPE_RECURSIVE ;
+    /* current options of the namespace mounts: flags locked in a user
+     * namespace (nosuid, nodev, atime) must be kept on remount */
+    _cleanup_strbuf_ strbuf live = STRBUF_ZERO ;
+    genbuf mnt = GENBUF_ZERO ;
+    livemnt_read(&mnt, &live) ;
+
     char const *keepopts = "" ;
-
-    if (bind) {
-        char const *o = mntinfo_holding_opts(ns, ns->sb.s + e->path) ;
-        if (o)
-            keepopts = o ;
-    }
-
-    size_t n = genbuf_len(mntinfo_t, &ns->mntinfo) ;
-    mntinfo_t *a = genbuf_s(mntinfo_t, &ns->mntinfo) ;
+    size_t n = genbuf_len(livemnt_t, &mnt) ;
+    livemnt_t *a = genbuf_s(livemnt_t, &mnt) ;
     size_t en = genbuf_len(ns_entry_t, &ns->entries) ;
     ns_entry_t *ea = genbuf_s(ns_entry_t, &ns->entries) ;
 
     for (size_t i = n ; i-- > 0 ; ) {
 
-        char const *dir = ns->mntsb.s + a[i].dir ;
+        char const *dir = live.s + a[i].dir ;
 
-        if (!strcmp(dir, target)) {
-            if (!bind)
-                keepopts = ns->mntsb.s + a[i].opts ;
+        if (!livemnt_visible(&a[i], dir))
+            continue ;
+
+        if (!strcmp(dir, ntarget)) {
+            keepopts = live.s + a[i].opts ;
             continue ;
         }
 
-        if (!strcmp(dir, "/"))
+        if (dir_is_child(ntarget, dir) <= 0)
+            continue ;
+
+        // hidden/tmpfs hide everything below -- nothing to remount
+        if (e->type == NS_TYPE_HIDDEN || e->type == NS_TYPE_TMPFS)
             continue ;
 
         /* skip a sub-mount that is itself a (kept) entry or under one */
+        char const *rel = dir + nlen ;
         uint8_t skip = 0 ;
         for (size_t j = 0 ; j < en ; j++) {
 
             char const *toskip = ns->sb.s + ea[j].target ;
-            if (!strcmp(toskip, "/"))
+            if (!strcmp(toskip, target) || dir_is_child(target, toskip) <= 0)
                 continue ;
 
-            if (!strcmp(toskip, dir) || (dir_is_child(toskip, dir) > 0)) {
+            if (!strcmp(toskip, rel) || (dir_is_child(toskip, rel) > 0)) {
                 skip = 1 ;
                 break ;
             }
         }
 
-        if (dir_is_child(target, dir) > 0 && !skip) {
+        if (skip)
+            continue ;
 
-            // hidden/tmpfs hide everything below -- nothing to remount
-            if (e->type == NS_TYPE_HIDDEN || e->type == NS_TYPE_TMPFS)
-                continue ;
+        unsigned long flags = 0 ;
+        ssize_t kept = -1 ;
 
-            unsigned long flags = 0 ;
-            ssize_t kept = -1 ;
+        ns_compute_opts(ns, live.s + a[i].opts, e->opts >= 0 ? ns->sb.s + e->opts : "", &flags, &kept) ;
 
-            ns_compute_opts(ns, ns->mntsb.s + a[i].opts, e->opts >= 0 ? ns->sb.s + e->opts : "", &flags, &kept) ;
+        flags |= myflag | e->flags ;
 
-            flags |= myflag | e->flags ;
-
-            size_t mlen = strlen(dir) ;
-            char dest[nlen + mlen + 1] ;
-            auto_strings(dest, ns->nstmp, dir) ;
-
-            log_trace("remount ro: ", dest) ;
-            ns_do_mount(dest, dest, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, 0) ;
-        }
+        log_trace("remount ro: ", dir) ;
+        ns_do_mount(dir, dir, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, 0) ;
     }
 
     {
@@ -517,6 +603,8 @@ void ns_remount_ro(ns_t *ns, ns_entry_t *e)
         log_trace("remount ro: ", ntarget) ;
         ns_do_mount(ntarget, ntarget, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, 0) ;
     }
+
+    genbuf_free(&mnt) ;
 }
 
 ssize_t ns_hidden_path(ns_t *ns, char const *path)

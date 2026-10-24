@@ -233,25 +233,25 @@ void ns_apply_entry(ns_t *ns, ns_entry_t *e, char const *root)
     char const *type = NULL ;
     char const *popts = e->opts >= 0 ? optbuf : NULL ;
 
-    if (ns_is_mnt(target)) {
-        char const *mtype = ns_mntinfo_type(ns, path) ;
-        char const *mopts = ns_mntinfo_opts(ns, path) ;
+    struct stat sst, tst ;
+    uint8_t same = ns_is_mnt(target) && !stat(path, &sst) && !stat(target, &tst) &&
+        sst.st_dev == tst.st_dev && sst.st_ino == tst.st_ino ;
 
-        if (!mtype)
-            log_die(LOG_EXIT_USER, "no mounts entry for: ", path) ;
+    if (same) {
+        _cleanup_strbuf_ strbuf mopts = STRBUF_ZERO ;
 
-        char typebuf[strlen(mtype) + 1] ;
-        auto_strings(typebuf, mtype) ;
+        if (!ns_mntinfo_live_opts(target, &mopts))
+            log_die(LOG_EXIT_SYS, "no mounts entry for: ", target) ;
 
         unsigned long mflags = 0 ;
         ssize_t kept = -1 ;
 
-        ns_compute_opts(ns, mopts ? mopts : "", optbuf, &mflags, &kept) ;
+        ns_compute_opts(ns, mopts.s, optbuf, &mflags, &kept) ;
 
         flags |= mflags | MS_REMOUNT ;
 
         log_trace("remount: ", path, " to: ", target) ;
-        ns_do_mount(path, target, typebuf, flags, kept >= 0 ? ns->sb.s + kept : NULL, e->create) ;
+        ns_do_mount(path, target, NULL, flags, kept >= 0 ? ns->sb.s + kept : NULL, e->create) ;
 
     } else {
 
