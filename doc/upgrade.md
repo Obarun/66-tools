@@ -2,6 +2,20 @@
 
 ---
 
+# In 0.2.0.3
+
+## Overview
+
+This release only changes how the documentation is published.
+
+## Bug Fixes
+
+- Publish the documentation through `obdev/docs-builder` (`f1f2337`). The
+  former deployment script read MinIO variables the CI no longer provides, so
+  the documentation of 0.2.0.2 was never published.
+
+---
+
 # In 0.2.0.2
 
 ## Overview
