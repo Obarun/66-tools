@@ -2,6 +2,29 @@
 
 ---
 
+# In 0.2.0.2
+
+## Overview
+
+This is a bug fix release.
+
+## Bug Fixes
+
+- [66-userd](66-userd.html): initialize the base of the user before driving
+  *66* (`71c30ce`). The guardian calls the ssexec handlers directly, so it never
+  ran the sanitize step the `66` command performs first, and `66 tree start`
+  failed on any account whose base had never been created. A first login on such
+  an account now creates its base and its default tree.
+- [66-userd](66-userd.html): do not supervise accounts below `USERD_MIN_UID`,
+  1000 by default (`84006f5`). A greeter, a service account or a cron job of a
+  system user owns no service tree. Their session is still registered, its
+  runtime directory mounted, and it still counts for the power policy, but no
+  guardian, scandir or tree is started for it. Root is refused a second time by
+  the guardian itself, since for uid 0 the per-user scandir is the scandir of the
+  system and driving it would stop the machine at logout.
+
+---
+
 # In 0.2.0.1
 
 ## Overview
