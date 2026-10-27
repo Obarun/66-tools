@@ -45,6 +45,7 @@
 #include <66/ssexec.h>
 #include <66/utils.h>
 #include <66/svc.h>
+#include <66/command.h>
 
 #include <66-tools/config.h>
 #include "constants.h"
@@ -301,7 +302,7 @@ static void build_ssexec(ssexec_t *info, uid_t uid)
     if (!set_ownersysdir(&info->base, uid))
         log_dieusys(LOG_EXIT_SYS, "set owner system directory") ;
 
-    set_info(info) ;
+    command_set_info(info) ;
 
     sanitize_system(info) ;
 }
